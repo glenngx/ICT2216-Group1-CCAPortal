@@ -1,0 +1,77 @@
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+        }
+        
+        .navbar {
+            background-color: var(--secondary-color);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            color: white;
+        }
+        
+        .welcome-section {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2.5rem 0;
+            border-radius: 0 0 10px 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            height: 100%;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: 600;
+        }
+        
+        .poll-item {
+            border-left: 4px solid var(--accent-color);
+            padding-left: 10px;
+        }
+        
+        .cca-card-footer {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .footer {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 1.5rem 0;
+            margin-top: 4rem;
+        }
