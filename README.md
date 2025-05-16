@@ -15,8 +15,7 @@ The Co-Curricular Activities Portal (CCAP) is a secure web application designed 
 
 1. Clone the repository:
    ```
-   git clone <repository-url>
-   cd ccap
+   git clone https://github.com/glenngx/ICT2216-Group1-CCAPortal
    ```
 
 2. Create a virtual environment and activate it:
