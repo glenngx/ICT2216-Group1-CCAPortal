@@ -30,13 +30,16 @@
                 <div class="d-flex">
                     <div class="dropdown">
                         <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> Student Name
+                            <i class="bi bi-person-circle"></i> {{ user_name or 'User' }}
+                            {% if user_role == 'admin' %}
+                            <span class="badge bg-warning text-dark ms-1">Admin</span>
+                            {% endif %}
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#">Profile</a></li>
                             <li><a class="dropdown-item" href="#">Settings</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#">Logout</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
                         </ul>
                     </div>
                 </div>
@@ -50,6 +53,20 @@
             <h1 class="display-5 fw-bold">Welcome to SIT's Co-Curricular Activities Portal!</h1>
             <p class="fs-4">Your platform for CCA decision-making and participation</p>
         </div>
+    </div>
+
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' if category == 'warning' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
     </div>
 
     <!-- Main Content -->
