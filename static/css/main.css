@@ -21,6 +21,11 @@
             font-weight: 700;
             color: white;
         }
+
+        .sit-logo {
+            height: 50px;
+            margin-right: 10px;
+        }
         
         .welcome-section {
             background-color: var(--primary-color);
