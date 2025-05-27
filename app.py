@@ -68,6 +68,50 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Moderator required decorator
+def moderator_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login'))
+        
+        # Check if session is expired
+        if 'login_time' in session:
+            login_time = datetime.fromisoformat(session['login_time'])
+            if datetime.now() - login_time > timedelta(minutes=30):
+                session.clear()
+                flash('Your session has expired. Please log in again.', 'warning')
+                return redirect(url_for('login'))
+        
+        # Check if user is a moderator in any CCA
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('dashboard'))
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM CCAMembers 
+                WHERE UserId = ? AND CCARole = 'moderator'
+            """, (session['user_id'],))
+            is_moderator = cursor.fetchone()[0] > 0
+            
+            if not is_moderator:
+                flash('Access denied. Moderator privileges required.', 'error')
+                return redirect(url_for('dashboard'))
+            
+        except Exception as e:
+            print(f"Moderator check error: {e}")
+            flash('Error checking permissions.', 'error')
+            return redirect(url_for('dashboard'))
+        finally:
+            conn.close()
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Input validation functions
 def validate_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
@@ -246,6 +290,7 @@ def dashboard():
         user_ccas = cursor.fetchall()
         
         ccas = []
+        user_is_moderator = False
         for cca in user_ccas:
             ccas.append({
                 'id': cca[0],
@@ -253,6 +298,9 @@ def dashboard():
                 'description': cca[2],
                 'role': cca[3]
             })
+            # Check if user is moderator in any CCA
+            if cca[3] == 'moderator':
+                user_is_moderator = True
         
         # Get available polls for user's CCAs
         if ccas:
@@ -283,7 +331,8 @@ def dashboard():
                              ccas=ccas, 
                              available_polls=available_polls,
                              user_name=session['name'],
-                             user_role=session['role'])
+                             user_role=session['role'],
+                             user_is_moderator=user_is_moderator)
         
     except pyodbc.Error as e:
         print(f"Dashboard data error: {e}")
@@ -292,7 +341,8 @@ def dashboard():
                              ccas=[], 
                              available_polls=[],
                              user_name=session['name'],
-                             user_role=session['role'])
+                             user_role=session['role'],
+                             user_is_moderator=False)
     finally:
         conn.close()
 
@@ -551,6 +601,140 @@ def edit_cca(cca_id):
         print(f"Edit CCA error: {e}")
         flash('Error updating CCA.', 'error')
         return redirect(url_for('view_cca', cca_id=cca_id))
+    finally:
+        conn.close()
+
+# Create Poll Route
+@app.route('/create-poll', methods=['GET', 'POST'])
+@moderator_required
+def create_poll():
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Get CCAs where user is a moderator
+        cursor.execute("""
+            SELECT c.CCAId, c.Name, c.Description
+            FROM CCA c
+            INNER JOIN CCAMembers cm ON c.CCAId = cm.CCAId
+            WHERE cm.UserId = ? AND cm.CCARole = 'moderator'
+            ORDER BY c.Name
+        """, (session['user_id'],))
+        moderator_ccas = cursor.fetchall()
+        
+        user_ccas = []
+        for cca in moderator_ccas:
+            user_ccas.append({
+                'id': cca[0],
+                'name': cca[1],
+                'description': cca[2]
+            })
+        
+        if request.method == 'POST':
+            # Get form data
+            cca_id = request.form.get('cca_id')
+            question = request.form.get('question', '').strip()
+            question_type = request.form.get('question_type')
+            start_date = request.form.get('start_date')
+            end_date = request.form.get('end_date')
+            is_anonymous = request.form.get('is_anonymous') == '1'
+            options = request.form.getlist('options[]')
+            
+            # Basic validation
+            if not all([cca_id, question, question_type, start_date, end_date]):
+                flash('Please fill in all required fields.', 'error')
+                return render_template('create_poll.html', user_ccas=user_ccas, 
+                                     user_name=session['name'], user_role='moderator')
+            
+            # Validate CCA access
+            if not any(str(cca['id']) == str(cca_id) for cca in user_ccas):
+                flash('You can only create polls for CCAs where you are a moderator.', 'error')
+                return render_template('create_poll.html', user_ccas=user_ccas,
+                                     user_name=session['name'], user_role='moderator')
+            
+            # Filter and validate options
+            valid_options = [opt.strip() for opt in options if opt.strip()]
+            if len(valid_options) < 2:
+                flash('Please provide at least 2 options for the poll.', 'error')
+                return render_template('create_poll.html', user_ccas=user_ccas,
+                                     user_name=session['name'], user_role='moderator')
+            
+            if len(valid_options) > 10:
+                flash('Maximum 10 options allowed.', 'error')
+                return render_template('create_poll.html', user_ccas=user_ccas,
+                                     user_name=session['name'], user_role='moderator')
+            
+            # Check for duplicate options (case-insensitive)
+            lower_options = [opt.lower() for opt in valid_options]
+            if len(lower_options) != len(set(lower_options)):
+                flash('Please ensure all options are unique.', 'error')
+                return render_template('create_poll.html', user_ccas=user_ccas,
+                                     user_name=session['name'], user_role='moderator')
+            
+            # Validate dates
+            try:
+                start_datetime = datetime.fromisoformat(start_date)
+                end_datetime = datetime.fromisoformat(end_date)
+                
+                if start_datetime >= end_datetime:
+                    flash('End date must be after start date.', 'error')
+                    return render_template('create_poll.html', user_ccas=user_ccas,
+                                         user_name=session['name'], user_role='moderator')
+                
+                if start_datetime < datetime.now():
+                    flash('Start date cannot be in the past.', 'error')
+                    return render_template('create_poll.html', user_ccas=user_ccas,
+                                         user_name=session['name'], user_role='moderator')
+                    
+            except ValueError:
+                flash('Invalid date format.', 'error')
+                return render_template('create_poll.html', user_ccas=user_ccas,
+                                     user_name=session['name'], user_role='moderator')
+            
+            # Create poll in database
+            try:
+                # Insert poll
+                cursor.execute("""
+                    INSERT INTO Poll (CCAId, Question, QuestionType, StartDate, EndDate, IsAnonymous, IsActive)
+                    VALUES (?, ?, ?, ?, ?, ?, 1)
+                """, (cca_id, question, question_type, start_datetime, end_datetime, is_anonymous))
+                
+                # Get the poll ID
+                cursor.execute("SELECT @@IDENTITY")
+                poll_id = cursor.fetchone()[0]
+                
+                # Insert options
+                for option_text in valid_options:
+                    cursor.execute("""
+                        INSERT INTO Options (PollId, OptionText)
+                        VALUES (?, ?)
+                    """, (poll_id, option_text))
+                
+                conn.commit()
+                
+                # Get CCA name for success message
+                cca_name = next(cca['name'] for cca in user_ccas if cca['id'] == int(cca_id))
+                flash(f'Poll "{question}" created successfully for {cca_name}!', 'success')
+                return redirect(url_for('dashboard'))
+                
+            except Exception as e:
+                conn.rollback()
+                print(f"Create poll error: {e}")
+                flash('Error creating poll. Please try again.', 'error')
+                return render_template('create_poll.html', user_ccas=user_ccas,
+                                     user_name=session['name'], user_role='moderator')
+        
+        return render_template('create_poll.html', user_ccas=user_ccas,
+                             user_name=session['name'], user_role='moderator')
+        
+    except Exception as e:
+        print(f"Create poll page error: {e}")
+        flash('Error loading create poll page.', 'error')
+        return redirect(url_for('dashboard'))
     finally:
         conn.close()
 
