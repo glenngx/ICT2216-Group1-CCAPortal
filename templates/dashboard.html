@@ -30,7 +30,7 @@
                 </li>
                 {% endif %}
                 <li class="nav-item">
-                    <a class="nav-link" href="#">My CCAs</a>
+                    <a class="nav-link" href="{{ url_for('my_ccas') }}">My CCAs</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#">Polls</a>
@@ -99,7 +99,13 @@
                                         <p class="card-text">{{ cca.description }}</p>
                                     </div>
                                     <div class="card-footer cca-card-footer">
-                                        <a href="#" class="btn btn-sm btn-primary">View Details</a>
+                                        {% if cca.role == 'moderator' %}
+                                            <a href="{{ url_for('moderator_view_cca', cca_id=cca.id) }}" class="btn btn-sm btn-success">
+                                                <i class="bi bi-gear"></i> Manage CCA
+                                            </a>
+                                        {% else %}
+                                            <a href="#" class="btn btn-sm btn-primary">View Details</a>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>

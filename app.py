@@ -738,6 +738,286 @@ def create_poll():
     finally:
         conn.close()
 
+# My CCAs route for moderators and students
+@app.route('/my-ccas')
+@login_required
+def my_ccas():
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Get user's CCAs with their roles
+        cca_query = """
+        SELECT c.CCAId, c.Name, c.Description, cm.CCARole
+        FROM CCA c
+        INNER JOIN CCAMembers cm ON c.CCAId = cm.CCAId
+        WHERE cm.UserId = ?
+        ORDER BY c.Name
+        """
+        cursor.execute(cca_query, (session['user_id'],))
+        user_ccas = cursor.fetchall()
+        
+        ccas = []
+        moderator_ccas = []
+        for cca in user_ccas:
+            cca_data = {
+                'id': cca[0],
+                'name': cca[1],
+                'description': cca[2],
+                'role': cca[3]
+            }
+            ccas.append(cca_data)
+            if cca[3] == 'moderator':
+                moderator_ccas.append(cca_data)
+        
+        return render_template('my_ccas.html', 
+                             ccas=ccas, 
+                             moderator_ccas=moderator_ccas,
+                             user_name=session['name'],
+                             user_role=session['role'])
+        
+    except Exception as e:
+        print(f"My CCAs error: {e}")
+        flash('Error loading CCAs.', 'error')
+        return redirect(url_for('dashboard'))
+    finally:
+        conn.close()
+
+# Moderator CCA management
+@app.route('/moderator/cca/<int:cca_id>')
+@login_required
+def moderator_view_cca(cca_id):
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error.', 'error')
+        return redirect(url_for('my_ccas'))
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Check if user is moderator of this CCA
+        cursor.execute("""
+            SELECT COUNT(*) FROM CCAMembers 
+            WHERE UserId = ? AND CCAId = ? AND CCARole = 'moderator'
+        """, (session['user_id'], cca_id))
+        is_moderator = cursor.fetchone()[0] > 0
+        
+        if not is_moderator:
+            flash('Access denied. You are not a moderator of this CCA.', 'error')
+            return redirect(url_for('my_ccas'))
+        
+        # Get CCA details
+        cursor.execute("SELECT CCAId, Name, Description FROM CCA WHERE CCAId = ?", (cca_id,))
+        cca = cursor.fetchone()
+        
+        if not cca:
+            flash('CCA not found.', 'error')
+            return redirect(url_for('my_ccas'))
+        
+        # Get CCA members
+        members_query = """
+        SELECT s.StudentId, s.Name, s.Email, cm.CCARole, cm.MemberId, ud.UserId
+        FROM CCAMembers cm
+        INNER JOIN UserDetails ud ON cm.UserId = ud.UserId
+        INNER JOIN Student s ON ud.StudentId = s.StudentId
+        WHERE cm.CCAId = ?
+        ORDER BY s.Name
+        """
+        cursor.execute(members_query, (cca_id,))
+        members = cursor.fetchall()
+        
+        # Get all students not in this CCA (for assignment)
+        not_in_cca_query = """
+        SELECT s.StudentId, s.Name
+        FROM Student s
+        INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+        WHERE ud.UserId NOT IN (
+            SELECT UserId FROM CCAMembers WHERE CCAId = ?
+        )
+        ORDER BY s.Name
+        """
+        cursor.execute(not_in_cca_query, (cca_id,))
+        available_students = cursor.fetchall()
+        
+        return render_template('moderator_view_cca.html', 
+                             cca=cca, 
+                             members=members, 
+                             available_students=available_students,
+                             user_name=session['name'])
+        
+    except Exception as e:
+        print(f"Moderator view CCA error: {e}")
+        flash('Error loading CCA details.', 'error')
+        return redirect(url_for('my_ccas'))
+    finally:
+        conn.close()
+
+# Edit CCA for moderators
+@app.route('/moderator/cca/<int:cca_id>/edit', methods=['POST'])
+@login_required
+def moderator_edit_cca(cca_id):
+    # Check if user is moderator of this CCA
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error.', 'error')
+        return redirect(url_for('my_ccas'))
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM CCAMembers 
+            WHERE UserId = ? AND CCAId = ? AND CCARole = 'moderator'
+        """, (session['user_id'], cca_id))
+        is_moderator = cursor.fetchone()[0] > 0
+        
+        if not is_moderator:
+            flash('Access denied. You are not a moderator of this CCA.', 'error')
+            return redirect(url_for('my_ccas'))
+        
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not name:
+            flash('CCA name is required.', 'error')
+            return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+        # Check if new name conflicts with existing CCAs (excluding current one)
+        cursor.execute("SELECT CCAId FROM CCA WHERE Name = ? AND CCAId != ?", (name, cca_id))
+        if cursor.fetchone():
+            flash('CCA name already exists.', 'error')
+            return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+        # Update CCA
+        cursor.execute("""
+            UPDATE CCA 
+            SET Name = ?, Description = ?
+            WHERE CCAId = ?
+        """, (name, description, cca_id))
+        
+        conn.commit()
+        flash('CCA updated successfully!', 'success')
+        return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Moderator edit CCA error: {e}")
+        flash('Error updating CCA.', 'error')
+        return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+    finally:
+        conn.close()
+
+# Add Student to CCA for moderators (Updated with role restriction)
+@app.route('/moderator/cca/<int:cca_id>/add-student', methods=['POST'])
+@login_required
+def moderator_add_student_to_cca(cca_id):
+    # Check if user is moderator of this CCA
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error.', 'error')
+        return redirect(url_for('my_ccas'))
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM CCAMembers 
+            WHERE UserId = ? AND CCAId = ? AND CCARole = 'moderator'
+        """, (session['user_id'], cca_id))
+        is_moderator = cursor.fetchone()[0] > 0
+        
+        if not is_moderator:
+            flash('Access denied. You are not a moderator of this CCA.', 'error')
+            return redirect(url_for('my_ccas'))
+        
+        student_id = request.form.get('student_id')
+        role = request.form.get('role')
+        
+        if not all([student_id, role]):
+            flash('Please select both student and role.', 'error')
+            return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+        # IMPORTANT: Restrict moderators to only assign 'member' role
+        if role != 'member':
+            flash('Access denied. Moderators can only assign the "member" role to students. Contact an administrator to assign moderator roles.', 'error')
+            return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+        # Get UserId for the student
+        cursor.execute("SELECT UserId FROM UserDetails WHERE StudentId = ?", (int(student_id),))
+        user_result = cursor.fetchone()
+        if not user_result:
+            flash('Student not found.', 'error')
+            return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+        user_id = user_result[0]
+        
+        # Check if student is already a member of this CCA
+        cursor.execute("SELECT COUNT(*) FROM CCAMembers WHERE UserId = ? AND CCAId = ?", (user_id, cca_id))
+        if cursor.fetchone()[0] > 0:
+            flash('Student is already a member of this CCA.', 'error')
+            return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+        # Add to CCA with 'member' role only
+        cursor.execute("""
+            INSERT INTO CCAMembers (UserId, CCAId, CCARole)
+            VALUES (?, ?, ?)
+        """, (user_id, cca_id, 'member'))  # Force role to be 'member'
+        
+        conn.commit()
+        
+        # Get student name for success message
+        cursor.execute("SELECT Name FROM Student WHERE StudentId = ?", (int(student_id),))
+        student_name_result = cursor.fetchone()
+        student_name = student_name_result[0] if student_name_result else f"Student {student_id}"
+        
+        flash(f'{student_name} has been added to the CCA as a member successfully!', 'success')
+        return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Moderator add student to CCA error: {e}")
+        flash('Error adding student to CCA.', 'error')
+        return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+    finally:
+        conn.close()
+
+# Remove Student from CCA for moderators
+@app.route('/moderator/cca/<int:cca_id>/remove-student/<int:member_id>', methods=['POST'])
+@login_required
+def moderator_remove_student_from_cca(cca_id, member_id):
+    # Check if user is moderator of this CCA
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error.', 'error')
+        return redirect(url_for('my_ccas'))
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM CCAMembers 
+            WHERE UserId = ? AND CCAId = ? AND CCARole = 'moderator'
+        """, (session['user_id'], cca_id))
+        is_moderator = cursor.fetchone()[0] > 0
+        
+        if not is_moderator:
+            flash('Access denied. You are not a moderator of this CCA.', 'error')
+            return redirect(url_for('my_ccas'))
+        
+        cursor.execute("DELETE FROM CCAMembers WHERE MemberId = ? AND CCAId = ?", (member_id, cca_id))
+        conn.commit()
+        flash('Student removed from CCA successfully!', 'success')
+        return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Moderator remove student from CCA error: {e}")
+        flash('Error removing student from CCA.', 'error')
+        return redirect(url_for('moderator_view_cca', cca_id=cca_id))
+    finally:
+        conn.close()
+
 # Add Student to CCA
 @app.route('/admin/cca/<int:cca_id>/add-student', methods=['POST'])
 @admin_required
