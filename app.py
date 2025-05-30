@@ -302,11 +302,12 @@ def dashboard():
             if cca[3] == 'moderator':
                 user_is_moderator = True
         
-        # Get available polls for user's CCAs
+        # Get available polls for user's CCAs (ordered by most urgent first)
         if ccas:
             cca_ids = [str(cca['id']) for cca in ccas]
             poll_query = """
-            SELECT p.PollId, p.Question, p.EndDate, c.Name as CCAName
+            SELECT p.PollId, p.Question, p.EndDate, c.Name as CCAName,
+                   DATEDIFF(day, GETDATE(), p.EndDate) as DaysRemaining
             FROM Poll p
             INNER JOIN CCA c ON p.CCAId = c.CCAId
             WHERE p.CCAId IN ({}) AND p.IsActive = 1 AND p.EndDate > GETDATE()
@@ -322,7 +323,8 @@ def dashboard():
                     'id': poll[0],
                     'title': poll[1],
                     'end_date': poll[2].strftime('%Y-%m-%d') if poll[2] else '',
-                    'cca': poll[3]
+                    'cca': poll[3],
+                    'days_remaining': poll[4] if poll[4] is not None else 0
                 })
         else:
             available_polls = []
@@ -1129,6 +1131,99 @@ def delete_cca(cca_id):
         print(f"Delete CCA error: {e}")
         flash('Error deleting CCA.', 'error')
         return redirect(url_for('view_cca', cca_id=cca_id))
+    finally:
+        conn.close()
+
+@app.route('/polls')
+@login_required
+def view_polls():
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error. Please try again.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Get user's CCAs
+        cca_query = """
+        SELECT c.CCAId
+        FROM CCA c
+        INNER JOIN CCAMembers cm ON c.CCAId = cm.CCAId
+        WHERE cm.UserId = ?
+        """
+        cursor.execute(cca_query, (session['user_id'],))
+        user_cca_results = cursor.fetchall()
+        
+        # Check if user is moderator in any CCA
+        cursor.execute("""
+            SELECT COUNT(*) FROM CCAMembers 
+            WHERE UserId = ? AND CCARole = 'moderator'
+        """, (session['user_id'],))
+        user_is_moderator = cursor.fetchone()[0] > 0
+        
+        if user_cca_results:
+            cca_ids = [str(cca[0]) for cca in user_cca_results]
+            
+            # Get all available polls for user's CCAs with additional details
+            poll_query = """
+            SELECT p.PollId, p.Question, p.StartDate, p.EndDate, p.QuestionType, 
+                   p.IsAnonymous, c.Name as CCAName,
+                   DATEDIFF(day, GETDATE(), p.EndDate) as DaysRemaining
+            FROM Poll p
+            INNER JOIN CCA c ON p.CCAId = c.CCAId
+            WHERE p.CCAId IN ({}) AND p.IsActive = 1 AND p.EndDate > GETDATE()
+            ORDER BY p.EndDate ASC
+            """.format(','.join(['?'] * len(cca_ids)))
+            
+            cursor.execute(poll_query, cca_ids)
+            poll_results = cursor.fetchall()
+            
+            available_polls = []
+            for poll in poll_results:
+                # Check if user has already voted on this poll
+                cursor.execute("SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?", 
+                             (poll[0], session['user_id']))
+                has_voted = cursor.fetchone()[0] > 0
+                
+                available_polls.append({
+                    'id': poll[0],
+                    'title': poll[1],
+                    'start_date': poll[2].strftime('%Y-%m-%d') if poll[2] else '',
+                    'end_date': poll[3].strftime('%Y-%m-%d') if poll[3] else '',
+                    'question_type': poll[4],
+                    'is_anonymous': poll[5],
+                    'cca': poll[6],
+                    'days_remaining': poll[7] if poll[7] is not None else 0,
+                    'has_voted': has_voted
+                })
+            
+            # Get polls user has voted on (for stats)
+            voted_poll_query = """
+            SELECT DISTINCT p.PollId
+            FROM Poll p
+            INNER JOIN Votes v ON p.PollId = v.PollId
+            WHERE v.UserId = ? AND p.CCAId IN ({}) AND p.IsActive = 1
+            """.format(','.join(['?'] * len(cca_ids)))
+            
+            cursor.execute(voted_poll_query, [session['user_id']] + cca_ids)
+            polls_voted = cursor.fetchall()
+            
+        else:
+            available_polls = []
+            polls_voted = []
+        
+        return render_template('view_poll.html', 
+                             available_polls=available_polls,
+                             polls_voted=polls_voted,
+                             user_name=session['name'],
+                             user_role=session['role'],
+                             user_is_moderator=user_is_moderator)
+        
+    except Exception as e:
+        print(f"View polls error: {e}")
+        flash('Error loading polls.', 'error')
+        return redirect(url_for('dashboard'))
     finally:
         conn.close()
 

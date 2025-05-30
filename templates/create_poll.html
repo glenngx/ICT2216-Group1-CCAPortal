@@ -29,14 +29,13 @@
                     </li>
                     {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link" href="#">My CCAs</a>
+                        <a class="nav-link" href="{{ url_for('my_ccas') }}">My CCAs</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#">Polls</a>
                     </li>
                 </ul>
                 <div class="d-flex">
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light me-2">Back to Dashboard</a>
                     <div class="dropdown">
                         <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i> {{ user_name }}
