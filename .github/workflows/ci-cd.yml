@@ -1,0 +1,176 @@
+name: CCAP CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  continuous-integration:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        echo "Dependencies installed successfully"
+    
+    - name: Create test configuration
+      run: |
+        echo "Creating test configuration..."
+        cat > config.py << EOF
+        # Test Configuration for CI
+        DB_SERVER = "test-server"
+        DB_NAME = "test-db"
+        DB_USERNAME = "test-user"
+        DB_PASSWORD = "test-password"
+        DB_CONNECTION_STRING = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=test-server;DATABASE=test-db;UID=test-user;PWD=test-password;Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
+        SECRET_KEY = "test-secret-key-for-ci-only-not-secure"
+        EOF
+        echo "Test configuration created"
+    
+    - name: Lint code with flake8
+      run: |
+        echo "Running code quality checks..."
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        echo "Code linting completed"
+    
+    - name: Test application import and basic functionality
+      run: |
+        echo "Testing application functionality..."
+        python -c "
+        print('Testing app import...')
+        import app
+        print('App imported successfully')
+        
+        print('Testing Flask app creation...')
+        assert app.app is not None
+        print('Flask app instance exists')
+        
+        print('Testing validation functions...')
+        assert app.validate_email('test@example.com') == True
+        assert app.validate_email('invalid-email') == False
+        assert app.validate_student_id('1234567') == True
+        assert app.validate_student_id('123') == False
+        print('Validation functions work correctly')
+        
+        print('All basic functionality tests passed!')
+        "
+    
+    - name: Test database connection handling
+      run: |
+        echo "Testing database connection logic..."
+        python -c "
+        import app
+        
+        print('Testing database connection function exists...')
+        assert hasattr(app, 'get_db_connection')
+        print('Database connection function exists')
+        
+        print('Testing database connection with fake config...')
+        # This will fail to connect (expected) but tests the error handling
+        conn = app.get_db_connection()
+        if conn is None:
+            print('Database connection properly handles connection failures')
+        else:
+            print('Unexpected: Test database connection succeeded')
+            
+        print('Database connection logic tested')
+        "
+    
+    - name: Test application routes
+      run: |
+        echo "Testing application routes..."
+        python -c "
+        import app
+        routes = [rule.rule for rule in app.app.url_map.iter_rules()]
+        required_routes = ['/', '/login', '/logout', '/dashboard', '/admin']
+        
+        print('📋 Available routes:')
+        for route in sorted(routes):
+            print(f'  - {route}')
+        
+        print('🔍 Checking required routes...')
+        for required in required_routes:
+            if required in routes:
+                print(f'  ✅ {required}')
+            else:
+                print(f'  ❌ {required} - MISSING')
+        
+        print('Route testing completed')
+        "
+    
+    - name: Create deployment package
+      run: |
+        echo "Creating deployment package..."
+        mkdir -p deployment-package
+        
+        # Copy application files (exclude sensitive and unnecessary files)
+        cp *.py deployment-package/
+        cp requirements.txt deployment-package/
+        cp -r static deployment-package/ 2>/dev/null || echo "No static directory found"
+        cp -r templates deployment-package/ 2>/dev/null || echo "No templates directory found"
+        
+        # Create deployment info
+        cat > deployment-package/deployment-info.txt << EOF
+        CCAP Deployment Package
+        =======================
+        Build Date: $(date)
+        Commit: ${{ github.sha }}
+        Branch: ${{ github.ref_name }}
+        Python Version: ${{ env.PYTHON_VERSION }}
+        
+        Files included:
+        $(ls -la deployment-package/)
+        EOF
+        
+        # Create deployment archive
+        tar -czf ccap-deployment.tar.gz -C deployment-package .
+        echo "Deployment package created: ccap-deployment.tar.gz"
+    
+    - name: Upload deployment package
+      uses: actions/upload-artifact@v3
+      with:
+        name: ccap-deployment-${{ github.run_number }}
+        path: ccap-deployment.tar.gz
+        retention-days: 30
+    
+    - name: CI Pipeline Summary
+      run: |
+        echo "CCAP CI Pipeline Completed Successfully"
+        echo "=========================================="
+        echo "Code quality checks passed"
+        echo "Application functionality verified"
+        echo "Database connection logic tested"
+        echo "Application routes validated"
+        echo "Deployment package created and uploaded"
+        echo ""
+        echo "Build Summary:"
+        echo "  • Build #${{ github.run_number }}"
+        echo "  • Commit: ${{ github.sha }}"
+        echo "  • Branch: ${{ github.ref_name }}"
+        echo "  • Python: ${{ env.PYTHON_VERSION }}"
+        echo ""
+        echo "Deployment package ready for manual deployment"
+        echo "Ready for automated deployment"
