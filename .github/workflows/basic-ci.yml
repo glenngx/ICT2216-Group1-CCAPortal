@@ -24,6 +24,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
+    - name: Create test config for CI
+      run: |
+        cat > config.py << EOF
+        # Test Configuration for CI
+        DB_SERVER = "test-server"
+        DB_NAME = "test-db"
+        DB_USERNAME = "test-user"
+        DB_PASSWORD = "test-password"
+        DB_CONNECTION_STRING = "test-connection-string"
+        SECRET_KEY = "test-secret-key-for-ci-only"
+        EOF
+    
     - name: Test app can import
       run: |
         python -c "print('Testing if app can import...'); import app; print('App imported successfully')"
