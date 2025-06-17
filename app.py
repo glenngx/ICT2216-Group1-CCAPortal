@@ -453,9 +453,9 @@ def create_student():
             
             # Create an account if both checks pass
             cursor.execute("""
-                INSERT INTO UserDetails (StudentId, Password, SystemRole)
-                VALUES (?, ?, 'student')
-            """, (int(student_id), password))
+                INSERT INTO UserDetails (Username, StudentId, Password, SystemRole)
+                VALUES (?, ?, ?, 'student')
+            """, (int(student_id), int(student_id), password))
             
             conn.commit()
             flash(f'Login account created successfully for {student_record[1]} (ID: {student_id})!', 'success')
