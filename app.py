@@ -315,14 +315,15 @@ def dashboard():
                 user_is_moderator = True
         
         # Get available polls for user's CCAs (ordered by most urgent first)
+        # 17/6 - Changed to use v_Poll_With_LiveStatus view to auto close polls after end date - Dom
         if ccas:
             cca_ids = [str(cca['id']) for cca in ccas]
             poll_query = """
             SELECT p.PollId, p.Question, p.EndDate, c.Name as CCAName,
-                   DATEDIFF(day, GETDATE(), p.EndDate) as DaysRemaining
-            FROM Poll p
+                DATEDIFF(day, GETDATE(), p.EndDate) as DaysRemaining
+            FROM v_Poll_With_LiveStatus p
             INNER JOIN CCA c ON p.CCAId = c.CCAId
-            WHERE p.CCAId IN ({}) AND p.IsActive = 1 AND p.EndDate > GETDATE()
+            WHERE p.CCAId IN ({}) AND p.LiveIsActive = 1
             ORDER BY p.EndDate ASC
             """.format(','.join(['?'] * len(cca_ids)))
             
@@ -1170,50 +1171,35 @@ def view_polls():
         polls_data = []
         if user_cca_ids:
             placeholders = ','.join(['?'] * len(user_cca_ids))
+            # Use v_Poll_With_LiveStatus to get the calculated LiveIsActive
             sql_query = f"""
-                SELECT p.PollId, p.CCAId, p.Question, p.QuestionType, p.StartDate, p.EndDate, p.IsAnonymous, p.IsActive, cca.Name AS CCAName
-                FROM Poll p
+                SELECT p.PollId, p.CCAId, p.Question, p.QuestionType, p.StartDate, p.EndDate, p.IsAnonymous, p.LiveIsActive, cca.Name AS CCAName
+                FROM v_Poll_With_LiveStatus p 
                 JOIN CCA cca ON p.CCAId = cca.CCAId
-                WHERE p.IsActive = 1 AND p.CCAId IN ({placeholders})
+                WHERE p.CCAId IN ({placeholders})
                 ORDER BY p.EndDate DESC, p.StartDate DESC
             """
             cursor.execute(sql_query, user_cca_ids)
             polls_data = cursor.fetchall()
 
-        processed_polls = []
-        for row in polls_data:
-            start_date_obj = row[4]
-            end_date_obj = row[5]
+            processed_polls = []
+            for row in polls_data:
+                processed_polls.append({
+                    'PollId': row[0], 
+                    'CCAId': row[1], 
+                    'Question': row[2], 
+                    'QuestionType': row[3],
+                    'StartDate': row[4].strftime('%Y-%m-%d %H:%M') if isinstance(row[4], datetime) else str(row[4]) if row[4] else 'N/A',
+                    'EndDate': row[5].strftime('%Y-%m-%d %H:%M') if isinstance(row[5], datetime) else str(row[5]) if row[5] else 'N/A',
+                    'IsAnonymous': row[6], 
+                    'LiveIsActive': row[7], # This now comes from v_Poll_With_LiveStatus.LiveIsActive
+                    'CCAName': row[8]
+                })
 
-            start_date_str = 'N/A'
-            if isinstance(start_date_obj, datetime):
-                start_date_str = start_date_obj.strftime('%Y-%m-%d %H:%M')
-            elif start_date_obj:  # If it's not None but not datetime (e.g., already a string)
-                start_date_str = str(start_date_obj)
-
-            end_date_str = 'N/A'
-            if isinstance(end_date_obj, datetime):
-                end_date_str = end_date_obj.strftime('%Y-%m-%d %H:%M')
-            elif end_date_obj:
-                end_date_str = str(end_date_obj)
-            
-            is_ended_status = False
-            # Use the original datetime object for comparison
-            if isinstance(end_date_obj, datetime):
-                is_ended_status = datetime.now() > end_date_obj
-            
-            processed_polls.append({
-                'PollId': row[0], 
-                'CCAId': row[1], 
-                'Question': row[2], 
-                'QuestionType': row[3],
-                'StartDate': start_date_str,
-                'EndDate': end_date_str,
-                'IsAnonymous': row[6], 
-                'IsActive': row[7], 
-                'CCAName': row[8],
-                'is_ended': is_ended_status
-            })
+        # If polls_data is empty, processed_polls will be empty.
+        # Ensure processed_polls is defined even if there are no user_cca_ids or no polls.
+        if not user_cca_ids or not polls_data:
+            processed_polls = []
 
         return render_template('view_poll.html', polls=processed_polls, user_name=session.get('name'))
 
@@ -1236,10 +1222,10 @@ def view_poll_detail(poll_id):
     try:
         cursor = conn.cursor()
 
-
         cursor.execute("""
-            SELECT p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, p.IsAnonymous, c.Name AS CCAName, p.IsActive
-            FROM Poll p
+            SELECT p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, 
+                   p.IsAnonymous, c.Name AS CCAName, p.LiveIsActive
+            FROM v_Poll_With_LiveStatus p
             JOIN CCA c ON p.CCAId = c.CCAId
             WHERE p.PollId = ?
         """, (poll_id,))
@@ -1292,7 +1278,7 @@ def view_poll_detail(poll_id):
             'IsAnonymous': poll_data[5],
             'Description': None,  # No Description column in Poll table
             'CCAName': poll_data[6], 
-            'IsActive': poll_data[7],
+            'LiveIsActive': poll_data[7], # Use LiveIsActive from the view
             'is_ended': is_ended_status
         }
 
@@ -1346,23 +1332,18 @@ def submit_vote(poll_id):
         cursor = conn.cursor()
 
         # Fetch poll details to check if active, not ended, and user is eligible
-        cursor.execute("SELECT IsActive, EndDate, CCAId, QuestionType FROM Poll WHERE PollId = ?", (poll_id,))
+        cursor.execute("SELECT LiveIsActive, CCAId, QuestionType FROM v_Poll_With_LiveStatus WHERE PollId = ?", (poll_id,))
         poll_info = cursor.fetchone()
 
         if not poll_info:
             flash('Poll not found.', 'error')
             return redirect(url_for('view_polls'))
 
-        is_active, end_date, cca_id, question_type = poll_info
+        live_is_active, cca_id, question_type = poll_info
 
-        if not is_active:
-            flash('This poll is no longer active.', 'error')
+        if not live_is_active:
+            flash('This poll is closed for voting.', 'error')
             return redirect(url_for('view_poll_detail', poll_id=poll_id))
-
-        if end_date and datetime.now() > end_date:
-            flash('This poll has ended. Voting is closed.', 'error')
-            return redirect(url_for('view_poll_detail', poll_id=poll_id))
-
         # Check if user is part of the CCA for this poll
         cursor.execute("""
             SELECT COUNT(*)

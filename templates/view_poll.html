@@ -140,6 +140,12 @@
                             <h5 class="card-title mb-0">{{ poll.Question }}</h5>
                         </div>
                         <div class="card-body">
+                                <p class="card-text">
+        <strong>Status:</strong>
+        <span class="badge bg-{{ 'success' if poll.LiveIsActive else 'secondary' }}">
+            {{ 'Active' if poll.LiveIsActive else 'Closed' }}
+        </span>
+    </p>
                             <p class="card-text"><small class="text-muted">CCA: {{ poll.CCAName }}</small></p>
                             <p class="card-text">
                                 <small class="text-muted">
@@ -152,36 +158,11 @@
                                 </small>
                             </p>
                             
-                            <!-- Placeholder for poll options and voting -->
-                            <div class="mt-3">
-                                <h6>Options:</h6>
-                                {# 
-                                  To display options, you would typically have another table like 'PollOptions'
-                                  with PollId (FK), OptionId (PK), OptionText.
-                                  Then in app.py, after fetching polls, you'd loop through them and fetch their respective options.
-                                  
-                                  Example if poll object had an 'Options' list:
-                                {% if poll.Options %}
-                                    <ul class="list-group">
-                                        {% for option in poll.Options %}
-                                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                                            {{ option.Text }}
-                                            <form method="POST" action="{{ url_for('submit_vote', poll_id=poll.PollId, option_id=option.OptionId) }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-primary">Vote</button>
-                                            </form>
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    <p class="text-muted">No options defined for this poll yet.</p>
-                                {% endif %}
-                                #}
-                                <p class="text-muted"><em>Voting functionality and options display to be implemented.</em></p>
-                            </div>
                         </div>
                         <div class="card-footer text-center">
-                            <!-- Link to a detailed view of a single poll, if you create one later -->
-                            <a href="{{ url_for('view_poll_detail', poll_id=poll.PollId) if poll.PollId else '#' }}" class="btn btn-primary">View Details & Vote</a>
+                    <a href="{{ url_for('view_poll_detail', poll_id=poll.PollId) }}" class="btn btn-primary {{ 'disabled' if not poll.LiveIsActive }}">
+                        {{ 'View Details & Vote' if poll.LiveIsActive else 'View Results' }}
+                    </a>
                         </div>
                     </div>
                 </div>
