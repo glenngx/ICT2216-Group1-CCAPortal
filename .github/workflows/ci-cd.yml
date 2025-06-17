@@ -90,6 +90,8 @@ jobs:
         
         print('Testing database connection with fake config...')
         # This will fail to connect (expected) but tests the error handling
+        # Ensure app.app is configured for the test
+        app.app.config.from_pyfile('config.py')
         conn = app.get_db_connection()
         if conn is None:
             print('Database connection properly handles connection failures')
@@ -104,20 +106,46 @@ jobs:
         echo "Testing application routes..."
         python -c "
         import app
+        from application.admin_routes import admin_bp
+        from application.misc_routes import misc_bp
+        from application.moderator_routes import moderator_bp
+        from application.student_routes import student_bp
+
+        # Temporarily register blueprints to inspect routes
+
         routes = [rule.rule for rule in app.app.url_map.iter_rules()]
-        required_routes = ['/', '/login', '/logout', '/dashboard', '/admin']
+        
+        # Define required routes, including blueprint prefixes
+        required_routes = [
+            '/', # misc_routes.index
+            '/login', # misc_routes.login
+            '/logout', # misc_routes.logout
+            '/dashboard', # student_routes.dashboard
+            '/admin/', # admin_routes.admin_dashboard (assuming prefix)
+            '/admin/create-student',
+            '/admin/create-cca',
+            '/my-ccas', # student_routes.my_ccas
+            '/polls', # student_routes.view_polls
+        ]
         
         print('📋 Available routes:')
-        for route in sorted(routes):
+        for route in sorted(list(set(routes))): # Use set to avoid duplicates if any
             print(f'  - {route}')
         
         print('🔍 Checking required routes...')
+        all_found = True
         for required in required_routes:
-            if required in routes:
+            # Check if the route exists, potentially with a prefix from a blueprint
+            # This simple check might need to be more sophisticated if routes have variable parts
+            # or if blueprints have dynamic prefixes.
+            found = any(required in route for route in routes)
+            if found:
                 print(f'  ✅ {required}')
             else:
                 print(f'  ❌ {required} - MISSING')
+                all_found = False
         
+        assert all_found, 'One or more required routes are missing!'
         print('Route testing completed')
         "
     
