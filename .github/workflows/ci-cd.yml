@@ -41,12 +41,13 @@ jobs:
         echo "Creating test configuration..."
         cat > config.py << EOF
         # Test Configuration for CI
-        DB_SERVER = "test-server"
-        DB_NAME = "test-db"
-        DB_USERNAME = "test-user"
-        DB_PASSWORD = "test-password"
-        DB_CONNECTION_STRING = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=test-server;DATABASE=test-db;UID=test-user;PWD=test-password;Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
-        SECRET_KEY = "test-secret-key-for-ci-only-not-secure"
+        class Config:
+            DB_SERVER = "test-server"
+            DB_NAME = "test-db"
+            DB_USERNAME = "test-user"
+            DB_PASSWORD = "test-password"
+            DB_CONNECTION_STRING = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=test-server;DATABASE=test-db;UID=test-user;PWD=test-password;Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
+            SECRET_KEY = "test-secret-key-for-ci-only-not-secure"
         EOF
         echo "Test configuration created"
     
