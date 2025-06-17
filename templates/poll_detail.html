@@ -22,8 +22,7 @@
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+        <div class="container">            <a class="navbar-brand" href="{{ url_for('student_routes.dashboard') }}">
                 <img src="{{ url_for('static', filename='images/sitlogo.png') }}" alt="SIT" class="sit-logo">
                 SIT CCA Portal
             </a>
@@ -32,12 +31,12 @@
             </button>
             <div class="collapse navbar-collapse" id="#navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('student_routes.dashboard') }}">Home</a></li>
                     {% if session.get('role') == 'admin' or user_is_moderator %}
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('create_poll') }}">Create Poll</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('moderator_routes.create_poll') }}">Create Poll</a></li>
                     {% endif %}
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('my_ccas') }}">My CCAs</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('view_polls') }}">Polls</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('student_routes.my_ccas') }}">My CCAs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('student_routes.view_polls') }}">Polls</a></li>
                 </ul>
                 <div class="d-flex">
                     <div class="dropdown">
@@ -49,7 +48,7 @@
                             <li><a class="dropdown-item" href="#">Profile</a></li>
                             <li><a class="dropdown-item" href="#">Settings</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('misc_routes.logout') }}">Logout</a></li>
                         </ul>
                     </div>
                 </div>
@@ -106,7 +105,7 @@
                     <hr>
                     <h5 class="mt-4">Options & Voting</h5>
                     {% if options %}
-                        <form method="POST" action="{{ url_for('submit_vote', poll_id=poll.PollId) }}">
+                        <form method="POST" action="{{ url_for('student_routes.submit_vote', poll_id=poll.PollId) }}">
                             <ul class="list-group">
                                 {% for option in options %}
                                 <li class="list-group-item option-item d-flex justify-content-between align-items-center">
@@ -141,13 +140,13 @@
                 </div>
             </div>
             <div class="mt-4">
-                <a href="{{ url_for('view_polls') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to All Polls</a>
+                <a href="{{ url_for('student_routes.view_polls') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to All Polls</a>
             </div>
         {% else %}
             <div class="alert alert-warning" role="alert">
                 The poll you are looking for could not be found or is no longer available.
             </div>
-            <a href="{{ url_for('view_polls') }}" class="btn btn-primary"><i class="bi bi-arrow-left"></i> Back to All Polls</a>
+            <a href="{{ url_for('student_routes.view_polls') }}" class="btn btn-primary"><i class="bi bi-arrow-left"></i> Back to All Polls</a>
         {% endif %}
     </div>
 

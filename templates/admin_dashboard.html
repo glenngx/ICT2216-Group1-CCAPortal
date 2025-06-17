@@ -10,8 +10,7 @@
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('admin_dashboard' if session.get('role') == 'admin' else 'dashboard') }}">
+        <div class="container">            <a class="navbar-brand" href="{{ url_for('admin_routes.admin_dashboard' if session.get('role') == 'admin' else 'student_routes.dashboard') }}">
                 <img src="{{ url_for('static', filename='images/sitlogo.png') }}" alt="SIT" class="sit-logo">
                 SIT CCA Portal
             </a>
@@ -22,7 +21,7 @@
                         <span class="badge bg-warning text-dark ms-1">Admin</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('misc_routes.logout') }}">Logout</a></li>
                     </ul>
                 </div>
             </div>
@@ -62,13 +61,11 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-4 mb-2">
-                                <a href="{{ url_for('create_student') }}" class="btn btn-primary w-100">
+                            <div class="col-md-4 mb-2">                                <a href="{{ url_for('admin_routes.create_student') }}" class="btn btn-primary w-100">
                                     <i class="bi bi-person-plus"></i> Create Student Account
                                 </a>
                             </div>
-                            <div class="col-md-4 mb-2">
-                                <a href="{{ url_for('create_cca') }}" class="btn btn-success w-100">
+                            <div class="col-md-4 mb-2">                                <a href="{{ url_for('admin_routes.create_cca') }}" class="btn btn-success w-100">
                                     <i class="bi bi-plus-circle"></i> Create New CCA
                                 </a>
                             </div>
@@ -102,7 +99,7 @@
                                             <td><strong>{{ cca[1] }}</strong></td>
                                             <td>{{ cca[2][:50] }}{% if cca[2]|length > 50 %}...{% endif %}</td>
                                             <td>
-                                                <a href="{{ url_for('view_cca', cca_id=cca[0]) }}" class="btn btn-sm btn-outline-primary">View CCA</a>
+                                                <a href="{{ url_for('admin_routes.view_cca', cca_id=cca[0]) }}" class="btn btn-sm btn-outline-primary">View CCA</a>
                                             </td>
                                         </tr>
                                         {% endfor %}

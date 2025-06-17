@@ -10,20 +10,19 @@
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('admin_dashboard' if session.get('role') == 'admin' else 'dashboard') }}">
+        <div class="container">            <a class="navbar-brand" href="{{ url_for('admin_routes.admin_dashboard' if session.get('role') == 'admin' else 'student_routes.dashboard') }}">
                 <img src="{{ url_for('static', filename='images/sitlogo.png') }}" alt="SIT" class="sit-logo">
                 SIT CCA Portal
             </a>
             <div class="d-flex">
-                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light me-2">Back to Dashboard</a>
+                <a href="{{ url_for('admin_routes.admin_dashboard') }}" class="btn btn-outline-light me-2">Back to Dashboard</a>
                 <div class="dropdown">
                     <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle"></i> Administrator
                         <span class="badge bg-warning text-dark ms-1">Admin</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('misc_routes.logout') }}">Logout</a></li>
                     </ul>
                 </div>
             </div>
@@ -75,7 +74,7 @@
                             </div>
 
                             <div class="d-flex justify-content-between">
-                                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
+                                <a href="{{ url_for('admin_routes.admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
                                 <button type="submit" class="btn btn-success">Create CCA</button>
                             </div>
                         </form>

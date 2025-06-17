@@ -10,8 +10,7 @@
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+        <div class="container">            <a class="navbar-brand" href="{{ url_for('student_routes.dashboard') }}">
                 <img src="{{ url_for('static', filename='images/sitlogo.png') }}" alt="SIT" class="sit-logo">
                 SIT CCA Portal
             </a>
@@ -21,18 +20,17 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
+                        <a class="nav-link" href="{{ url_for('student_routes.dashboard') }}">Home</a>
                     </li>
                     {% if moderator_ccas %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('create_poll') }}">Create Poll</a>
+                        <a class="nav-link" href="{{ url_for('moderator_routes.create_poll') }}">Create Poll</a>
                     </li>
                     {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('my_ccas') }}">My CCAs</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('view_polls') }}">Polls</a>
+                        <a class="nav-link active" href="{{ url_for('student_routes.my_ccas') }}">My CCAs</a>
+                    </li>                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('student_routes.view_polls') }}">Polls</a>
                     </li>
                 </ul>
                 <div class="d-flex">
@@ -49,7 +47,7 @@
                             <li><a class="dropdown-item" href="#">Profile</a></li>
                             <li><a class="dropdown-item" href="#">Settings</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('misc_routes.logout') }}">Logout</a></li>
                         </ul>
                     </div>
                 </div>
@@ -121,7 +119,7 @@
                 <h4 class="text-muted">No CCAs Found</h4>
                 <p class="text-muted">You are not currently assigned to any Co-Curricular Activities.</p>
                 <p class="text-muted">Please contact your administrator to be added to CCAs.</p>
-                <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+                <a href="{{ url_for('student_routes.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
             </div>
         {% endif %}
     </div>

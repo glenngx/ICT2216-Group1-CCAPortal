@@ -10,20 +10,19 @@
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('admin_dashboard' if session.get('role') == 'admin' else 'dashboard') }}">
+        <div class="container">            <a class="navbar-brand" href="{{ url_for('admin_routes.admin_dashboard' if session.get('role') == 'admin' else 'student_routes.dashboard') }}">
                 <img src="{{ url_for('static', filename='images/sitlogo.png') }}" alt="SIT" class="sit-logo">
                 SIT CCA Portal
             </a>
             <div class="d-flex">
-                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light me-2">Back to Dashboard</a>
+                <a href="{{ url_for('admin_routes.admin_dashboard') }}" class="btn btn-outline-light me-2">Back to Dashboard</a>
                 <div class="dropdown">
                     <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle"></i> Administrator
                         <span class="badge bg-warning text-dark ms-1">Admin</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('misc_routes.logout') }}">Logout</a></li>
                     </ul>
                 </div>
             </div>
@@ -104,8 +103,7 @@
                                                     {{ member[3].title() }}
                                                 </span>
                                             </td>
-                                            <td>
-                                                <form method="POST" action="{{ url_for('remove_student_from_cca', cca_id=cca[0], member_id=member[4]) }}" style="display: inline;" onsubmit="return confirm('Remove {{ member[1] }} from this CCA?')">
+                                            <td>                                                <form method="POST" action="{{ url_for('admin_routes.remove_student_from_cca', cca_id=cca[0], member_id=member[4]) }}" style="display: inline;" onsubmit="return confirm('Remove {{ member[1] }} from this CCA?')">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
                                                 </form>
                                             </td>
@@ -130,7 +128,7 @@
                     </div>
                     <div class="card-body">
                         {% if available_students %}
-                        <form method="POST" action="{{ url_for('add_student_to_cca', cca_id=cca[0]) }}">
+                        <form method="POST" action="{{ url_for('admin_routes.add_student_to_cca', cca_id=cca[0]) }}">
                             <div class="mb-3">
                                 <label for="student_id" class="form-label">Select Student</label>
                                 <select class="form-select form-select-sm" id="student_id" name="student_id" required>
@@ -163,7 +161,7 @@
                     </div>
                     <div class="card-body">
                         <p class="small text-muted">Permanently delete this CCA and all related data.</p>
-                        <form method="POST" action="{{ url_for('delete_cca', cca_id=cca[0]) }}" onsubmit="return confirm('Are you sure you want to delete {{ cca[1] }}? This action cannot be undone and will remove all members, polls, and votes.')">
+                        <form method="POST" action="{{ url_for('admin_routes.delete_cca', cca_id=cca[0]) }}" onsubmit="return confirm('Are you sure you want to delete {{ cca[1] }}? This action cannot be undone and will remove all members, polls, and votes.')">
                             <button type="submit" class="btn btn-sm btn-danger w-100">Delete CCA</button>
                         </form>
                     </div>
@@ -180,7 +178,7 @@
                     <h5 class="modal-title">Edit CCA</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST" action="{{ url_for('edit_cca', cca_id=cca[0]) }}">
+                <form method="POST" action="{{ url_for('admin_routes.edit_cca', cca_id=cca[0]) }}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="edit_name" class="form-label">CCA Name</label>
