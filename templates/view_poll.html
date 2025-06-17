@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Polls - CCAP</title>
+    <title>CCAP - View Polls</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <style>
         /* Custom styles to prevent footer overlap */
         body {
@@ -60,7 +61,7 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="#">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
                 <img src="{{ url_for('static', filename='images/sitlogo.png') }}" alt="SIT" class="sit-logo">
                 SIT CCA Portal
             </a>
@@ -72,8 +73,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
                     </li>
-                    <!-- Show Create Poll button only for moderators -->
-                    {% if user_is_moderator %}
+                    {% if session.get('role') == 'admin' or user_is_moderator %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('create_poll') }}">Create Poll</a>
                     </li>
@@ -88,8 +88,8 @@
                 <div class="d-flex">
                     <div class="dropdown">
                         <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ user_name or 'User' }}
-                            {% if user_role == 'admin' %}
+                            <i class="bi bi-person-circle"></i> {{ session.get('name', 'User') }}
+                            {% if session.get('role') == 'admin' %}
                             <span class="badge bg-warning text-dark ms-1">Admin</span>
                             {% elif user_is_moderator %}
                             <span class="badge bg-success ms-1">Moderator</span>
@@ -107,11 +107,11 @@
         </div>
     </nav>
 
-    <!-- Page Header -->
+    <!-- Header -->
     <div class="welcome-section">
         <div class="container">
-            <h1 class="display-5 fw-bold">All Available Polls</h1>
-            <p class="fs-4">Vote on polls from your CCAs</p>
+            <h1 class="display-6 fw-bold">Active Polls</h1>
+            <p class="fs-5">View and participate in ongoing polls for your CCAs.</p>
         </div>
     </div>
 
@@ -129,159 +129,82 @@
         {% endwith %}
     </div>
 
-    <!-- Main Content -->
-    <div class="container main-content">
-        <div class="row">
-            <div class="col-12">
-                {% if available_polls %}
-                    <!-- Active Polls -->
-                    <div class="card mb-4">
-                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="bi bi-poll"></i> Active Polls
-                            </h5>
-                            <span class="badge bg-primary">{{ available_polls|length }} poll{{ 's' if available_polls|length != 1 else '' }}</span>
+    <!-- Polls List -->
+    <div class="container mt-4 main-content">
+        {% if polls %}
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {% for poll in polls %}
+                <div class="col">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{{ poll.Question }}</h5>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                {% for poll in available_polls %}
-                                <div class="col-lg-6 col-xl-4 mb-4">
-                                    <div class="card h-100 border-start border-primary border-3">
-                                        <div class="card-body">
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <h6 class="card-title mb-1">{{ poll.title }}</h6>
-                                                <span class="badge bg-light text-dark">{{ poll.cca }}</span>
-                                            </div>
-                                            
-                                            <!-- Poll Details -->
-                                            <div class="mb-3">
-                                                <small class="text-muted d-block">
-                                                    <i class="bi bi-calendar-event"></i> 
-                                                    Closes: {{ poll.end_date }}
-                                                </small>
-                                                {% if poll.start_date %}
-                                                <small class="text-muted d-block">
-                                                    <i class="bi bi-calendar-check"></i> 
-                                                    Started: {{ poll.start_date }}
-                                                </small>
-                                                {% endif %}
-                                                {% if poll.question_type %}
-                                                <small class="text-muted d-block">
-                                                    <i class="bi bi-question-circle"></i> 
-                                                    Type: {{ poll.question_type.title() }}
-                                                </small>
-                                                {% endif %}
-                                                {% if poll.is_anonymous %}
-                                                <small class="text-success d-block">
-                                                    <i class="bi bi-shield-check"></i> 
-                                                    Anonymous voting
-                                                </small>
-                                                {% endif %}
-                                            </div>
-
-                                            <!-- Time Remaining -->
-                                            {% if poll.days_remaining is defined %}
-                                            <div class="mb-3">
-                                                {% if poll.days_remaining > 7 %}
-                                                    <span class="badge bg-success">
-                                                        <i class="bi bi-clock"></i> {{ poll.days_remaining }} days left
-                                                    </span>
-                                                {% elif poll.days_remaining > 1 %}
-                                                    <span class="badge bg-warning text-dark">
-                                                        <i class="bi bi-clock"></i> {{ poll.days_remaining }} days left
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge bg-danger">
-                                                        <i class="bi bi-exclamation-triangle"></i> Expires soon!
-                                                    </span>
-                                                {% endif %}
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                        
-                                        <div class="card-footer bg-transparent">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                {% if poll.has_voted %}
-                                                    <button class="btn btn-sm btn-outline-success" disabled>
-                                                        <i class="bi bi-check-circle"></i> Voted
-                                                    </button>
-                                                    <a href="#" class="btn btn-sm btn-outline-primary">
-                                                        View Results
-                                                    </a>
-                                                {% else %}
-                                                    <a href="#" class="btn btn-sm btn-primary">
-                                                        <i class="bi bi-hand-index"></i> Vote Now
-                                                    </a>
-                                                    <a href="#" class="btn btn-sm btn-outline-secondary">
-                                                        <i class="bi bi-info-circle"></i> Details
-                                                    </a>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Quick Stats -->
-                    <div class="row mb-5">
-                        <div class="col-md-4 mb-3">
-                            <div class="card text-center">
-                                <div class="card-body">
-                                    <h5 class="card-title text-primary">{{ available_polls|length }}</h5>
-                                    <p class="card-text">Active Polls</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card text-center">
-                                <div class="card-body">
-                                    <h5 class="card-title text-success">{{ polls_voted|length if polls_voted else 0 }}</h5>
-                                    <p class="card-text">Polls You've Voted</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card text-center">
-                                <div class="card-body">
-                                    <h5 class="card-title text-warning">{{ (available_polls|length) - (polls_voted|length if polls_voted else 0) }}</h5>
-                                    <p class="card-text">Pending Votes</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                {% else %}
-                    <!-- No Polls Available -->
-                    <div class="card mb-5">
-                        <div class="card-body text-center py-5">
-                            <div class="mb-4">
-                                <i class="bi bi-inbox display-1 text-muted"></i>
-                            </div>
-                            <h4 class="text-muted">No Active Polls</h4>
-                            <p class="text-muted mb-4">There are currently no active polls available for your CCAs.</p>
+                            <p class="card-text"><small class="text-muted">CCA: {{ poll.CCAName }}</small></p>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    Ends on: {{ poll.EndDate }}
+                                </small>
+                            </p>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    Type: {{ poll.QuestionType }} | Anonymous: {{ 'Yes' if poll.IsAnonymous else 'No' }}
+                                </small>
+                            </p>
                             
-                            {% if user_is_moderator %}
-                            <a href="{{ url_for('create_poll') }}" class="btn btn-primary">
-                                <i class="bi bi-plus-circle"></i> Create a Poll
-                            </a>
-                            {% else %}
-                            <p class="text-muted small">Check back later or contact your CCA moderators for updates.</p>
-                            {% endif %}
+                            <!-- Placeholder for poll options and voting -->
+                            <div class="mt-3">
+                                <h6>Options:</h6>
+                                {# 
+                                  To display options, you would typically have another table like 'PollOptions'
+                                  with PollId (FK), OptionId (PK), OptionText.
+                                  Then in app.py, after fetching polls, you'd loop through them and fetch their respective options.
+                                  
+                                  Example if poll object had an 'Options' list:
+                                {% if poll.Options %}
+                                    <ul class="list-group">
+                                        {% for option in poll.Options %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            {{ option.Text }}
+                                            <form method="POST" action="{{ url_for('submit_vote', poll_id=poll.PollId, option_id=option.OptionId) }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">Vote</button>
+                                            </form>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="text-muted">No options defined for this poll yet.</p>
+                                {% endif %}
+                                #}
+                                <p class="text-muted"><em>Voting functionality and options display to be implemented.</em></p>
+                            </div>
+                        </div>
+                        <div class="card-footer text-center">
+                            <!-- Link to a detailed view of a single poll, if you create one later -->
+                            <a href="{{ url_for('view_poll_detail', poll_id=poll.PollId) if poll.PollId else '#' }}" class="btn btn-primary">View Details & Vote</a>
                         </div>
                     </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-4 text-muted"></i>
+                <p class="lead mt-3">No active polls found for your CCAs at the moment.</p>
+                {% if session.get('role') == 'admin' or user_is_moderator %}
+                <a href="{{ url_for('create_poll') }}" class="btn btn-primary mt-3">
+                    <i class="bi bi-plus-circle"></i> Create a New Poll
+                </a>
                 {% endif %}
             </div>
-        </div>
+        {% endif %}
     </div>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="footer mt-5">
         <div class="container">
             <div class="text-center">
-                <p class="mb-0">© 2025 Co-Curricular Activities Portal | ICT2216 Project</p>
+                <p class="mb-0">© Co-Curricular Activities Portal | ICT2216 Project</p>
                 <p class="small mb-0">Developed by Group 1</p>
             </div>
         </div>

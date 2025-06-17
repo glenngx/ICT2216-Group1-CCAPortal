@@ -1146,114 +1146,293 @@ def delete_cca(cca_id):
     finally:
         conn.close()
 
+# View Polls
 @app.route('/polls')
 @login_required
 def view_polls():
     conn = get_db_connection()
     if not conn:
-        flash('Database connection error. Please try again.', 'error')
+        flash('Database connection error.', 'error')
         return redirect(url_for('dashboard'))
-    
+
     try:
         cursor = conn.cursor()
-        
-        # Get user's CCAs
-        cca_query = """
-        SELECT c.CCAId
-        FROM CCA c
-        INNER JOIN CCAMembers cm ON c.CCAId = cm.CCAId
-        WHERE cm.UserId = ?
-        """
-        cursor.execute(cca_query, (session['user_id'],))
-        user_cca_results = cursor.fetchall()
-        
-        # Check if user is moderator in any CCA
+        # Get CCAs the user is part of
         cursor.execute("""
-            SELECT COUNT(*) FROM CCAMembers 
-            WHERE UserId = ? AND CCARole = 'moderator'
+            SELECT DISTINCT c.CCAId
+            FROM CCA c
+            INNER JOIN CCAMembers cm ON c.CCAId = cm.CCAId
+            WHERE cm.UserId = ?
         """, (session['user_id'],))
-        user_is_moderator = cursor.fetchone()[0] > 0
-        
-        if user_cca_results:
-            cca_ids = [str(cca[0]) for cca in user_cca_results]
+        user_cca_ids_tuples = cursor.fetchall()
+        user_cca_ids = [cca[0] for cca in user_cca_ids_tuples]
+
+        polls_data = []
+        if user_cca_ids:
+            placeholders = ','.join(['?'] * len(user_cca_ids))
+            sql_query = f"""
+                SELECT p.PollId, p.CCAId, p.Question, p.QuestionType, p.StartDate, p.EndDate, p.IsAnonymous, p.IsActive, cca.Name AS CCAName
+                FROM Poll p
+                JOIN CCA cca ON p.CCAId = cca.CCAId
+                WHERE p.IsActive = 1 AND p.CCAId IN ({placeholders})
+                ORDER BY p.EndDate DESC, p.StartDate DESC
+            """
+            cursor.execute(sql_query, user_cca_ids)
+            polls_data = cursor.fetchall()
+
+        processed_polls = []
+        for row in polls_data:
+            start_date_obj = row[4]
+            end_date_obj = row[5]
+
+            start_date_str = 'N/A'
+            if isinstance(start_date_obj, datetime):
+                start_date_str = start_date_obj.strftime('%Y-%m-%d %H:%M')
+            elif start_date_obj:  # If it's not None but not datetime (e.g., already a string)
+                start_date_str = str(start_date_obj)
+
+            end_date_str = 'N/A'
+            if isinstance(end_date_obj, datetime):
+                end_date_str = end_date_obj.strftime('%Y-%m-%d %H:%M')
+            elif end_date_obj:
+                end_date_str = str(end_date_obj)
             
-            # Get all available polls for user's CCAs with additional details
-            poll_query = """
-            SELECT p.PollId, p.Question, p.StartDate, p.EndDate, p.QuestionType, 
-                   p.IsAnonymous, c.Name as CCAName,
-                   DATEDIFF(day, GETDATE(), p.EndDate) as DaysRemaining
-            FROM Poll p
-            INNER JOIN CCA c ON p.CCAId = c.CCAId
-            WHERE p.CCAId IN ({}) AND p.IsActive = 1 AND p.EndDate > GETDATE()
-            ORDER BY p.EndDate ASC
-            """.format(','.join(['?'] * len(cca_ids)))
+            is_ended_status = False
+            # Use the original datetime object for comparison
+            if isinstance(end_date_obj, datetime):
+                is_ended_status = datetime.now() > end_date_obj
             
-            cursor.execute(poll_query, cca_ids)
-            poll_results = cursor.fetchall()
-            
-            available_polls = []
-            for poll in poll_results:
-                # Check if user has already voted on this poll
-                cursor.execute("SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?", 
-                             (poll[0], session['user_id']))
-                has_voted = cursor.fetchone()[0] > 0
-                
-                available_polls.append({
-                    'id': poll[0],
-                    'title': poll[1],
-                    'start_date': poll[2].strftime('%Y-%m-%d') if poll[2] else '',
-                    'end_date': poll[3].strftime('%Y-%m-%d') if poll[3] else '',
-                    'question_type': poll[4],
-                    'is_anonymous': poll[5],
-                    'cca': poll[6],
-                    'days_remaining': poll[7] if poll[7] is not None else 0,
-                    'has_voted': has_voted
-                })
-            
-            # Get polls user has voted on (for stats)
-            voted_poll_query = """
-            SELECT DISTINCT p.PollId
-            FROM Poll p
-            INNER JOIN Votes v ON p.PollId = v.PollId
-            WHERE v.UserId = ? AND p.CCAId IN ({}) AND p.IsActive = 1
-            """.format(','.join(['?'] * len(cca_ids)))
-            
-            cursor.execute(voted_poll_query, [session['user_id']] + cca_ids)
-            polls_voted = cursor.fetchall()
-            
-        else:
-            available_polls = []
-            polls_voted = []
-        
-        return render_template('view_poll.html', 
-                             available_polls=available_polls,
-                             polls_voted=polls_voted,
-                             user_name=session['name'],
-                             user_role=session['role'],
-                             user_is_moderator=user_is_moderator)
-        
+            processed_polls.append({
+                'PollId': row[0], 
+                'CCAId': row[1], 
+                'Question': row[2], 
+                'QuestionType': row[3],
+                'StartDate': start_date_str,
+                'EndDate': end_date_str,
+                'IsAnonymous': row[6], 
+                'IsActive': row[7], 
+                'CCAName': row[8],
+                'is_ended': is_ended_status
+            })
+
+        return render_template('view_poll.html', polls=processed_polls, user_name=session.get('name'))
+
     except Exception as e:
-        print(f"View polls error: {e}")
-        flash('Error loading polls.', 'error')
+        print(f"Error fetching polls: {e}")
+        flash('Error fetching polls.', 'error')
         return redirect(url_for('dashboard'))
     finally:
-        conn.close()
-
-# Test database connection route (remove in production)
-@app.route('/test-db')
-def test_db():
-    conn = get_db_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM Student")
-            count = cursor.fetchone()[0]
+        if conn:
             conn.close()
-            return f"Database connection successful! Found {count} students."
-        except Exception as e:
-            return f"Database query error: {e}"
-    else:
-        return "Database connection failed!"
+
+@app.route('/poll/<int:poll_id>')
+@login_required
+def view_poll_detail(poll_id):
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error.', 'error')
+        return redirect(url_for('view_polls'))
+
+    try:
+        cursor = conn.cursor()
+
+
+        cursor.execute("""
+            SELECT p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, p.IsAnonymous, c.Name AS CCAName, p.IsActive
+            FROM Poll p
+            JOIN CCA c ON p.CCAId = c.CCAId
+            WHERE p.PollId = ?
+        """, (poll_id,))
+        poll_data = cursor.fetchone()
+
+        if not poll_data:
+            flash('Poll not found.', 'error')
+            return redirect(url_for('view_polls'))
+
+        # Check if user is part of the CCA for this poll
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM CCAMembers cm
+            JOIN Poll p ON cm.CCAId = p.CCAId
+            WHERE cm.UserId = ? AND p.PollId = ?
+        """, (session['user_id'], poll_id))
+        is_member_of_cca = cursor.fetchone()[0] > 0
+
+        if not is_member_of_cca and session['role'] != 'admin': # Admins can view all polls
+             flash('You do not have permission to view this poll.', 'error')
+             return redirect(url_for('view_polls'))
+
+
+        # Process poll data, including date formatting
+        start_date_obj = poll_data[3]
+        end_date_obj = poll_data[4]
+
+        start_date_str = 'N/A'
+        if isinstance(start_date_obj, datetime):
+            start_date_str = start_date_obj.strftime('%Y-%m-%d %H:%M')
+        elif start_date_obj: # Should ideally not be a string if DB type is datetime
+            start_date_str = str(start_date_obj)
+
+        end_date_str = 'N/A'
+        if isinstance(end_date_obj, datetime):
+            end_date_str = end_date_obj.strftime('%Y-%m-%d %H:%M')
+        elif end_date_obj: # Should ideally not be a string
+            end_date_str = str(end_date_obj)
+
+        is_ended_status = False
+        if isinstance(end_date_obj, datetime): # Use original datetime object for comparison
+            is_ended_status = datetime.now() > end_date_obj
+        
+        poll = {
+            'PollId': poll_data[0], 
+            'Question': poll_data[1], 
+            'QuestionType': poll_data[2],
+            'StartDate': start_date_str,
+            'EndDate': end_date_str, 
+            'IsAnonymous': poll_data[5],
+            'Description': None,  # No Description column in Poll table
+            'CCAName': poll_data[6], 
+            'IsActive': poll_data[7],
+            'is_ended': is_ended_status
+        }
+
+        # Fetch poll options and vote counts
+        cursor.execute("""
+            SELECT o.OptionId, o.OptionText, COUNT(v.VoteId) AS VoteCount
+            FROM Options o
+            LEFT JOIN Votes v ON o.OptionId = v.OptionId
+            WHERE o.PollId = ?
+            GROUP BY o.OptionId, o.OptionText
+            ORDER BY o.OptionId
+        """, (poll_id,))
+        options_data = cursor.fetchall()
+        options = [{'OptionId': opt[0], 'OptionText': opt[1], 'VoteCount': opt[2]} for opt in options_data]
+
+        # Check if user has already voted
+        cursor.execute("""
+            SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?
+        """, (poll_id, session['user_id']))
+        has_voted = cursor.fetchone()[0] > 0
+        
+        # Get user's previous votes if any (for multiple choice display)
+        user_votes = []
+        if has_voted and poll['QuestionType'] == 'multiple':
+            cursor.execute("""
+                SELECT OptionId FROM Votes WHERE PollId = ? AND UserId = ?
+            """, (poll_id, session['user_id']))
+            user_votes_data = cursor.fetchall()
+            user_votes = [uv[0] for uv in user_votes_data]
+
+
+        return render_template('poll_detail.html', poll=poll, options=options, has_voted=has_voted, user_votes=user_votes, user_name=session.get('name'))
+
+    except Exception as e:
+        print(f"Error fetching poll details for poll {poll_id}: {e}")
+        flash('Error fetching poll details.', 'error')
+        return redirect(url_for('view_polls'))
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/poll/<int:poll_id>/vote', methods=['POST'])
+@login_required
+def submit_vote(poll_id):
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection error.', 'error')
+        return redirect(url_for('view_poll_detail', poll_id=poll_id))
+
+    try:
+        cursor = conn.cursor()
+
+        # Fetch poll details to check if active, not ended, and user is eligible
+        cursor.execute("SELECT IsActive, EndDate, CCAId, QuestionType FROM Poll WHERE PollId = ?", (poll_id,))
+        poll_info = cursor.fetchone()
+
+        if not poll_info:
+            flash('Poll not found.', 'error')
+            return redirect(url_for('view_polls'))
+
+        is_active, end_date, cca_id, question_type = poll_info
+
+        if not is_active:
+            flash('This poll is no longer active.', 'error')
+            return redirect(url_for('view_poll_detail', poll_id=poll_id))
+
+        if end_date and datetime.now() > end_date:
+            flash('This poll has ended. Voting is closed.', 'error')
+            return redirect(url_for('view_poll_detail', poll_id=poll_id))
+
+        # Check if user is part of the CCA for this poll
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM CCAMembers
+            WHERE UserId = ? AND CCAId = ?
+        """, (session['user_id'], cca_id))
+        is_member_of_cca = cursor.fetchone()[0] > 0
+
+        if not is_member_of_cca and session['role'] != 'admin': # Admins can bypass this check if needed for testing, but generally shouldn't vote
+             flash('You are not a member of the CCA for this poll and cannot vote.', 'error')
+             return redirect(url_for('view_poll_detail', poll_id=poll_id))
+
+        # Check if user has already voted
+        cursor.execute("SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?", (poll_id, session['user_id']))
+        if cursor.fetchone()[0] > 0:
+            flash('You have already voted in this poll.', 'info')
+            return redirect(url_for('view_poll_detail', poll_id=poll_id))
+
+        selected_option_ids = []
+        if question_type == 'single':
+            option_id = request.form.get('option')
+            if not option_id:
+                flash('Please select an option to vote.', 'error')
+                return redirect(url_for('view_poll_detail', poll_id=poll_id))
+            selected_option_ids.append(option_id)
+        elif question_type == 'multiple':
+            selected_option_ids = request.form.getlist('options') # Name of checkbox input in HTML
+            if not selected_option_ids:
+                flash('Please select at least one option to vote.', 'error')
+                return redirect(url_for('view_poll_detail', poll_id=poll_id))
+        else:
+            flash('Invalid poll type.', 'error') # Should not happen
+            return redirect(url_for('view_poll_detail', poll_id=poll_id))
+        
+        # Validate selected option IDs belong to the poll
+        valid_option_ids_query = "SELECT OptionId FROM Options WHERE PollId = ?"
+        cursor.execute(valid_option_ids_query, (poll_id,))
+        valid_options_for_poll = [str(row[0]) for row in cursor.fetchall()]
+
+        for opt_id in selected_option_ids:
+            if opt_id not in valid_options_for_poll:
+                flash(f'Invalid option selected: {opt_id}. Please try again.', 'error')
+                return redirect(url_for('view_poll_detail', poll_id=poll_id))
+
+
+        # Record the vote(s)
+        for option_id in selected_option_ids:
+            cursor.execute("""
+                INSERT INTO Votes (PollId, OptionId, UserId, VoteDate)
+                VALUES (?, ?, ?, GETDATE())
+            """, (poll_id, int(option_id), session['user_id']))
+        
+        conn.commit()
+        flash('Your vote has been recorded successfully!', 'success')
+
+    except pyodbc.Error as db_err:
+        conn.rollback()
+        print(f"Database error during voting for poll {poll_id}: {db_err}")
+        flash('A database error occurred while submitting your vote. Please try again.', 'error')
+    except Exception as e:
+        conn.rollback()
+        print(f"Error submitting vote for poll {poll_id}: {e}")
+        flash('An error occurred while submitting your vote. Please try again.', 'error')
+    finally:
+        if conn:
+            conn.close()
+    
+    return redirect(url_for('view_poll_detail', poll_id=poll_id))
+
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Make sure to set debug=False in a production environment
+    app.run(debug=True)
