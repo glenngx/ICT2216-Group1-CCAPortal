@@ -137,11 +137,23 @@ def authenticate_user(username, password):
         
         print(f"Attempting login with username: '{username}' and password: '{password}'")
         
+        query = """
+        SELECT ud.UserId, ud.StudentId, ud.Password, ud.SystemRole
+        FROM UserDetails ud
+        WHERE ud.Username = ? OR ud.StudentId = ?
+        """
+        cursor.execute(query, (username, username))
+        user_record = cursor.fetchone()
+        
+        if not user_record:
+            print(f"No user found with username: {username}")
+            return None
+        
         # Handle admin login specifically
-        if username.lower() == 'admin':
+        if user_record[3] == 'admin':
             print("Admin login attempt...")
             query = """
-            SELECT ud.UserId, ud.StudentId, ud.Password, ud.SystemRole
+            SELECT ud.UserId, ud.Username, ud.Password, ud.SystemRole
             FROM UserDetails ud
             WHERE ud.SystemRole = 'admin'
             """
@@ -154,8 +166,8 @@ def authenticate_user(username, password):
                     'user_id': admin_user[0],
                     'student_id': admin_user[1],
                     'role': admin_user[3],
-                    'name': 'Administrator',
-                    'email': 'admin@ccap.sit'
+                    'name': admin_user[1],
+                    'email': admin_user[1] # as of 17/6, admin has no entry in Student table, so they don't have email
                 }
         
         # Try email

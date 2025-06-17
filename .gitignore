@@ -50,3 +50,7 @@ logs/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# venv, add your own folder name here if you changed the name
+venv/
+SSD/
