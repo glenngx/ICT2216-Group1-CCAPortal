@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main ]
   schedule:
-    # Run security checks daily at 2 AM
-    - cron: '0 2 * * *'
+    # Run security checks daily at 2 AM SGT (6 PM UTC)
+    - cron: '0 18 * * *'
 
 jobs:
   security-scan:
