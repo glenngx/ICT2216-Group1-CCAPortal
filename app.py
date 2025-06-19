@@ -166,5 +166,18 @@ register_student_routes(app, get_db_connection, login_required)
 register_moderator_routes(app, get_db_connection, login_required, moderator_required)
 register_admin_routes(app, get_db_connection, admin_required, validate_student_id)
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Docker"""
+    try:
+        conn = get_db_connection()
+        if conn:
+            conn.close()
+            return {'status': 'healthy', 'timestamp': datetime.now().isoformat()}, 200
+        else:
+            return {'status': 'unhealthy', 'database': 'disconnected'}, 503
+    except Exception as e:
+        return {'status': 'unhealthy', 'error': str(e)}, 503
+    
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
