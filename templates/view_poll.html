@@ -1,130 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CCAP - View Polls</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <style>
-        /* Custom styles to prevent footer overlap */
-        body {
-            padding-bottom: 100px; /* Add padding to body to prevent footer overlap */
-        }
-        
-        .navbar-dark {
-            background-color: #2c3e50;
-        }
-        
-        .welcome-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 4rem 0;
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-        
-        .footer {
-            background-color: #2c3e50;
-            color: white;
-            padding: 2rem 0;
-            margin-top: 4rem !important; /* Increased margin-top */
-        }
-        
-        .sit-logo {
-            height: 40px;
-            margin-right: 10px;
-        }
-        
-        .border-start.border-primary.border-3 {
-            border-left-width: 4px !important;
-        }
-        
-        .card {
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-            transition: all 0.15s ease-in-out;
-        }
-        
-        .card:hover {
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        }
-        
-        /* Ensure main content has proper spacing */
-        .main-content {
-            min-height: 60vh;
-            padding-bottom: 3rem;
-        }
-    </style>
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">            <a class="navbar-brand" href="{{ url_for('student_routes.dashboard') }}">
-                <img src="{{ url_for('static', filename='images/sitlogo.png') }}" alt="SIT" class="sit-logo">
-                SIT CCA Portal
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('student_routes.dashboard') }}">Home</a>
-                    </li>
-                    {% if session.get('role') == 'admin' or user_is_moderator %}                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('moderator_routes.create_poll') }}">Create Poll</a>
-                    </li>
-                    {% endif %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('student_routes.my_ccas') }}">My CCAs</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('student_routes.view_polls') }}">Polls</a>
-                    </li>
-                </ul>
-                <div class="d-flex">
-                    <div class="dropdown">
-                        <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ session.get('name', 'User') }}
-                            {% if session.get('role') == 'admin' %}
-                            <span class="badge bg-warning text-dark ms-1">Admin</span>
-                            {% elif user_is_moderator %}
-                            <span class="badge bg-success ms-1">Moderator</span>
-                            {% endif %}
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">                            <li><a class="dropdown-item" href="#">Profile</a></li>
-                            <li><a class="dropdown-item" href="#">Settings</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('misc_routes.logout') }}">Logout</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
+{% set page_title = "View Polls" %}
+{% set active_page = "polls" %}
+{% set show_welcome_section = true %}
+{% set welcome_title = "Active Polls" %}
+{% set welcome_subtitle = "View and participate in ongoing polls for your CCAs." %}
+{% set welcome_size = "6" %}
+{% set welcome_subtitle_size = "5" %}
 
-    <!-- Header -->
-    <div class="welcome-section">
-        <div class="container">
-            <h1 class="display-6 fw-bold">Active Polls</h1>
-            <p class="fs-5">View and participate in ongoing polls for your CCAs.</p>
-        </div>
-    </div>
-
-    <!-- Flash Messages -->
-    <div class="container mt-3">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' if category == 'warning' else 'success' }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-    </div>
+{% include 'header.html' %}
 
     <!-- Polls List -->
     <div class="container mt-4 main-content">
@@ -176,17 +58,4 @@
         {% endif %}
     </div>
 
-    <!-- Footer -->
-    <footer class="footer mt-5">
-        <div class="container">
-            <div class="text-center">
-                <p class="mb-0">© Co-Curricular Activities Portal | ICT2216 Project</p>
-                <p class="small mb-0">Developed by Group 1</p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% include 'footer.html' %}
