@@ -197,7 +197,8 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                                  cca=cca, 
                                  members=members, 
                                  available_students=available_students,
-                                 user_name=session['name'])
+                                 user_name=session['name'],
+                                 user_is_moderator=True)
             
         except Exception as e:
             print(f"Moderator view CCA error: {e}")

@@ -1,42 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CCAP - {{ cca[1] }} (Moderator)</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('student_routes.dashboard') }}">
-                <img src="{{ url_for('static', filename='images/sitlogo.png') }}" alt="SIT" class="sit-logo">
-                SIT CCA Portal
-            </a>
-            <div class="d-flex">
-                <a href="{{ url_for('student_routes.my_ccas') }}" class="btn btn-outline-light me-2">Back to My CCAs</a>
-                <div class="dropdown">
-                    <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> {{ user_name }}
-                        <span class="badge bg-info ms-1">Moderator</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ url_for('misc_routes.logout') }}">Logout</a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </nav>
 
-    <!-- Header -->
-    <div class="welcome-section">
-        <div class="container">
-            <h1 class="display-6 fw-bold">{{ cca[1] }}</h1>
-            <p class="fs-5">CCA Management - Moderator View</p>
-        </div>
-    </div>
+{% set page_title = cca[1] ~ " (Moderator)" %}
+{% set active_page = "my_ccas" %}
+{% set show_welcome_section = true %}
+{% set welcome_title = cca[1] %}
+{% set welcome_subtitle = "CCA Management - Moderator View" %}
+{% set welcome_size = "5" %}
+{% set welcome_subtitle_size = "4" %}
+{% set back_url = url_for('student_routes.my_ccas') %}
+{% set back_text = "Back to My CCAs" %}
+
+{% include 'header.html' %}
 
     <!-- Flash Messages -->
     <div class="container mt-3">
