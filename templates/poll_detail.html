@@ -111,9 +111,9 @@
                                 <li class="list-group-item option-item d-flex justify-content-between align-items-center">
                                     <div>
                                         {% if poll.QuestionType == 'single_choice' %}
-                                        <input type="radio" name="option_id" value="{{ option.OptionId }}" id="option_{{ option.OptionId }}" class="form-check-input me-2" {{ 'disabled' if not poll.LiveIsActive or user_has_voted }}>
+                                        <input type="radio" name="option_id" value="{{ option.OptionId }}" id="option_{{ option.OptionId }}" class="form-check-input me-2">
                                         {% elif poll.QuestionType == 'multiple_choice' %}
-                                        <input type="checkbox" name="option_ids" value="{{ option.OptionId }}" id="option_{{ option.OptionId }}" class="form-check-input me-2" {{ 'disabled' if not poll.LiveIsActive or user_has_voted }}>
+                                        <input type="checkbox" name="option_ids[]" value="{{ option.OptionId }}" id="option_{{ option.OptionId }}" class="form-check-input me-2">
                                         {% endif %}
                                         <label for="option_{{ option.OptionId }}">{{ option.OptionText }}</label>
                                         {% if option.ImageUrl %}

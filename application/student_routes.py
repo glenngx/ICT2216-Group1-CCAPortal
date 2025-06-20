@@ -311,17 +311,11 @@ def register_student_routes(app, get_db_connection, login_required):
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
             selected_option_ids = []
-            if question_type == 'single':
-                option_id = request.form.get('option')
-                if not option_id:
-                    flash('Please select an option to vote.', 'error')
-                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+            if question_type == 'single_choice':
+                option_id = request.form.get('option_id')
                 selected_option_ids.append(option_id)
-            elif question_type == 'multiple':
-                selected_option_ids = request.form.getlist('options')
-                if not selected_option_ids:
-                    flash('Please select at least one option to vote.', 'error')
-                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+            elif question_type == 'multiple_choice':
+                selected_option_ids = request.form.getlist('option_ids[]')
             else: # Should not happen
                 flash('Invalid poll type.', 'error')
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
@@ -337,7 +331,7 @@ def register_student_routes(app, get_db_connection, login_required):
 
             for option_id in selected_option_ids:
                 cursor.execute("""
-                    INSERT INTO Votes (PollId, OptionId, UserId, VoteDate)
+                    INSERT INTO Votes (PollId, OptionId, UserId, VotedTime)
                     VALUES (?, ?, ?, GETDATE())
                 """, (poll_id, int(option_id), session['user_id']))
             
