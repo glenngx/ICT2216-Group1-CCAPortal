@@ -369,6 +369,106 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
         finally:
             if conn:
                 conn.close()
+    
+    @admin_bp.route('/api/search-students')
+    @admin_required
+    def search_students():
+        """API endpoint to search for students by name or student ID"""
+        search_query = request.args.get('q', '').strip()
+        cca_id = request.args.get('cca_id', '')
+        
+        if not search_query or len(search_query) < 2:
+            return {'students': []}
+        
+        conn = get_db_connection()
+        if not conn:
+            return {'error': 'Database connection error'}, 500
+        
+        try:
+            cursor = conn.cursor()
+            
+            search_sql = """
+            SELECT s.StudentId, s.Name, s.Email
+            FROM Student s
+            INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+            WHERE (s.Name LIKE ? OR CAST(s.StudentId AS VARCHAR) LIKE ?)
+            AND ud.UserId NOT IN (
+                SELECT UserId FROM CCAMembers WHERE CCAId = ?
+            )
+            ORDER BY s.Name
+            """
+            
+            search_pattern = f'%{search_query}%'
+            cursor.execute(search_sql, (search_pattern, search_pattern, cca_id))
+            students = cursor.fetchall()
+            
+            result = []
+            for student in students:
+                result.append({
+                    'student_id': student[0],
+                    'name': student[1],
+                    'email': student[2]
+                })
+            
+            return {'students': result}
+            
+        except Exception as e:
+            print(f"Search students error: {e}")
+            return {'error': 'Search failed'}, 500
+        finally:
+            if conn:
+                conn.close()
+
+    @admin_bp.route('/cca/<int:cca_id>/add-multiple-students', methods=['POST'])
+    @admin_required
+    def add_multiple_students_to_cca(cca_id):
+        """Add multiple students to a CCA in a single operation"""
+        student_ids = request.form.getlist('student_ids[]')
+        role = request.form.get('role', 'member')
+        
+        if not student_ids:
+            flash('Please select at least one student.', 'error')
+            return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
+        
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
+        
+        try:
+            cursor = conn.cursor()
+            
+            placeholders = ','.join(['?' for _ in student_ids])
+            cursor.execute(f"""
+                SELECT ud.UserId, s.StudentId, s.Name 
+                FROM UserDetails ud
+                INNER JOIN Student s ON ud.StudentId = s.StudentId
+                WHERE s.StudentId IN ({placeholders})
+            """, student_ids)
+            
+            user_data = cursor.fetchall()
+            
+            membership_data = [(user[0], cca_id, role) for user in user_data]
+            cursor.executemany("""
+                INSERT INTO CCAMembers (UserId, CCAId, CCARole)
+                VALUES (?, ?, ?)
+            """, membership_data)
+            
+            conn.commit()
+            
+            added_count = len(user_data)
+            flash(f'{added_count} students have been added to the CCA as {role}s!', 'success')
+            return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            print(f"Add multiple students error: {e}")
+            flash('Error adding students to CCA. Please try again.', 'error')
+            return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
+        finally:
+            if conn:
+                conn.close()
 
     # Register the blueprint with the app
     app.register_blueprint(admin_bp)

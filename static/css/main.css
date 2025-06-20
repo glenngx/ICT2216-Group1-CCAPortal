@@ -80,3 +80,108 @@
             padding: 1.5rem 0;
             margin-top: 4rem;
         }
+
+        /* Search container */
+        #search-results {
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        #search-results > div {
+            transition: background-color 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        #search-results > div:last-child {
+            border-bottom: none;
+        }
+
+        /* Selected students */
+        #selected-students {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+
+        /* Student tags */
+        #selected-tags span {
+            color: #1565c0;
+            transition: all 0.2s ease;
+        }
+
+        #selected-tags span:hover {
+            background-color: #bbdefb !important;
+            border-color: #64b5f6 !important;
+        }
+
+        /* Search input */
+        #student-search {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            padding: 10px 12px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        #student-search:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        /* Bulk submit button */
+        #bulk-submit-btn {
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        #bulk-submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #bulk-submit-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        /* Toggle */
+        .btn-outline-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        #bulk-toggle-btn {
+            background-color: #28a745; 
+            border-color: #28a745;
+            color: white;
+            font-weight: 500;              
+            font-size: 0.875rem;           
+            text-transform: none;         
+            letter-spacing: 0;             
+            font-family: inherit;        
+        }
+
+        #bulk-toggle-btn:hover {
+            background-color: #218838; 
+            border-color: #1e7e34;
+            color: white;
+            font-weight: 500;              
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            #selected-tags span {
+                font-size: 0.8rem;
+                padding: 4px 8px;
+                margin: 2px;
+            }
+            
+            #search-results > div {
+                padding: 8px 10px;
+                font-size: 0.85rem;
+            }
+        }

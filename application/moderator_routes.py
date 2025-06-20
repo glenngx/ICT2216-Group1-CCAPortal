@@ -352,5 +352,126 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             if conn:
                 conn.close()
 
+    @moderator_bp.route('/api/moderator/search-students')
+    @login_required
+    def moderator_search_students():
+        """API endpoint for moderators to search for students by name or student ID"""
+        search_query = request.args.get('q', '').strip()
+        cca_id = request.args.get('cca_id', '')
+        
+        if not search_query or len(search_query) < 2:
+            return {'students': []}
+        
+        conn = get_db_connection()
+        if not conn:
+            return {'error': 'Database connection error'}, 500
+        
+        try:
+            cursor = conn.cursor()
+            
+            # Verify moderator access to this CCA
+            cursor.execute("""
+                SELECT COUNT(*) FROM CCAMembers 
+                WHERE UserId = ? AND CCAId = ? AND CCARole = 'moderator'
+            """, (session['user_id'], cca_id))
+            
+            if cursor.fetchone()[0] == 0:
+                return {'error': 'Access denied'}, 403
+            
+            # Search for students by name or student ID, excluding those already in the CCA
+            search_sql = """
+            SELECT s.StudentId, s.Name, s.Email
+            FROM Student s
+            INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+            WHERE (s.Name LIKE ? OR CAST(s.StudentId AS VARCHAR) LIKE ?)
+            AND ud.UserId NOT IN (
+                SELECT UserId FROM CCAMembers WHERE CCAId = ?
+            )
+            ORDER BY s.Name
+            """
+            
+            search_pattern = f'%{search_query}%'
+            cursor.execute(search_sql, (search_pattern, search_pattern, cca_id))
+            students = cursor.fetchall()
+            
+            result = []
+            for student in students:
+                result.append({
+                    'student_id': student[0],
+                    'name': student[1],
+                    'email': student[2]
+                })
+            
+            return {'students': result}
+            
+        except Exception as e:
+            print(f"Moderator search students error: {e}")
+            return {'error': 'Search failed'}, 500
+        finally:
+            if conn:
+                conn.close()
+
+    @moderator_bp.route('/moderator/cca/<int:cca_id>/add-multiple-students', methods=['POST'])
+    @login_required
+    def moderator_add_multiple_students_to_cca(cca_id):
+        """Allow moderators to add multiple students to their CCA"""
+        student_ids = request.form.getlist('student_ids[]')
+        
+        if not student_ids:
+            flash('Please select at least one student.', 'error')
+            return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
+        
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('student_routes.my_ccas'))
+        
+        try:
+            cursor = conn.cursor()
+            
+            # Verify moderator access to this CCA
+            cursor.execute("""
+                SELECT COUNT(*) FROM CCAMembers 
+                WHERE UserId = ? AND CCAId = ? AND CCARole = 'moderator'
+            """, (session['user_id'], cca_id))
+            
+            if cursor.fetchone()[0] == 0:
+                flash('Access denied. You are not a moderator of this CCA.', 'error')
+                return redirect(url_for('student_routes.my_ccas'))
+            
+            # Get user IDs for the selected student IDs
+            placeholders = ','.join(['?' for _ in student_ids])
+            cursor.execute(f"""
+                SELECT ud.UserId, s.StudentId, s.Name 
+                FROM UserDetails ud
+                INNER JOIN Student s ON ud.StudentId = s.StudentId
+                WHERE s.StudentId IN ({placeholders})
+            """, student_ids)
+            
+            user_data = cursor.fetchall()
+            
+            # Bulk insert new memberships (moderators can only assign 'member' role)
+            membership_data = [(user[0], cca_id, 'member') for user in user_data]
+            cursor.executemany("""
+                INSERT INTO CCAMembers (UserId, CCAId, CCARole)
+                VALUES (?, ?, ?)
+            """, membership_data)
+            
+            conn.commit()
+            
+            added_count = len(user_data)
+            flash(f'{added_count} students have been added to the CCA as members!', 'success')
+            return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            print(f"Moderator add multiple students error: {e}")
+            flash('Error adding students to CCA. Please try again.', 'error')
+            return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
+        finally:
+            if conn:
+                conn.close()
+
     # Register the blueprint with the app
     app.register_blueprint(moderator_bp)
