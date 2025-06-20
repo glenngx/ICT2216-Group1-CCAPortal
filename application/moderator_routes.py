@@ -49,29 +49,34 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 if not all([cca_id, question, question_type, start_date, end_date]):
                     flash('Please fill in all required fields.', 'error')
                     return render_template('create_poll.html', user_ccas=user_ccas, 
-                                         user_name=session['name'], user_role='moderator')
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
                 
                 if not any(str(cca['id']) == str(cca_id) for cca in user_ccas):
                     flash('You can only create polls for CCAs where you are a moderator.', 'error')
                     return render_template('create_poll.html', user_ccas=user_ccas,
-                                         user_name=session['name'], user_role='moderator')
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
                 
                 valid_options = [opt.strip() for opt in options if opt.strip()]
                 if len(valid_options) < 2:
                     flash('Please provide at least 2 options for the poll.', 'error')
                     return render_template('create_poll.html', user_ccas=user_ccas,
-                                         user_name=session['name'], user_role='moderator')
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
                 
                 if len(valid_options) > 10:
                     flash('Maximum 10 options allowed.', 'error')
                     return render_template('create_poll.html', user_ccas=user_ccas,
-                                         user_name=session['name'], user_role='moderator')
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
                 
                 lower_options = [opt.lower() for opt in valid_options]
                 if len(lower_options) != len(set(lower_options)):
                     flash('Please ensure all options are unique.', 'error')
                     return render_template('create_poll.html', user_ccas=user_ccas,
-                                         user_name=session['name'], user_role='moderator')
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
                 
                 try:
                     start_datetime = datetime.fromisoformat(start_date)
@@ -80,17 +85,20 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                     if start_datetime >= end_datetime:
                         flash('End date must be after start date.', 'error')
                         return render_template('create_poll.html', user_ccas=user_ccas,
-                                             user_name=session['name'], user_role='moderator')
+                                            user_name=session['name'], user_role='moderator',
+                                            user_is_moderator=True)
                     
                     if start_datetime < datetime.now():
                         flash('Start date cannot be in the past.', 'error')
                         return render_template('create_poll.html', user_ccas=user_ccas,
-                                             user_name=session['name'], user_role='moderator')
+                                            user_name=session['name'], user_role='moderator',
+                                            user_is_moderator=True)
                         
                 except ValueError:
                     flash('Invalid date format.', 'error')
                     return render_template('create_poll.html', user_ccas=user_ccas,
-                                         user_name=session['name'], user_role='moderator')
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
                 
                 try:
                     cursor.execute("""
@@ -119,10 +127,12 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                     print(f"Create poll error: {e}")
                     flash('Error creating poll. Please try again.', 'error')
                     return render_template('create_poll.html', user_ccas=user_ccas,
-                                         user_name=session['name'], user_role='moderator')
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
             
             return render_template('create_poll.html', user_ccas=user_ccas,
-                                 user_name=session['name'], user_role='moderator')
+                                user_name=session['name'], user_role='moderator',
+                                user_is_moderator=True)
             
         except Exception as e:
             print(f"Create poll page error: {e}")

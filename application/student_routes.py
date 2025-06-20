@@ -112,6 +112,8 @@ def register_student_routes(app, get_db_connection, login_required):
             
             ccas_list = []
             moderator_ccas_list = []
+            user_is_moderator = False  # ADD THIS LINE
+            
             for cca_row in user_ccas_rows:
                 cca_data = {
                     'id': cca_row[0],
@@ -122,12 +124,14 @@ def register_student_routes(app, get_db_connection, login_required):
                 ccas_list.append(cca_data)
                 if cca_row[3] == 'moderator':
                     moderator_ccas_list.append(cca_data)
+                    user_is_moderator = True  # ADD THIS LINE
             
             return render_template('my_ccas.html', 
-                                 ccas=ccas_list, 
-                                 moderator_ccas=moderator_ccas_list,
-                                 user_name=session['name'],
-                                 user_role=session['role'])
+                                ccas=ccas_list, 
+                                moderator_ccas=moderator_ccas_list,
+                                user_is_moderator=user_is_moderator,  # ADD THIS LINE
+                                user_name=session['name'],
+                                user_role=session['role'])
             
         except Exception as e:
             print(f"My CCAs error: {e}")
@@ -147,6 +151,14 @@ def register_student_routes(app, get_db_connection, login_required):
 
         try:
             cursor = conn.cursor()
+            
+            # Check if user is moderator - ADD THIS BLOCK
+            cursor.execute("""
+                SELECT COUNT(*) FROM CCAMembers 
+                WHERE UserId = ? AND CCARole = 'moderator'
+            """, (session['user_id'],))
+            user_is_moderator = cursor.fetchone()[0] > 0
+            
             cursor.execute("""
                 SELECT DISTINCT c.CCAId
                 FROM CCA c
@@ -186,7 +198,10 @@ def register_student_routes(app, get_db_connection, login_required):
             if not user_cca_ids or not polls_data_rows:
                 processed_polls = []
 
-            return render_template('view_poll.html', polls=processed_polls, user_name=session.get('name'))
+            return render_template('view_poll.html', 
+                                polls=processed_polls, 
+                                user_is_moderator=user_is_moderator,  # ADD THIS LINE
+                                user_name=session.get('name'))
 
         except Exception as e:
             print(f"Error fetching polls: {e}")
