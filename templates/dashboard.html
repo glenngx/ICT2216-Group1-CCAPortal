@@ -99,7 +99,7 @@
                                     </div>
                                     <div class="card-footer cca-card-footer">
                                         {% if cca.role == 'moderator' %}
-                                            <a href="{{ url_for('moderator_view_cca', cca_id=cca.id) }}" class="btn btn-sm btn-success">
+                                            <a href="{{ url_for('moderator_routes.moderator_view_cca', cca_id=cca.id) }}" class="btn btn-sm btn-success">
                                                 <i class="bi bi-gear"></i> Manage CCA
                                             </a>
                                         {% else %}
