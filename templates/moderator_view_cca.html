@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CCAP - {{ cc                            <a href="{{ url_for('moderator_routes.create_poll') }}" class="btn btn-primary">
-                                <i class="bi bi-plus-circle"></i> Create New Poll
-                            </a>] }} (Moderator)</title>
+    <title><title>CCAP - {{ cca[1] }} (Moderator)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
@@ -134,7 +132,7 @@
                     </div>
                     <div class="card-body">
                         {% if available_students %}
-                        <form method="POST" action="{{ url_for('moderator_add_student_to_cca', cca_id=cca[0]) }}">
+                        <form method="POST" action="{{ url_for('moderator_routes.moderator_add_student_to_cca', cca_id=cca[0]) }}">
                             <div class="mb-3">
                                 <label for="student_id" class="form-label">Select Student</label>
                                 <select class="form-select form-select-sm" id="student_id" name="student_id" required>
@@ -170,7 +168,7 @@
                     </div>
                     <div class="card-body">
                         <div class="d-grid gap-2">
-                            <a href="{{ url_for('create_poll') }}" class="btn btn-primary">
+                            <a href="{{ url_for('moderator_routes.create_poll') }}" class="btn btn-primary">
                                 <i class="bi bi-plus-circle"></i> Create Poll
                             </a>
                             <a href="#" class="btn btn-outline-primary">
@@ -200,7 +198,7 @@
                     <h5 class="modal-title">Edit CCA</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST" action="{{ url_for('moderator_edit_cca', cca_id=cca[0]) }}">
+                <form method="POST" action="{{ url_for('moderator_routes.moderator_edit_cca', cca_id=cca[0]) }}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="edit_name" class="form-label">CCA Name</label>
