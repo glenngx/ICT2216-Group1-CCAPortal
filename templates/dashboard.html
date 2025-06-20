@@ -145,7 +145,7 @@
                                     <small class="text-muted">
                                         <i class="bi bi-calendar-x"></i> Closes: {{ poll.end_date }}
                                     </small>
-                                    <a href="#" class="btn btn-sm btn-outline-primary">Vote</a>
+                                    <a href="{{ url_for('student_routes.view_poll_detail', poll_id=poll.id) }}" class="btn btn-sm btn-outline-primary">Vote</a>
                                 </div>
                             </li>
                             {% endfor %}
