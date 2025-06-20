@@ -366,5 +366,62 @@ def register_student_routes(app, get_db_connection, login_required):
                 conn.close()
         
         return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+    
+    @student_bp.route('/cca/<int:cca_id>')
+    @login_required
+    def student_view_cca(cca_id):
+        """View-only CCA page for normal students (non-moderators)"""
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('student_routes.my_ccas'))
+        
+        try:
+            cursor = conn.cursor()
+            
+            # Check if user is a member of this CCA
+            cursor.execute("""
+                SELECT cm.CCARole 
+                FROM CCAMembers cm 
+                WHERE cm.UserId = ? AND cm.CCAId = ?
+            """, (session['user_id'], cca_id))
+            membership = cursor.fetchone()
+            
+            if not membership and session.get('role') != 'admin':
+                flash('You do not have permission to view this CCA.', 'error')
+                return redirect(url_for('student_routes.my_ccas'))
+            
+            # Get CCA details
+            cursor.execute("SELECT CCAId, Name, Description FROM CCA WHERE CCAId = ?", (cca_id,))
+            cca = cursor.fetchone()
+            
+            if not cca:
+                flash('CCA not found.', 'error')
+                return redirect(url_for('student_routes.my_ccas'))
+            
+            # Get CCA members (same query as admin/moderator view but without management actions)
+            members_query = """
+            SELECT s.StudentId, s.Name, s.Email, cm.CCARole, cm.MemberId
+            FROM CCAMembers cm
+            INNER JOIN UserDetails ud ON cm.UserId = ud.UserId
+            INNER JOIN Student s ON ud.StudentId = s.StudentId
+            WHERE cm.CCAId = ?
+            ORDER BY cm.CCARole DESC, s.Name
+            """
+            cursor.execute(members_query, (cca_id,))
+            members = cursor.fetchall()
+            
+            return render_template('student_view_cca.html', 
+                                 cca=cca, 
+                                 members=members,
+                                 user_name=session['name'])
+            
+        except Exception as e:
+            print(f"Student view CCA error: {e}")
+            flash('Error loading CCA details.', 'error')
+            return redirect(url_for('student_routes.my_ccas'))
+        finally:
+            if conn:
+                conn.close()
 
     app.register_blueprint(student_bp) # Add this line to register the blueprint
