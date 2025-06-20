@@ -49,7 +49,7 @@
                 
                 <div class="dropdown">
                     <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> {{ user_name or 'User' }}
+                        <i class="bi bi-person-circle"></i> {{ user_name or 'admin' }}
                         {% if session.get('role') == 'admin' %}
                         <span class="badge bg-warning text-dark ms-1">Admin</span>
                         {% elif user_is_moderator %}
