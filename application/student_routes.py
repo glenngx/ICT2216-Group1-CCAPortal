@@ -424,4 +424,74 @@ def register_student_routes(app, get_db_connection, login_required):
             if conn:
                 conn.close()
 
+    @student_bp.route('/change-password', methods=['GET', 'POST'])
+    @login_required
+    def change_password():
+        if request.method == 'POST':
+            current_password = request.form.get('current_password', '').strip()
+            new_password = request.form.get('new_password', '').strip()
+            confirm_password = request.form.get('confirm_password', '').strip()
+            
+            # Basic validation
+            if not all([current_password, new_password, confirm_password]):
+                flash('All fields are required.', 'error')
+                return render_template('change_password.html')
+            
+            if new_password != confirm_password:
+                flash('New passwords do not match.', 'error')
+                return render_template('change_password.html')
+            
+            # Basic password length check 
+            if len(new_password) < 6:
+                flash('New password must be at least 6 characters long.', 'error')
+                return render_template('change_password.html')
+            
+            conn = get_db_connection()
+            if not conn:
+                flash('Database connection error.', 'error')
+                return render_template('change_password.html')
+            
+            try:
+                cursor = conn.cursor()
+                
+                # Get current password
+                cursor.execute("SELECT Password FROM UserDetails WHERE UserId = ?", (session['user_id'],))
+                stored_password_row = cursor.fetchone()
+                
+                if not stored_password_row:
+                    flash('User not found.', 'error')
+                    return render_template('change_password.html')
+                
+                stored_password = stored_password_row[0]
+                
+                # Verify current password 
+                if current_password != stored_password:
+                    flash('Current password is incorrect.', 'error')
+                    return render_template('change_password.html')
+                
+                # Update password in database 
+                cursor.execute("""
+                    UPDATE UserDetails 
+                    SET Password = ? 
+                    WHERE UserId = ?
+                """, (new_password, session['user_id']))
+                
+                conn.commit()
+                
+                flash('Password changed successfully!', 'success')
+                return redirect(url_for('student_routes.dashboard'))
+                
+            except Exception as e:
+                if conn:
+                    conn.rollback()
+                print(f"Password change error: {e}")
+                flash('Error changing password. Please try again.', 'error')
+                return render_template('change_password.html')
+            finally:
+                if conn:
+                    conn.close()
+        
+        return render_template('change_password.html', user_name=session['name'])
+    
+
     app.register_blueprint(student_bp) # Add this line to register the blueprint
