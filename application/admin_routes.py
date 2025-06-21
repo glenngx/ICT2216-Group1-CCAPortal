@@ -1,5 +1,6 @@
 from flask import render_template, request, redirect, url_for, session, flash, Blueprint
 import pyodbc
+from email_service import email_service
 
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
@@ -80,15 +81,15 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             try:
                 cursor = conn.cursor()
                 
-                # Check if student exists in Student table
-                cursor.execute("SELECT StudentId, Name FROM Student WHERE StudentId = ?", (int(student_id),))
+                # Check if student exists 
+                cursor.execute("SELECT StudentId, Name, Email FROM Student WHERE StudentId = ?", (int(student_id),))
                 student_record = cursor.fetchone()
                 
                 if not student_record:
                     flash(f'Student ID {student_id} not found in student records. Please contact administration to add student to system first.', 'error')
                     return render_template('create_student.html')
                 
-                # Check if student already has a registered account
+                # Check if student already has a registered account 
                 cursor.execute("SELECT UserId FROM UserDetails WHERE StudentId = ?", (int(student_id),))
                 existing_account = cursor.fetchone()
                 
@@ -96,14 +97,40 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
                     flash(f'Student {student_record[1]} (ID: {student_id}) already has a login account.', 'error')
                     return render_template('create_student.html')
                 
-                # Create an account if both checks pass
+                # Mark password as temporary 
+                temp_password = f"TEMP_{password}"
                 cursor.execute("""
                     INSERT INTO UserDetails (Username, StudentId, Password, SystemRole)
                     VALUES (?, ?, ?, 'student')
-                """, (int(student_id), int(student_id), password))
+                """, (int(student_id), int(student_id), temp_password))
                 
                 conn.commit()
-                flash(f'Login account created successfully for {student_record[1]} (ID: {student_id})!', 'success')
+                
+                # Send email to reset password after successful account creation
+                student_name = student_record[1]
+                student_email = student_record[2]
+                
+                base_message = f'Login account created successfully for {student_name} (ID: {student_id})!'
+                
+                if student_email:
+                    try:
+                        email_sent = email_service.send_student_credentials(
+                            student_name=student_name,
+                            student_email=student_email,
+                            student_id=student_id,
+                            temp_password=password
+                        )
+                        
+                        if email_sent:
+                            flash(f'{base_message} Email with login credentials sent to {student_email}.', 'success')
+                        else:
+                            flash(f'{base_message} However, email notification failed. Please provide credentials manually.', 'warning')
+                    except Exception as e:
+                        print(f"Email sending error: {e}")
+                        flash(f'{base_message} However, email notification failed. Please provide credentials manually.', 'warning')
+                else:
+                    flash(f'{base_message} No email on file - please provide credentials manually.', 'warning')
+                
                 return redirect(url_for('admin_routes.admin_dashboard'))
                 
             except Exception as e:

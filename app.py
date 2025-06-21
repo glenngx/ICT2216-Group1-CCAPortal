@@ -3,6 +3,9 @@ import pyodbc
 from functools import wraps
 import re
 from datetime import datetime, timedelta
+from email_service import email_service
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 # Removed direct import of DB_CONNECTION_STRING, SECRET_KEY from config
 # try:
 #     from config import DB_CONNECTION_STRING, SECRET_KEY
@@ -25,6 +28,7 @@ try:
     # Access SECRET_KEY from app.config after loading
     app.secret_key = app.config['SECRET_KEY'] 
     print("Configuration loaded from config.Config object")
+    email_service.init_app(app)  # Initialize email service
 except ImportError:
     print("ERROR: Could not import config.Config. Make sure config.py and class Config exist.")
     exit(1)

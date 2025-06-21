@@ -46,7 +46,7 @@
                 {% if back_url %}
                 <a href="{{ back_url }}" class="btn btn-outline-light me-2">{{ back_text or 'Back' }}</a>
                 {% endif %}
-                
+                {% if show_header_user != False and session.get('user_id') %}
                 <div class="dropdown">
                     <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle"></i> {{ user_name or 'admin' }}
@@ -66,7 +66,7 @@
                         <li><a class="dropdown-item" href="{{ url_for('misc_routes.logout') }}">Logout</a></li>
                     </ul>
                 </div>
-            </div>
+                {% endif %}
         </div>
     </nav>
 
