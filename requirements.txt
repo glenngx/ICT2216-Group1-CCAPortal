@@ -4,3 +4,4 @@ pyodbc==4.0.39
 python-dotenv==1.0.0
 bcrypt==4.0.1
 flake8==6.1.0
+Flask-Mail==0.10.0
