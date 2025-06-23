@@ -222,9 +222,16 @@ def register_student_routes(app, get_db_connection, login_required):
         try:
             cursor = conn.cursor()
 
+            # Check if user is moderator - ADD THIS BLOCK
+            cursor.execute("""
+                SELECT COUNT(*) FROM CCAMembers 
+                WHERE UserId = ? AND CCARole = 'moderator'
+            """, (session['user_id'],))
+            user_is_moderator = cursor.fetchone()[0] > 0
+
             cursor.execute("""
                 SELECT p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, 
-                       p.IsAnonymous, c.Name AS CCAName, p.LiveIsActive
+                    p.IsAnonymous, c.Name AS CCAName, p.LiveIsActive
                 FROM v_Poll_With_LiveStatus p
                 JOIN CCA c ON p.CCAId = c.CCAId
                 WHERE p.PollId = ?
@@ -244,8 +251,8 @@ def register_student_routes(app, get_db_connection, login_required):
             is_member_of_cca = cursor.fetchone()[0] > 0
 
             if not is_member_of_cca and session['role'] != 'admin':
-                 flash('You do not have permission to view this poll.', 'error')
-                 return redirect(url_for('student_routes.view_polls'))
+                flash('You do not have permission to view this poll.', 'error')
+                return redirect(url_for('student_routes.view_polls'))
 
             start_date_obj = poll_data_row[3]
             end_date_obj = poll_data_row[4]
@@ -280,8 +287,14 @@ def register_student_routes(app, get_db_connection, login_required):
                 user_votes_data = cursor.fetchall()
                 user_votes = [uv[0] for uv in user_votes_data]
 
-            return render_template('poll_detail.html', poll=poll, options=options, has_voted=has_voted, user_votes=user_votes, user_name=session.get('name'))
-
+            return render_template('poll_detail.html', 
+                                poll=poll, 
+                                options=options, 
+                                has_voted=has_voted, 
+                                user_votes=user_votes, 
+                                user_name=session.get('name'),
+                                user_is_moderator=user_is_moderator)
+        
         except Exception as e:
             print(f"Error fetching poll details for poll {poll_id}: {e}")
             flash('Error fetching poll details.', 'error')
@@ -379,6 +392,13 @@ def register_student_routes(app, get_db_connection, login_required):
         try:
             cursor = conn.cursor()
             
+            # Check if user is moderator - ADD THIS BLOCK
+            cursor.execute("""
+                SELECT COUNT(*) FROM CCAMembers 
+                WHERE UserId = ? AND CCARole = 'moderator'
+            """, (session['user_id'],))
+            user_is_moderator = cursor.fetchone()[0] > 0
+            
             # Check if user is a member of this CCA
             cursor.execute("""
                 SELECT cm.CCARole 
@@ -399,7 +419,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 flash('CCA not found.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
-            # Get CCA members (same query as admin/moderator view but without management actions)
+            # Get CCA members
             members_query = """
             SELECT s.StudentId, s.Name, s.Email, cm.CCARole, cm.MemberId
             FROM CCAMembers cm
@@ -412,14 +432,15 @@ def register_student_routes(app, get_db_connection, login_required):
             members = cursor.fetchall()
             
             return render_template('student_view_cca.html', 
-                                 cca=cca, 
-                                 members=members,
-                                 user_name=session['name'])
+                                cca=cca, 
+                                members=members,
+                                user_name=session['name'],
+                                user_is_moderator=user_is_moderator)  # ADD THIS LINE
             
         except Exception as e:
-            print(f"Student view CCA error: {e}")
-            flash('Error loading CCA details.', 'error')
-            return redirect(url_for('student_routes.my_ccas'))
+            print(f"Error fetching poll details for poll {cca_id}: {e}")
+            flash('Error fetching poll details.', 'error')
+            return redirect(url_for('student_routes.view_polls'))
         finally:
             if conn:
                 conn.close()
@@ -427,29 +448,57 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/change-password', methods=['GET', 'POST'])
     @login_required
     def change_password():
+        # Helper function to check if user is moderator
+        def get_moderator_status():
+            conn = get_db_connection()
+            if conn:
+                try:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT COUNT(*) FROM CCAMembers 
+                        WHERE UserId = ? AND CCARole = 'moderator'
+                    """, (session['user_id'],))
+                    return cursor.fetchone()[0] > 0
+                except:
+                    return False
+                finally:
+                    conn.close()
+            return False
+
         if request.method == 'POST':
             current_password = request.form.get('current_password', '').strip()
             new_password = request.form.get('new_password', '').strip()
             confirm_password = request.form.get('confirm_password', '').strip()
             
+            # Get moderator status for all error returns
+            user_is_moderator = get_moderator_status()
+            
             # Basic validation
             if not all([current_password, new_password, confirm_password]):
                 flash('All fields are required.', 'error')
-                return render_template('change_password.html')
+                return render_template('change_password.html', 
+                                    user_name=session['name'],
+                                    user_is_moderator=user_is_moderator)
             
             if new_password != confirm_password:
                 flash('New passwords do not match.', 'error')
-                return render_template('change_password.html')
+                return render_template('change_password.html',
+                                    user_name=session['name'],
+                                    user_is_moderator=user_is_moderator)
             
             # Basic password length check 
             if len(new_password) < 6:
                 flash('New password must be at least 6 characters long.', 'error')
-                return render_template('change_password.html')
+                return render_template('change_password.html',
+                                    user_name=session['name'],
+                                    user_is_moderator=user_is_moderator)
             
             conn = get_db_connection()
             if not conn:
                 flash('Database connection error.', 'error')
-                return render_template('change_password.html')
+                return render_template('change_password.html',
+                                    user_name=session['name'],
+                                    user_is_moderator=user_is_moderator)
             
             try:
                 cursor = conn.cursor()
@@ -460,14 +509,18 @@ def register_student_routes(app, get_db_connection, login_required):
                 
                 if not stored_password_row:
                     flash('User not found.', 'error')
-                    return render_template('change_password.html')
+                    return render_template('change_password.html',
+                                        user_name=session['name'],
+                                        user_is_moderator=user_is_moderator)
                 
                 stored_password = stored_password_row[0]
                 
                 # Verify current password 
                 if current_password != stored_password:
                     flash('Current password is incorrect.', 'error')
-                    return render_template('change_password.html')
+                    return render_template('change_password.html',
+                                        user_name=session['name'],
+                                        user_is_moderator=user_is_moderator)
                 
                 # Update password in database 
                 cursor.execute("""
@@ -486,12 +539,18 @@ def register_student_routes(app, get_db_connection, login_required):
                     conn.rollback()
                 print(f"Password change error: {e}")
                 flash('Error changing password. Please try again.', 'error')
-                return render_template('change_password.html')
+                return render_template('change_password.html',
+                                    user_name=session['name'],
+                                    user_is_moderator=user_is_moderator)
             finally:
                 if conn:
                     conn.close()
         
-        return render_template('change_password.html', user_name=session['name'])
+        # GET request - check if user is moderator and pass to template
+        user_is_moderator = get_moderator_status()
+        return render_template('change_password.html', 
+                            user_name=session['name'],
+                            user_is_moderator=user_is_moderator)
     
 
     app.register_blueprint(student_bp) # Add this line to register the blueprint
