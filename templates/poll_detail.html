@@ -124,6 +124,9 @@
                                 </li>
                                 {% endfor %}
                             </ul>
+                            {% if poll.IsAnonymous and poll.LiveIsActive and vote_token %}
+                            <input type="hidden" name="vote_token" value="{{ vote_token }}">
+                            {% endif %}
                             
                             {% if poll.LiveIsActive %}
                                 {% if user_has_voted %}

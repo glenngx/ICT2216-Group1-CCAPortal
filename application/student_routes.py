@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, session, flash, Blueprint
 import pyodbc
 from datetime import datetime
+import secrets
 
 # Create a Blueprint
 student_bp = Blueprint('student_routes', __name__)
@@ -280,7 +281,28 @@ def register_student_routes(app, get_db_connection, login_required):
                 user_votes_data = cursor.fetchall()
                 user_votes = [uv[0] for uv in user_votes_data]
 
-            return render_template('poll_detail.html', poll=poll, options=options, has_voted=has_voted, user_votes=user_votes, user_name=session.get('name'))
+            vote_token = None
+            if poll['IsAnonymous'] and poll['LiveIsActive']:
+                # Only Issue token if Anonymous poll is active
+                cursor.execute("""
+                    SELECT Token FROM VoteTokens
+                    WHERE PollId = ? AND UserId = ?
+                """, (poll_id, session['user_id']))
+                token_row = cursor.fetchone()
+
+                if not token_row:
+                    # Generate and store a new token
+                    token = secrets.token_hex(32)
+                    cursor.execute("""
+                        INSERT INTO VoteTokens (Token, PollId, UserId)
+                        VALUES (?, ?, ?)
+                    """, (token, poll_id, session['user_id']))
+                    conn.commit()
+                    vote_token = token
+                else:
+                    vote_token = token_row[0]
+
+            return render_template('poll_detail.html', poll=poll, options=options, has_voted=has_voted, user_votes=user_votes, user_name=session.get('name'), vote_token=vote_token)
 
         except Exception as e:
             print(f"Error fetching poll details for poll {poll_id}: {e}")
@@ -325,6 +347,10 @@ def register_student_routes(app, get_db_connection, login_required):
                 flash('You have already voted in this poll.', 'info')
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
+            # Check if the user is Anonymous
+            cursor.execute("SELECT IsAnonymous FROM POLL WHERE PollId = ?", (poll_id,))
+            is_anonymous = cursor.fetchone()[0]
+
             selected_option_ids = []
             if question_type == 'single_choice':
                 option_id = request.form.get('option_id')
@@ -344,8 +370,40 @@ def register_student_routes(app, get_db_connection, login_required):
                     flash(f'Invalid option selected: {opt_id}. Please try again.', 'error')
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            for option_id in selected_option_ids:
+            if is_anonymous:
+                # Get and validate the vote token
+                token = request.form.get('vote_token')
+                if not token:
+                        flash('Missing vote token for anonymous poll.', 'error')
+                        return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
                 cursor.execute("""
+                    SELECT IsUsed FROM VoteTokens
+                    WHERE Token = ? AND PollId = ? AND UserId = ?
+                """, (token, poll_id, session['user_id']))
+                token_row = cursor.fetchone()
+
+                if not token_row:
+                    flash('Invalid or expired vote token.', 'error')
+                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
+                if token_row[0]:  # IsUsed == True
+                    flash('This token has already been used.', 'error')
+                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
+                for option_id in selected_option_ids:
+                    cursor.execute("""
+                        INSERT INTO Votes (PollId, OptionId, UserId, VotedTime)
+                        VALUES (?, ?, ?, GETDATE())
+                    """, (poll_id, int(option_id), -1))  # -1 = Anonymous
+
+                # Mark the token as used
+                cursor.execute("""
+                    UPDATE VoteTokens SET IsUsed = 1 WHERE Token = ?
+                """, (token,))
+            else:
+                for option_id in selected_option_ids:
+                    cursor.execute("""
                     INSERT INTO Votes (PollId, OptionId, UserId, VotedTime)
                     VALUES (?, ?, ?, GETDATE())
                 """, (poll_id, int(option_id), session['user_id']))
@@ -495,3 +553,4 @@ def register_student_routes(app, get_db_connection, login_required):
     
 
     app.register_blueprint(student_bp) # Add this line to register the blueprint
+
