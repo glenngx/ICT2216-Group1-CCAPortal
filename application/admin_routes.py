@@ -99,7 +99,9 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
                     return render_template('create_student.html')
                 
                 # Mark password as temporary 
-                temp_password = f"TEMP_{password}"
+                #*\* Hash the password first
+                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                temp_password = f"TEMP_{hashed_password}"
                 cursor.execute("""
                     INSERT INTO UserDetails (Username, StudentId, Password, SystemRole)
                     VALUES (?, ?, ?, 'student')
