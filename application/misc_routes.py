@@ -106,7 +106,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             if 'user' in locals() and user: # Ensure 'user' is defined
                 stored_password = user[2] # Password from UserDetails
                 print(f"Stored password: '{stored_password}', Entered password: '{password}'")
-                
+                #*\* Remove TEMP_ prefix if present before bcrypt check
+                if stored_password.startswith("TEMP_"):
+                    stored_password = stored_password.replace("TEMP_", "", 1)
                 # Assuming non-admin passwords are not hashed for now, based on original logic *\* add comparing for hashing
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
                     return {
