@@ -53,36 +53,42 @@
                                 {% endfor %}
                             </ul>
                             
-                            {% if poll.LiveIsActive %}
-                                {% if user_has_voted %}
-                                    <p class="mt-3 text-success"><i class="bi bi-check-circle-fill"></i> You have already voted in this poll.</p>
-                                {% else %}
-                                    <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-check-lg"></i> Submit Vote</button>
-                                {% endif %}
-                            {% else %}
-                                <p class="mt-3 text-muted"><i class="bi bi-x-circle"></i> Voting is closed for this poll.</p>
-                            {% endif %}
-                        </form>
+                    {% if poll.LiveIsActive %}
+                        {% if has_voted %}
+                            <p class="mt-3 text-success"><i class="bi bi-check-circle-fill"></i> You have already voted in this poll.</p>
+                        {% else %}
+                            <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-check-lg"></i> Submit Vote</button>
+                        {% endif %}
                     {% else %}
-                        <p class="text-muted">No options available for this poll.</p>
+                        <p class="mt-3 text-muted"><i class="bi bi-x-circle"></i> Voting is closed for this poll.</p>
                     {% endif %}
-                </div>
-            </div>
-
+                </form>
+            {% else %}
+                <p class="text-muted">No options available for this poll.</p>
+            {% endif %}
+        </div>
     </div>
+{% else %}
+    <div class="alert alert-warning">
+        <h4>Poll Not Found</h4>
+        <p>The requested poll could not be found or you don't have permission to view it.</p>
+    </div>
+{% endif %}
 
-    <style>
-            .option-item { 
-                background-color: #f8f9fa; 
-                border-left: 3px solid #0d6efd; 
-            }
-            .option-item:hover { 
-                background-color: #e9ecef; 
-            }
-            .vote-count { 
-                font-size: 0.9em; 
-                color: #6c757d; 
-            }
-        </style>
+</div>
+
+<style>
+    .option-item { 
+        background-color: #f8f9fa; 
+        border-left: 3px solid #0d6efd; 
+    }
+    .option-item:hover { 
+        background-color: #e9ecef; 
+    }
+    .vote-count { 
+        font-size: 0.9em; 
+        color: #6c757d; 
+    }
+</style>
 
 {% include 'footer.html' %}
