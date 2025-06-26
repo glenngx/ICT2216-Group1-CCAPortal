@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from datetime import datetime
 from email_service import email_service
+import bcrypt
 
 # Blueprint for misc routes
 misc_bp = Blueprint('misc_routes', __name__)
@@ -106,8 +107,8 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 stored_password = user[2] # Password from UserDetails
                 print(f"Stored password: '{stored_password}', Entered password: '{password}'")
                 
-                # Assuming non-admin passwords are not hashed for now, based on original logic
-                if password == stored_password:
+                # Assuming non-admin passwords are not hashed for now, based on original logic *\* add comparing for hashing
+                if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
                     return {
                         'user_id': user[0],    # UserId
                         'student_id': user[1], # StudentId from UserDetails
@@ -221,7 +222,8 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                         flash('You cannot use the temporary password. Please choose a different password.', 'error')
                         return render_template('reset_password.html', token=token)
                 
-                # Update password 
+                # Update password *\*added hashing
+                hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 cursor.execute("""
                     UPDATE UserDetails 
                     SET Password = ? 
