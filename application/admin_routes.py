@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, session, flash, Blueprint
 import pyodbc
 from email_service import email_service
+import bcrypt 
 
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')

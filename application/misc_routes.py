@@ -217,18 +217,19 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 # Check if they're trying to reuse the temporary password
                 if current_password.startswith('TEMP_'):
                     # Extract the original temporary password
-                    original_temp = current_password.replace('TEMP_', '')
-                    if new_password == original_temp:
+                    # *\* edited for hashing
+                    original_hashed_temp = current_password.replace('TEMP_', '')
+                    if bcrypt.checkpw(new_password.encode('utf-8'), original_hashed_temp.encode('utf-8')):
                         flash('You cannot use the temporary password. Please choose a different password.', 'error')
                         return render_template('reset_password.html', token=token)
                 
-                # Update password *\*added hashing
+                # Update password *\* added hashing
                 hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 cursor.execute("""
                     UPDATE UserDetails 
                     SET Password = ? 
                     WHERE StudentId = ?
-                """, (new_password, student_id))
+                """, (hashed_password, student_id))
                 
                 if cursor.rowcount > 0:
                     conn.commit()
