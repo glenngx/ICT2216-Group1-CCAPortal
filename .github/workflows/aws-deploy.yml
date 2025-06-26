@@ -1,0 +1,24 @@
+name: Deploy to AWS VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deploy to AWS EC2 via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: 18.220.138.198
+        username: ubuntu
+        key: ${{ secrets.AWS_SSH_KEY }}
+        script: |
+          cd ICT2216-Group1-CCAPortal
+          git pull origin main
+          cd docker
+          docker-compose -f nginx-compose.yml down
+          docker-compose -f nginx-compose.yml up -d --build
