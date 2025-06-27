@@ -1,6 +1,3 @@
-"""
-Fixed email service - Only password reset, no login credentials
-"""
 from flask import current_app, url_for
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
@@ -36,17 +33,17 @@ class EmailService:
         except Exception as e:
             current_app.logger.error(f"Token verification failed: {e}")
             return None
-    
-    def send_student_credentials(self, student_name, student_email, student_id, temp_password):
+
+    def send_student_credentials(self, student_name, student_email, student_id, temp_password=None):
         """Send email with password setup link only (no login credentials)"""
         try:
             # Generate token for password reset
             token = self.generate_password_reset_token(student_id)
             
-            # Create password change URL only
+            # Create password setup URL
             password_setup_url = url_for('misc_routes.reset_password', token=token, _external=True)
             
-            # SIMPLIFIED HTML email - Only password setup link
+            # Default HTML email content for modern email clients 
             html_content = f"""
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -95,32 +92,32 @@ class EmailService:
             </html>
             """
             
-            # SIMPLIFIED Plain text version
+            # Simplified plaintext as fallback for older email clients
             text_content = f"""
-Welcome to CCA Portal, {student_name}!
+    Welcome to CCA Portal, {student_name}!
 
-Your student account has been created.
+    Your student account has been created.
 
-Account Details:
-Student ID: {student_id}
-Email: {student_email}
+    Account Details:
+    Student ID: {student_id}
+    Email: {student_email}
 
-IMPORTANT: You must set your password before you can access the portal.
+    IMPORTANT: You must set your password before you can access the portal.
 
-To set your password, visit this link:
-{password_setup_url}
+    To set your password, visit this link:
+    {password_setup_url}
 
-Steps to get started:
-1. Click the link above to set your password
-2. Create a secure password of your choice  
-3. Login to CCA Portal using your Student ID and new password
+    Steps to get started:
+    1. Click the link above to set your password
+    2. Create a secure password of your choice  
+    3. Login to CCA Portal using your Student ID and new password
 
-This setup link expires in 24 hours for security.
+    This setup link expires in 24 hours for security.
 
-If you have questions, contact your administrator.
+    If you have questions, contact your administrator.
 
----
-This is an automated message from CCA Portal.
+    ---
+    This is an automated message from CCA Portal.
             """
             
             # Create and send message
@@ -138,6 +135,5 @@ This is an automated message from CCA Portal.
         except Exception as e:
             current_app.logger.error(f"Failed to send email to {student_email}: {e}")
             return False
-
-# Global instance
+        
 email_service = EmailService()

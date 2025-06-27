@@ -52,6 +52,12 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                         'email': admin_user[1] # Placeholder, admin might not have an email in Student table
                     }
             
+            # Check if password is NULL (account not yet set up) 
+            stored_password = user_record[2]
+            if stored_password is None:
+                print(f"User {username} has no password set - account needs setup")
+                return {'needs_password_setup': True, 'student_id': user_record[1]}
+            
             # Try email
             elif validate_email(username):
                 print("Validating as email...")
@@ -106,7 +112,13 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             if 'user' in locals() and user: # Ensure 'user' is defined
                 stored_password = user[2] # Password from UserDetails
                 print(f"Stored password: '{stored_password}', Entered password: '{password}'")
-                #*\* Remove TEMP_ prefix if present before bcrypt check
+                
+                # Check if password is NULL (account not yet set up) 
+                if stored_password is None:
+                    print(f"User {username} has no password set - account needs setup")
+                    return {'needs_password_setup': True, 'student_id': user[1]}
+                
+                # Remove TEMP_ prefix if present before bcrypt check
                 if stored_password.startswith("TEMP_"):
                     stored_password = stored_password.replace("TEMP_", "", 1)
                 # Assuming non-admin passwords are not hashed for now, based on original logic *\* add comparing for hashing
@@ -152,6 +164,19 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             user = authenticate_user(username, password)
             
             if user:
+                # Check if user needs to set up password first
+                if user.get('needs_password_setup'):
+                    # Generate new token and redirect to password setup
+                    try:
+                        token = email_service.generate_password_reset_token(user['student_id'])
+                        flash('Your account needs password setup. Please set your password first.', 'warning')
+                        return redirect(url_for('misc_routes.reset_password', token=token))
+                    except Exception as e:
+                        print(f"Error generating password setup token: {e}")
+                        flash('Account setup required. Please contact your administrator for a password setup link.', 'error')
+                        return render_template('login.html')
+                
+                # Normal login for users with passwords set
                 session.permanent = True
                 session['user_id'] = user['user_id']
                 session['student_id'] = user['student_id']
@@ -206,7 +231,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             try:
                 cursor = conn.cursor()
                 
-                # Get current password to check if it's temporary
+                # Get current password to check if it exists
                 cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
                 current_password_row = cursor.fetchone()
                 
@@ -216,10 +241,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 
                 current_password = current_password_row[0]
                 
-                # Check if they're trying to reuse the temporary password
-                if current_password.startswith('TEMP_'):
+                # Check if they're trying to reuse the temporary password 
+                if current_password and current_password.startswith('TEMP_'):
                     # Extract the original temporary password
-                    # *\* edited for hashing
                     original_hashed_temp = current_password.replace('TEMP_', '')
                     if bcrypt.checkpw(new_password.encode('utf-8'), original_hashed_temp.encode('utf-8')):
                         flash('You cannot use the temporary password. Please choose a different password.', 'error')

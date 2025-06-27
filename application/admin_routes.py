@@ -63,11 +63,9 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
     def create_student():
         if request.method == 'POST':
             student_id = request.form.get('student_id', '').strip()
-            password = request.form.get('password', '').strip()
             
-            # Basic validation
-            if not student_id or not password:
-                flash('Both Student ID and password are required.', 'error')
+            if not student_id:
+                flash('Student ID is required.', 'error')
                 return render_template('create_student.html')
             
             if not validate_student_id(student_id):
@@ -98,18 +96,15 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
                     flash(f'Student {student_record[1]} (ID: {student_id}) already has a login account.', 'error')
                     return render_template('create_student.html')
                 
-                # Mark password as temporary 
-                #*\* Hash the password first
-                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                temp_password = f"TEMP_{hashed_password}"
+                # Create account with NULL password, student will set via email link
                 cursor.execute("""
                     INSERT INTO UserDetails (Username, StudentId, Password, SystemRole)
-                    VALUES (?, ?, ?, 'student')
-                """, (int(student_id), int(student_id), temp_password))
+                    VALUES (?, ?, NULL, 'student')
+                """, (int(student_id), int(student_id)))
                 
                 conn.commit()
                 
-                # Send email to reset password after successful account creation
+                # Send password setup email immediately after successful account creation
                 student_name = student_record[1]
                 student_email = student_record[2]
                 
@@ -117,22 +112,24 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
                 
                 if student_email:
                     try:
+                        # Generate password reset token and send setup email
+                        token = email_service.generate_password_reset_token(student_id)
                         email_sent = email_service.send_student_credentials(
                             student_name=student_name,
                             student_email=student_email,
                             student_id=student_id,
-                            temp_password=password
+                            temp_password=None  # No temp password needed
                         )
                         
                         if email_sent:
-                            flash(f'{base_message} Email with login credentials sent to {student_email}.', 'success')
+                            flash(f'{base_message} Password setup email sent to {student_email}. Student must set their password before they can login.', 'success')
                         else:
-                            flash(f'{base_message} However, email notification failed. Please provide credentials manually.', 'warning')
+                            flash(f'{base_message} However, email notification failed. Please provide password setup link manually.', 'warning')
                     except Exception as e:
                         print(f"Email sending error: {e}")
-                        flash(f'{base_message} However, email notification failed. Please provide credentials manually.', 'warning')
+                        flash(f'{base_message} However, email notification failed. Please provide password setup link manually.', 'warning')
                 else:
-                    flash(f'{base_message} No email on file - please provide credentials manually.', 'warning')
+                    flash(f'{base_message} No email on file. Please provide password setup link manually.', 'warning')
                 
                 return redirect(url_for('admin_routes.admin_dashboard'))
                 
