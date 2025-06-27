@@ -437,6 +437,134 @@ def register_student_routes(app, get_db_connection, login_required):
                 conn.close()
         
         return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
+    @student_bp.route('/poll/<int:poll_id>/results')
+    @login_required
+    def view_poll_results(poll_id):
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('student_routes.view_polls'))
+
+        try:
+            cursor = conn.cursor()
+
+            # Check if user is moderator
+            cursor.execute("""
+                SELECT COUNT(*) FROM CCAMembers 
+                WHERE UserId = ? AND CCARole = 'moderator'
+            """, (session['user_id'],))
+            user_is_moderator = cursor.fetchone()[0] > 0
+
+            # Get poll details
+            cursor.execute("""
+                SELECT p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, 
+                    p.IsAnonymous, c.Name AS CCAName, p.LiveIsActive
+                FROM v_Poll_With_LiveStatus p
+                JOIN CCA c ON p.CCAId = c.CCAId
+                WHERE p.PollId = ?
+            """, (poll_id,))
+            poll_data_row = cursor.fetchone()
+
+            if not poll_data_row:
+                flash('Poll not found.', 'error')
+                return redirect(url_for('student_routes.view_polls'))
+
+            # Check if user is member of the CCA
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM CCAMembers cm
+                JOIN Poll p ON cm.CCAId = p.CCAId
+                WHERE cm.UserId = ? AND p.PollId = ?
+            """, (session['user_id'], poll_id))
+            is_member_of_cca = cursor.fetchone()[0] > 0
+
+            if not is_member_of_cca and session['role'] != 'admin':
+                flash('You do not have permission to view this poll.', 'error')
+                return redirect(url_for('student_routes.view_polls'))
+
+            # Create poll object
+            start_date_obj = poll_data_row[3]
+            end_date_obj = poll_data_row[4]
+            start_date_str = start_date_obj.strftime('%Y-%m-%d %H:%M') if isinstance(start_date_obj, datetime) else str(start_date_obj) if start_date_obj else 'N/A'
+            end_date_str = end_date_obj.strftime('%Y-%m-%d %H:%M') if isinstance(end_date_obj, datetime) else str(end_date_obj) if end_date_obj else 'N/A'
+            
+            poll = {
+                'PollId': poll_data_row[0], 
+                'Question': poll_data_row[1], 
+                'QuestionType': poll_data_row[2],
+                'StartDate': start_date_str, 
+                'EndDate': end_date_str, 
+                'IsAnonymous': poll_data_row[5],
+                'CCAName': poll_data_row[6], 
+                'LiveIsActive': poll_data_row[7]
+            }
+
+            # Get options with vote counts
+            cursor.execute("""
+                SELECT o.OptionId, o.OptionText, COUNT(v.VoteId) AS VoteCount
+                FROM Options o
+                LEFT JOIN Votes v ON o.OptionId = v.OptionId
+                WHERE o.PollId = ?
+                GROUP BY o.OptionId, o.OptionText
+                ORDER BY COUNT(v.VoteId) DESC, o.OptionId
+            """, (poll_id,))
+            options_data = cursor.fetchall()
+
+            # Calculate total votes and percentages
+            total_votes = sum(opt[2] for opt in options_data)
+            options = []
+            for opt in options_data:
+                percentage = (opt[2] / total_votes * 100) if total_votes > 0 else 0
+                options.append({
+                    'OptionId': opt[0], 
+                    'OptionText': opt[1], 
+                    'VoteCount': opt[2],
+                    'Percentage': round(percentage, 1)
+                })
+
+            # Get total number of eligible voters (CCA members)
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM CCAMembers cm 
+                JOIN Poll p ON cm.CCAId = p.CCAId 
+                WHERE p.PollId = ?
+            """, (poll_id,))
+            total_eligible_voters = cursor.fetchone()[0]
+
+            # Calculate participation rate
+            participation_rate = (total_votes / total_eligible_voters * 100) if total_eligible_voters > 0 else 0
+
+            # Check if current user voted (if not anonymous)
+            user_voted = False
+            user_votes = []
+            if not poll['IsAnonymous']:
+                cursor.execute("SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?", (poll_id, session['user_id']))
+                user_voted = cursor.fetchone()[0] > 0
+                
+                if user_voted:
+                    cursor.execute("SELECT OptionId FROM Votes WHERE PollId = ? AND UserId = ?", (poll_id, session['user_id']))
+                    user_votes_data = cursor.fetchall()
+                    user_votes = [uv[0] for uv in user_votes_data]
+
+            return render_template('view_result.html', 
+                                poll=poll, 
+                                options=options, 
+                                total_votes=total_votes,
+                                total_eligible_voters=total_eligible_voters,
+                                participation_rate=round(participation_rate, 1),
+                                user_voted=user_voted,
+                                user_votes=user_votes,
+                                user_name=session.get('name'),
+                                user_is_moderator=user_is_moderator)
+            
+        except Exception as e:
+            print(f"Error fetching poll results for poll {poll_id}: {e}")
+            flash('Error fetching poll results.', 'error')
+            return redirect(url_for('student_routes.view_polls'))
+        finally:
+            if conn:
+                conn.close()
     
     @student_bp.route('/cca/<int:cca_id>')
     @login_required
