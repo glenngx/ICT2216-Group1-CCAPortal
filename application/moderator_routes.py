@@ -173,8 +173,8 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             members_query = """
             SELECT s.StudentId, s.Name, s.Email, cm.CCARole, cm.MemberId, ud.UserId
             FROM CCAMembers cm
-            INNER JOIN UserDetails ud ON cm.UserId = ud.UserId
-            INNER JOIN Student s ON ud.StudentId = s.StudentId
+            INNER JOIN v_ActiveUserDetails ud ON cm.UserId = ud.UserId
+            INNER JOIN v_ActiveStudents s ON ud.StudentId = s.StudentId
             WHERE cm.CCAId = ?
             ORDER BY s.Name
             """
@@ -183,8 +183,8 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             
             not_in_cca_query = """
             SELECT s.StudentId, s.Name
-            FROM Student s
-            INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+            FROM v_ActiveStudents s
+            INNER JOIN v_ActiveUserDetails ud ON s.StudentId = ud.StudentId
             WHERE ud.UserId NOT IN (
                 SELECT UserId FROM CCAMembers WHERE CCAId = ?
             )
@@ -291,7 +291,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 flash('Access denied. Moderators can only assign the "member" role to students. Contact an administrator to assign moderator roles.', 'error')
                 return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             
-            cursor.execute("SELECT UserId FROM UserDetails WHERE StudentId = ?", (int(student_id),))
+            cursor.execute("SELECT UserId FROM v_ActiveUserDetails WHERE StudentId = ?", (int(student_id),))
             user_result = cursor.fetchone()
             if not user_result:
                 flash('Student not found.', 'error')
@@ -311,7 +311,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             
             conn.commit()
             
-            cursor.execute("SELECT Name FROM Student WHERE StudentId = ?", (int(student_id),))
+            cursor.execute("SELECT Name FROM v_ActiveStudents WHERE StudentId = ?", (int(student_id),))
             student_name_result = cursor.fetchone()
             student_name = student_name_result[0] if student_name_result else f"Student {student_id}"
             
@@ -392,8 +392,8 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             # Search for students by name or student ID, excluding those already in the CCA
             search_sql = """
             SELECT s.StudentId, s.Name, s.Email
-            FROM Student s
-            INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+            FROM v_ActiveStudents s
+            INNER JOIN v_ActiveUserDetails ud ON s.StudentId = ud.StudentId
             WHERE (s.Name LIKE ? OR CAST(s.StudentId AS VARCHAR) LIKE ?)
             AND ud.UserId NOT IN (
                 SELECT UserId FROM CCAMembers WHERE CCAId = ?
@@ -454,8 +454,8 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             placeholders = ','.join(['?' for _ in student_ids])
             cursor.execute(f"""
                 SELECT ud.UserId, s.StudentId, s.Name 
-                FROM UserDetails ud
-                INNER JOIN Student s ON ud.StudentId = s.StudentId
+                FROM v_ActiveUserDetails ud
+                INNER JOIN v_ActiveStudents s ON ud.StudentId = s.StudentId
                 WHERE s.StudentId IN ({placeholders})
             """, student_ids)
             

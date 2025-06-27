@@ -25,7 +25,7 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             all_ccas = cursor.fetchall()
             
             # Get all students
-            cursor.execute("SELECT StudentId, Name, Email FROM Student ORDER BY Name")
+            cursor.execute("SELECT StudentId, Name, Email FROM v_ActiveStudents ORDER BY Name")
             all_students = cursor.fetchall()
             
             # Get CCA memberships with details
@@ -216,8 +216,8 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             members_query = """
             SELECT s.StudentId, s.Name, s.Email, cm.CCARole, cm.MemberId, ud.UserId
             FROM CCAMembers cm
-            INNER JOIN UserDetails ud ON cm.UserId = ud.UserId
-            INNER JOIN Student s ON ud.StudentId = s.StudentId
+            INNER JOIN v_ActiveUserDetails ud ON cm.UserId = ud.UserId
+            INNER JOIN v_ActiveStudents s ON ud.StudentId = s.StudentId
             WHERE cm.CCAId = ?
             ORDER BY s.Name
             """
@@ -227,8 +227,8 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             # Get all students not in this CCA (for assignment)
             not_in_cca_query = """
             SELECT s.StudentId, s.Name
-            FROM Student s
-            INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+            FROM v_ActiveStudents s
+            INNER JOIN v_ActiveUserDetails ud ON s.StudentId = ud.StudentId
             WHERE ud.UserId NOT IN (
                 SELECT UserId FROM CCAMembers WHERE CCAId = ?
             )
@@ -312,7 +312,7 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
         try:
             cursor = conn.cursor()
             
-            cursor.execute("SELECT UserId FROM UserDetails WHERE StudentId = ?", (int(student_id),))
+            cursor.execute("SELECT UserId FROM v_ActiveUserDetails WHERE StudentId = ?", (int(student_id),))
             user_result = cursor.fetchone()
             if not user_result:
                 flash('Student not found.', 'error')
@@ -419,8 +419,8 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             
             search_sql = """
             SELECT s.StudentId, s.Name, s.Email
-            FROM Student s
-            INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+            FROM v_ActiveStudents s
+            INNER JOIN v_ActiveUserDetails ud ON s.StudentId = ud.StudentId
             WHERE (s.Name LIKE ? OR CAST(s.StudentId AS VARCHAR) LIKE ?)
             AND ud.UserId NOT IN (
                 SELECT UserId FROM CCAMembers WHERE CCAId = ?
@@ -471,8 +471,8 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             placeholders = ','.join(['?' for _ in student_ids])
             cursor.execute(f"""
                 SELECT ud.UserId, s.StudentId, s.Name 
-                FROM UserDetails ud
-                INNER JOIN Student s ON ud.StudentId = s.StudentId
+                FROM v_ActiveUserDetails ud
+                INNER JOIN v_ActiveStudents s ON ud.StudentId = s.StudentId
                 WHERE s.StudentId IN ({placeholders})
             """, student_ids)
             

@@ -635,8 +635,8 @@ def register_student_routes(app, get_db_connection, login_required):
             members_query = """
             SELECT s.StudentId, s.Name, s.Email, cm.CCARole, cm.MemberId
             FROM CCAMembers cm
-            INNER JOIN UserDetails ud ON cm.UserId = ud.UserId
-            INNER JOIN Student s ON ud.StudentId = s.StudentId
+            INNER JOIN v_ActiveUserDetails ud ON cm.UserId = ud.UserId
+            INNER JOIN v_ActiveStudents s ON ud.StudentId = s.StudentId
             WHERE cm.CCAId = ?
             ORDER BY cm.CCARole DESC, s.Name
             """
