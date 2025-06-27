@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, url_for, session, flash, B
 import pyodbc
 from datetime import datetime
 import secrets
+import hashlib
 
 # Create a Blueprint
 student_bp = Blueprint('student_routes', __name__)
@@ -290,24 +291,48 @@ def register_student_routes(app, get_db_connection, login_required):
 
             vote_token = None
             if poll['IsAnonymous'] and poll['LiveIsActive']:
-                # Only Issue token if Anonymous poll is active
+                # Check if token already exists and if it is unused
                 cursor.execute("""
-                    SELECT Token FROM VoteTokens
+                    SELECT IsUsed FROM VoteTokens 
                     WHERE PollId = ? AND UserId = ?
                 """, (poll_id, session['user_id']))
-                token_row = cursor.fetchone()
+                token_status_row = cursor.fetchone()
 
-                if not token_row:
-                    # Generate and store a new token
-                    token = secrets.token_hex(32)
+                if token_status_row:
+                    is_used = token_status_row[0]
+                    if not is_used:
+                        # Token exists but unused → safely delete and reissue
+                        cursor.execute("""
+                            DELETE FROM VoteTokens 
+                            WHERE PollId = ? AND UserId = ?
+                        """, (poll_id, session['user_id']))
+                        conn.commit()
+
+                        # Reissue a new token
+                        raw_token = secrets.token_hex(32)
+                        hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
+
+                        cursor.execute("""
+                            INSERT INTO VoteTokens (Token, PollId, UserId)
+                            VALUES (?, ?, ?)
+                        """, (hashed_token, poll_id, session['user_id']))
+                        conn.commit()
+
+                        vote_token = raw_token
+                    else:
+                        vote_token = None  # Already used, no reissue
+                else:
+                    # No token exists yet → issue first time
+                    raw_token = secrets.token_hex(32)
+                    hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
+
                     cursor.execute("""
                         INSERT INTO VoteTokens (Token, PollId, UserId)
                         VALUES (?, ?, ?)
-                    """, (token, poll_id, session['user_id']))
+                    """, (hashed_token, poll_id, session['user_id']))
                     conn.commit()
-                    vote_token = token
-                else:
-                    vote_token = token_row[0]
+
+                    vote_token = raw_token
 
             return render_template('poll_detail.html', 
                                 poll=poll, 
@@ -385,16 +410,22 @@ def register_student_routes(app, get_db_connection, login_required):
 
             if is_anonymous:
                 # Get and validate the vote token
-                token = request.form.get('vote_token')
-                if not token:
+                raw_token = request.form.get('vote_token')
+
+                #print(">>> Submitted raw_token:", raw_token)  # DEBUG
+
+                if not raw_token:
                         flash('Missing vote token for anonymous poll.', 'error')
                         return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
+                hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
 
                 cursor.execute("""
                     SELECT IsUsed FROM VoteTokens
                     WHERE Token = ? AND PollId = ? AND UserId = ?
-                """, (token, poll_id, session['user_id']))
+                """, (hashed_token, poll_id, session['user_id']))
                 token_row = cursor.fetchone()
+                #print(">>> DB token_row:", token_row)  # DEBUG
 
                 if not token_row:
                     flash('Invalid or expired vote token.', 'error')
@@ -413,7 +444,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 # Mark the token as used
                 cursor.execute("""
                     UPDATE VoteTokens SET IsUsed = 1 WHERE Token = ?
-                """, (token,))
+                """, (hashed_token,))
             else:
                 for option_id in selected_option_ids:
                     cursor.execute("""
