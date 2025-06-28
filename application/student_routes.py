@@ -280,8 +280,20 @@ def register_student_routes(app, get_db_connection, login_required):
             options_data = cursor.fetchall()
             options = [{'OptionId': opt[0], 'OptionText': opt[1], 'VoteCount': opt[2]} for opt in options_data]
 
-            cursor.execute("SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?", (poll_id, session['user_id']))
-            has_voted = cursor.fetchone()[0] > 0
+            # Check if user has voted
+            has_voted = False
+            if poll['IsAnonymous']:
+                # For anonymous polls, check if the user's token has been used
+                cursor.execute("SELECT IsUsed FROM VoteTokens WHERE PollId = ? AND UserId = ?", (poll_id, session['user_id']))
+                token_status = cursor.fetchone()
+                if token_status and token_status[0]: # IsUsed is True
+                    has_voted = True
+            else:
+                # For non-anonymous polls, check the Votes table directly
+                cursor.execute("SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?", (poll_id, session['user_id']))
+                if cursor.fetchone()[0] > 0:
+                    has_voted = True
+                
             
             user_votes = []
             if has_voted and poll['QuestionType'] == 'multiple':
@@ -386,6 +398,10 @@ def register_student_routes(app, get_db_connection, login_required):
             # Check if user already voted
             cursor.execute("SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?", (poll_id, session['user_id']))
             has_voted = cursor.fetchone()[0] > 0
+
+            if has_voted:
+                flash('You have already voted in this poll.', 'info')
+                return redirect(url_for('student_routes.dashboard'))
 
             # Check if poll is anonymous
             cursor.execute("SELECT IsAnonymous FROM Poll WHERE PollId = ?", (poll_id,))
