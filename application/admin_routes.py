@@ -572,6 +572,94 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
         finally:
             if conn:
                 conn.close()
+    
+    @admin_bp.route('/view-all-ccas')
+    @admin_required
+    def view_all_ccas():
+        """Admin view to see all CCAs in the system"""
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        
+        try:
+            cursor = conn.cursor()
+            
+            # Get all CCAs with member counts
+            cursor.execute("""
+                SELECT c.CCAId, c.Name, c.Description,
+                    COUNT(cm.MemberId) as MemberCount,
+                    COUNT(CASE WHEN cm.CCARole = 'moderator' THEN 1 END) as ModeratorCount
+                FROM CCA c
+                LEFT JOIN CCAMembers cm ON c.CCAId = cm.CCAId
+                GROUP BY c.CCAId, c.Name, c.Description
+                ORDER BY c.Name
+            """)
+            ccas = cursor.fetchall()
+            
+            return render_template('admin_view_all_ccas.html', 
+                                ccas=ccas,
+                                user_name=session['name'])
+            
+        except Exception as e:
+            print(f"View all CCAs error: {e}")
+            flash('Error loading CCAs.', 'error')
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        finally:
+            if conn:
+                conn.close()
+
+    @admin_bp.route('/view-all-polls')
+    @admin_required
+    def view_all_polls():
+        """Admin view to see all polls in the system"""
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        
+        try:
+            cursor = conn.cursor()
+            
+            # Get all polls with CCA info and vote counts
+            cursor.execute("""
+                SELECT p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, 
+                    p.IsAnonymous, p.LiveIsActive, c.Name as CCAName,
+                    COUNT(v.VoteId) as VoteCount
+                FROM v_Poll_With_LiveStatus p
+                INNER JOIN CCA c ON p.CCAId = c.CCAId
+                LEFT JOIN Votes v ON p.PollId = v.PollId
+                GROUP BY p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, 
+                        p.IsAnonymous, p.LiveIsActive, c.Name
+                ORDER BY p.EndDate DESC, p.StartDate DESC
+            """)
+            polls_data = cursor.fetchall()
+            
+            processed_polls = []
+            for row in polls_data:
+                processed_polls.append({
+                    'PollId': row[0],
+                    'Question': row[1],
+                    'QuestionType': row[2],
+                    'StartDate': row[3].strftime('%Y-%m-%d %H:%M') if row[3] else 'N/A',
+                    'EndDate': row[4].strftime('%Y-%m-%d %H:%M') if row[4] else 'N/A',
+                    'IsAnonymous': row[5],
+                    'LiveIsActive': row[6],
+                    'CCAName': row[7],
+                    'VoteCount': row[8]
+                })
+            
+            return render_template('admin_view_all_polls.html', 
+                                polls=processed_polls,
+                                user_name=session['name'])
+            
+        except Exception as e:
+            print(f"View all polls error: {e}")
+            flash('Error loading polls.', 'error')
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        finally:
+            if conn:
+                conn.close()
 
     # Register the blueprint with the app
     app.register_blueprint(admin_bp)

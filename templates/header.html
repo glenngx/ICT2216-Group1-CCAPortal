@@ -18,7 +18,33 @@
                 SIT CCA Portal
             </a>
             
-            {% if session.get('role') != 'admin' %}
+            <!-- Admin Navigation -->
+            {% if session.get('role') == 'admin' %}
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if active_page == 'dashboard' else '' }}" href="{{ url_for('admin_routes.admin_dashboard') }}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if active_page == 'create_student' else '' }}" href="{{ url_for('admin_routes.create_student') }}">Create Student</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if active_page == 'create_cca' else '' }}" href="{{ url_for('admin_routes.create_cca') }}">Create CCA</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if active_page == 'view_all_ccas' else '' }}" href="{{ url_for('admin_routes.view_all_ccas') }}">View CCAs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if active_page == 'view_all_polls' else '' }}" href="{{ url_for('admin_routes.view_all_polls') }}">View Polls</a>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Student/Moderator Navigation -->
+            {% elif session.get('role') != 'admin' %}
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -98,3 +124,5 @@
             {% endif %}
         {% endwith %}
     </div>
+</body>
+</html>
