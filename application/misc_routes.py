@@ -177,29 +177,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 # Redirect to student dashboard, which will handle admin redirection
                 return redirect(url_for('student_routes.dashboard'))
             else:
-                # Check if the user exists but has no password set
-                conn = get_db_connection()
-                if conn:
-                    try:
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            SELECT Password, s.Name 
-                            FROM UserDetails ud
-                            INNER JOIN Student s ON ud.StudentId = s.StudentId
-                            WHERE ud.Username = ? OR ud.StudentId = ? OR s.Email = ?
-                        """, (username, username, username))
-                        user_check = cursor.fetchone()
-                        
-                        if user_check and user_check[0] is None:
-                            flash(f'Account setup required for {user_check[1]}. Please check your email for the password setup link, or contact your administrator for a new setup link.', 'warning')
-                        else:
-                            flash('Invalid username or password.', 'error')
-                    except:
-                        flash('Invalid username or password.', 'error')
-                    finally:
-                        conn.close()
-                else:
-                    flash('Invalid username or password.', 'error')
+                flash('Invalid username or password.', 'error')
                 
                 return render_template('login.html')
         
