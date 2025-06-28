@@ -168,7 +168,8 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             user = authenticate_user(username, password)
             
             if user:
-                session.permanent = True
+                # Changed to False (Testing)
+                session.permanent = False
                 session['user_id'] = user['user_id']
                 session['student_id'] = user['student_id']
                 session['role'] = user['role']
