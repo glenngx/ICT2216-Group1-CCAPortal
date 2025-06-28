@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, session, flash, Blueprint
 import pyodbc
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 # Create a Blueprint
 moderator_bp = Blueprint('moderator_routes', __name__)
@@ -41,10 +41,20 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 cca_id = request.form.get('cca_id')
                 question = request.form.get('question', '').strip()
                 question_type = request.form.get('question_type')
-                start_date = request.form.get('start_date')
-                end_date = request.form.get('end_date')
+                start_date = request.form.get('start_date')  
+                end_date = request.form.get('end_date')      
                 is_anonymous = request.form.get('is_anonymous') == '1'
                 options = request.form.getlist('options[]')
+                
+                # Debug print to see what's being received
+                print(f"Received form data:")
+                print(f"cca_id: {cca_id}")
+                print(f"question: {question}")
+                print(f"question_type: {question_type}")
+                print(f"start_date: {start_date}")
+                print(f"end_date: {end_date}")
+                print(f"is_anonymous: {is_anonymous}")
+                print(f"options: {options}")
                 
                 if not all([cca_id, question, question_type, start_date, end_date]):
                     flash('Please fill in all required fields.', 'error')
@@ -77,24 +87,53 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                     return render_template('create_poll.html', user_ccas=user_ccas,
                                         user_name=session['name'], user_role='moderator',
                                         user_is_moderator=True)
-                
+
                 try:
-                    start_datetime = datetime.fromisoformat(start_date)
-                    end_datetime = datetime.fromisoformat(end_date)
+                    from datetime import datetime, timezone, timedelta
                     
-                    if start_datetime >= end_datetime:
+                    # Parse the datetime values as local time (GMT+8)
+                    start_datetime_local = datetime.fromisoformat(start_date)
+                    end_datetime_local = datetime.fromisoformat(end_date)
+                    
+                    # Create GMT+8 timezone object
+                    gmt_plus_8 = timezone(timedelta(hours=8))
+                    
+                    # Make timezone-aware as GMT+8
+                    start_datetime_gmt8 = start_datetime_local.replace(tzinfo=gmt_plus_8)
+                    end_datetime_gmt8 = end_datetime_local.replace(tzinfo=gmt_plus_8)
+                    
+                    # Convert to UTC for database storage
+                    start_datetime_utc = start_datetime_gmt8.astimezone(timezone.utc)
+                    end_datetime_utc = end_datetime_gmt8.astimezone(timezone.utc)
+                    
+                    # Remove timezone info for SQL Server compatibility
+                    start_datetime = start_datetime_utc.replace(tzinfo=None)
+                    end_datetime = end_datetime_utc.replace(tzinfo=None)
+                    
+                    if start_datetime_local >= end_datetime_local:
                         flash('End date must be after start date.', 'error')
                         return render_template('create_poll.html', user_ccas=user_ccas,
                                             user_name=session['name'], user_role='moderator',
                                             user_is_moderator=True)
                     
-                    if start_datetime < datetime.now():
+                    current_time_gmt8 = datetime.now(gmt_plus_8).replace(tzinfo=None)
+                    
+                    # Add 1 minute tolerance to account for form submission delay
+                    tolerance = timedelta(minutes=1)
+                    
+                    # Debug prints to help troubleshoot
+                    print(f"Start datetime (local input): {start_datetime_local}")
+                    print(f"Current time GMT+8: {current_time_gmt8}")
+                    print(f"Start time is in past: {start_datetime_local < (current_time_gmt8 - tolerance)}")
+                    
+                    if start_datetime_local < (current_time_gmt8 - tolerance):
                         flash('Start date cannot be in the past.', 'error')
                         return render_template('create_poll.html', user_ccas=user_ccas,
                                             user_name=session['name'], user_role='moderator',
                                             user_is_moderator=True)
                         
-                except ValueError:
+                except ValueError as ve:
+                    print(f"Date parsing error: {ve}")
                     flash('Invalid date format.', 'error')
                     return render_template('create_poll.html', user_ccas=user_ccas,
                                         user_name=session['name'], user_role='moderator',

@@ -1,8 +1,16 @@
 from flask import render_template, request, redirect, url_for, session, flash, Blueprint
 import pyodbc
-from datetime import datetime
+from datetime import datetime, timedelta 
 import secrets
 import hashlib
+
+def convert_utc_to_gmt8_display(utc_datetime):
+    """Convert UTC datetime to GMT+8 for display purposes"""
+    if utc_datetime and isinstance(utc_datetime, datetime):
+        # Add 8 hours to convert UTC to GMT+8
+        gmt8_datetime = utc_datetime + timedelta(hours=8)
+        return gmt8_datetime.strftime('%Y-%m-%d %H:%M')
+    return str(utc_datetime) if utc_datetime else 'N/A'
 
 # Create a Blueprint
 student_bp = Blueprint('student_routes', __name__)
@@ -64,7 +72,7 @@ def register_student_routes(app, get_db_connection, login_required):
                     available_polls.append({
                         'id': poll_row[0],
                         'title': poll_row[1],
-                        'end_date': poll_row[2].strftime('%Y-%m-%d') if poll_row[2] else '',
+                        'end_date': convert_utc_to_gmt8_display(poll_row[2]).split(' ')[0] if poll_row[2] else '',  # Just date part
                         'cca': poll_row[3],
                         'days_remaining': poll_row[4] if poll_row[4] is not None else 0
                     })
@@ -72,21 +80,21 @@ def register_student_routes(app, get_db_connection, login_required):
                 available_polls = []
             
             return render_template('dashboard.html', 
-                                 ccas=ccas, 
-                                 available_polls=available_polls,
-                                 user_name=session['name'],
-                                 user_role=session['role'],
-                                 user_is_moderator=user_is_moderator)
+                                ccas=ccas, 
+                                available_polls=available_polls,
+                                user_name=session['name'],
+                                user_role=session['role'],
+                                user_is_moderator=user_is_moderator)
             
         except pyodbc.Error as e:
             print(f"Dashboard data error: {e}")
             flash('Error loading dashboard data.', 'error')
             return render_template('dashboard.html', 
-                                 ccas=[], 
-                                 available_polls=[],
-                                 user_name=session['name'],
-                                 user_role=session['role'],
-                                 user_is_moderator=False)
+                                ccas=[], 
+                                available_polls=[],
+                                user_name=session['name'],
+                                user_role=session['role'],
+                                user_is_moderator=False)
         finally:
             if conn:
                 conn.close()
@@ -154,7 +162,7 @@ def register_student_routes(app, get_db_connection, login_required):
         try:
             cursor = conn.cursor()
             
-            # Check if user is moderator - ADD THIS BLOCK
+            # Check if user is moderator
             cursor.execute("""
                 SELECT COUNT(*) FROM CCAMembers 
                 WHERE UserId = ? AND CCARole = 'moderator'
@@ -190,8 +198,8 @@ def register_student_routes(app, get_db_connection, login_required):
                     'CCAId': row[1], 
                     'Question': row[2], 
                     'QuestionType': row[3],
-                    'StartDate': row[4].strftime('%Y-%m-%d %H:%M') if isinstance(row[4], datetime) else str(row[4]) if row[4] else 'N/A',
-                    'EndDate': row[5].strftime('%Y-%m-%d %H:%M') if isinstance(row[5], datetime) else str(row[5]) if row[5] else 'N/A',
+                    'StartDate': convert_utc_to_gmt8_display(row[4]),
+                    'EndDate': convert_utc_to_gmt8_display(row[5]),
                     'IsAnonymous': row[6], 
                     'LiveIsActive': row[7],
                     'CCAName': row[8]
@@ -202,7 +210,7 @@ def register_student_routes(app, get_db_connection, login_required):
 
             return render_template('view_poll.html', 
                                 polls=processed_polls, 
-                                user_is_moderator=user_is_moderator,  # ADD THIS LINE
+                                user_is_moderator=user_is_moderator,
                                 user_name=session.get('name'))
 
         except Exception as e:
@@ -263,9 +271,15 @@ def register_student_routes(app, get_db_connection, login_required):
             is_ended_status = datetime.now() > end_date_obj if isinstance(end_date_obj, datetime) else False
             
             poll = {
-                'PollId': poll_data_row[0], 'Question': poll_data_row[1], 'QuestionType': poll_data_row[2],
-                'StartDate': start_date_str, 'EndDate': end_date_str, 'IsAnonymous': poll_data_row[5],
-                'Description': None, 'CCAName': poll_data_row[6], 'LiveIsActive': poll_data_row[7],
+                'PollId': poll_data_row[0], 
+                'Question': poll_data_row[1], 
+                'QuestionType': poll_data_row[2],
+                'StartDate': convert_utc_to_gmt8_display(poll_data_row[3]),
+                'EndDate': convert_utc_to_gmt8_display(poll_data_row[4]),
+                'IsAnonymous': poll_data_row[5],
+                'Description': None, 
+                'CCAName': poll_data_row[6], 
+                'LiveIsActive': poll_data_row[7],
                 'is_ended': is_ended_status
             }
 
@@ -544,8 +558,8 @@ def register_student_routes(app, get_db_connection, login_required):
                 'PollId': poll_data_row[0], 
                 'Question': poll_data_row[1], 
                 'QuestionType': poll_data_row[2],
-                'StartDate': start_date_str, 
-                'EndDate': end_date_str, 
+                'StartDate': convert_utc_to_gmt8_display(poll_data_row[3]),
+                'EndDate': convert_utc_to_gmt8_display(poll_data_row[4]),
                 'IsAnonymous': poll_data_row[5],
                 'CCAName': poll_data_row[6], 
                 'LiveIsActive': poll_data_row[7]
