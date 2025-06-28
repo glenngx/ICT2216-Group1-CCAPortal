@@ -302,7 +302,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 user_votes = [uv[0] for uv in user_votes_data]
 
             vote_token = None
-            if poll['IsAnonymous'] and poll['LiveIsActive'] and not has_voted:
+            if poll['IsAnonymous'] and poll['LiveIsActive']:
                 # Check if token already exists and if it is unused
                 cursor.execute("""
                     SELECT IsUsed FROM VoteTokens 
@@ -325,8 +325,8 @@ def register_student_routes(app, get_db_connection, login_required):
                         hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
 
                         cursor.execute("""
-                            INSERT INTO VoteTokens (Token, PollId, UserId)
-                            VALUES (?, ?, ?)
+                            INSERT INTO VoteTokens (Token, PollId, UserId, IssuedTime, ExpiryTime)
+                            VALUES (?, ?, ?, GETUTCDATE(), DATEADD(MINUTE, 10, GETUTCDATE()))
                         """, (hashed_token, poll_id, session['user_id']))
                         conn.commit()
 
@@ -339,10 +339,9 @@ def register_student_routes(app, get_db_connection, login_required):
                     hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
 
                     cursor.execute("""
-                        INSERT INTO VoteTokens (Token, PollId, UserId)
-                        VALUES (?, ?, ?)
+                        INSERT INTO VoteTokens (Token, PollId, UserId, IssuedTime, ExpiryTime)
+                        VALUES (?, ?, ?, GETUTCDATE(), DATEADD(MINUTE, 10, GETUTCDATE()))
                     """, (hashed_token, poll_id, session['user_id']))
-                    conn.commit()
 
                     vote_token = raw_token
 
@@ -374,11 +373,7 @@ def register_student_routes(app, get_db_connection, login_required):
             cursor = conn.cursor()
 
             # Get poll info
-            cursor.execute("""
-                SELECT LiveIsActive, CCAId, QuestionType 
-                FROM v_Poll_With_LiveStatus 
-                WHERE PollId = ?
-            """, (poll_id,))
+            cursor.execute("SELECT LiveIsActive, CCAId, QuestionType FROM v_Poll_With_LiveStatus WHERE PollId = ?", (poll_id,))
             poll_info = cursor.fetchone()
 
             if not poll_info:
@@ -391,58 +386,23 @@ def register_student_routes(app, get_db_connection, login_required):
                 flash('This poll is closed for voting.', 'error')
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            # Check CCA membership
-            cursor.execute("""
-                SELECT COUNT(*) 
-                FROM CCAMembers 
-                WHERE UserId = ? AND CCAId = ?
-            """, (session['user_id'], cca_id))
+            # Check if user is a member of the CCA
+            cursor.execute("SELECT COUNT(*) FROM CCAMembers WHERE UserId = ? AND CCAId = ?", (session['user_id'], cca_id))
             is_member_of_cca = cursor.fetchone()[0] > 0
 
             if not is_member_of_cca and session['role'] != 'admin':
                 flash('You are not a member of the CCA for this poll and cannot vote.', 'error')
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            # Check if already voted FIRST
-            cursor.execute("""
-                SELECT COUNT(*) 
-                FROM Votes 
-                WHERE PollId = ? AND UserId = ?
-            """, (poll_id, session['user_id']))
+            # Check if user already voted
+            cursor.execute("SELECT COUNT(*) FROM Votes WHERE PollId = ? AND UserId = ?", (poll_id, session['user_id']))
             has_voted = cursor.fetchone()[0] > 0
 
-
-            if has_voted:
-                flash('You have already voted in this poll.', 'info')
-                return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
             # Check if poll is anonymous
             cursor.execute("SELECT IsAnonymous FROM Poll WHERE PollId = ?", (poll_id,))
             is_anonymous = cursor.fetchone()[0]
 
-            # Token validation only if not already voted
-            if is_anonymous:
-                raw_token = request.form.get('vote_token')
-                if not raw_token:
-                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-
-                hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
-
-                cursor.execute("""
-                    SELECT IsUsed, ExpiryTime 
-                    FROM VoteTokens 
-                    WHERE Token = ? AND PollId = ? AND UserId = ?
-                """, (hashed_token, poll_id, session['user_id']))
-                token_row = cursor.fetchone()
-
-                if not token_row:
-                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-
-                is_used, expiry_time = token_row
-                if is_used or (expiry_time and datetime.utcnow() > expiry_time):
-                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-
-            # Get selected options
             selected_option_ids = []
             if question_type == 'single_choice':
                 option_id = request.form.get('option_id')
@@ -463,40 +423,66 @@ def register_student_routes(app, get_db_connection, login_required):
                     flash(f'Invalid option selected: {opt_id}', 'error')
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            # Insert votes
-            for option_id in selected_option_ids:
-                cursor.execute("""
-                    INSERT INTO Votes (PollId, OptionId, UserId, VotedTime)
-                    VALUES (?, ?, ?, GETDATE())
-                """, (poll_id, int(option_id), -1 if is_anonymous else session['user_id']))
+            # ✅ Token validation only if not already voted
+            if is_anonymous and not has_voted:
+                raw_token = request.form.get('vote_token')
+                if not raw_token:
+                    flash('Missing vote token for anonymous poll.', 'error')
+                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            if is_anonymous:
+                hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
                 cursor.execute("""
-                    UPDATE VoteTokens 
-                    SET IsUsed = 1 
-                    WHERE Token = ?
-                """, (hashed_token,))
+                    SELECT IsUsed, ExpiryTime FROM VoteTokens 
+                    WHERE Token = ? AND PollId = ? AND UserId = ?
+                """, (hashed_token, poll_id, session['user_id']))
+                token_row = cursor.fetchone()
 
-            conn.commit()
-            flash('Your vote has been recorded successfully!', 'success')
+                is_used, expiry_time = token_row
+                if is_used:
+                    flash('This token has already been used.', 'error')
+                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+                if expiry_time and datetime.utcnow() > expiry_time:
+                    flash('This vote token has expired. Please refresh the page to get a new one.', 'error')
+                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
+                if not token_row:
+                    flash('Invalid or expired vote token.', 'error')
+                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
+                if token_row[0]:  # IsUsed == True
+                    flash('This token has already been used.', 'error')
+                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
+            # ✅ Insert vote only if not already voted
+            if not has_voted:
+                for option_id in selected_option_ids:
+                    cursor.execute("""
+                        INSERT INTO Votes (PollId, OptionId, UserId, VotedTime)
+                        VALUES (?, ?, ?, GETDATE())
+                    """, (poll_id, int(option_id), -1 if is_anonymous else session['user_id']))
+
+                if is_anonymous:
+                    cursor.execute("UPDATE VoteTokens SET IsUsed = 1 WHERE Token = ?", (hashed_token,))
+
+                conn.commit()
+                flash('Your vote has been recorded successfully!', 'success')
+            else:
+                flash('You have already voted in this poll.', 'info')
 
         except pyodbc.Error as db_err:
-            if conn:
-                conn.rollback()
+            if conn: conn.rollback()
             print(f"Database error during voting for poll {poll_id}: {db_err}")
             flash('A database error occurred while submitting your vote. Please try again.', 'error')
-
         except Exception as e:
-            if conn:
-                conn.rollback()
+            if conn: conn.rollback()
             print(f"Error submitting vote for poll {poll_id}: {e}")
             flash('An error occurred while submitting your vote. Please try again.', 'error')
-
         finally:
             if conn:
                 conn.close()
 
         return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
 
     @student_bp.route('/poll/<int:poll_id>/results')
     @login_required
@@ -800,4 +786,3 @@ def register_student_routes(app, get_db_connection, login_required):
     
 
     app.register_blueprint(student_bp) # Add this line to register the blueprint
-
