@@ -411,9 +411,6 @@ def register_student_routes(app, get_db_connection, login_required):
             """, (poll_id, session['user_id']))
             has_voted = cursor.fetchone()[0] > 0
 
-            if has_voted:
-                flash('You have already voted in this poll.', 'info')
-                return redirect(url_for('student_routes.dashboard'))
 
             if has_voted:
                 flash('You have already voted in this poll.', 'info')
