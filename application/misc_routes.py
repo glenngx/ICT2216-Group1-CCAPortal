@@ -52,14 +52,15 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                         'email': admin_user[1] # Placeholder, admin might not have an email in Student table
                     }
             
-            # Check if password is NULL (account not yet set up) 
+            # SECURITY FIX: Check if password is NULL (account not yet set up) and REJECT login
             stored_password = user_record[2]
             if stored_password is None:
-                print(f"User {username} has no password set - account needs setup")
-                return {'needs_password_setup': True, 'student_id': user_record[1]}
+                print(f"User {username} has no password set - login rejected, must use email link")
+                # Return None to reject login 
+                return None
             
             # Try email
-            elif validate_email(username):
+            if validate_email(username):
                 print("Validating as email...")
                 query = """
                 SELECT ud.UserId, ud.StudentId, ud.Password, ud.SystemRole, s.Name, s.Email
@@ -113,10 +114,10 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 stored_password = user[2] # Password from UserDetails
                 print(f"Stored password: '{stored_password}', Entered password: '{password}'")
                 
-                # Check if password is NULL (account not yet set up) 
+                # Check if password is NULL again (for email/student ID queries)
                 if stored_password is None:
-                    print(f"User {username} has no password set - account needs setup")
-                    return {'needs_password_setup': True, 'student_id': user[1]}
+                    print(f"User {username} has no password set. Login rejected.")
+                    return None
                 
                 # Remove TEMP_ prefix if present before bcrypt check
                 if stored_password.startswith("TEMP_"):
@@ -164,19 +165,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             user = authenticate_user(username, password)
             
             if user:
-                # Check if user needs to set up password first
-                if user.get('needs_password_setup'):
-                    # Generate new token and redirect to password setup
-                    try:
-                        token = email_service.generate_password_reset_token(user['student_id'])
-                        flash('Your account needs password setup. Please set your password first.', 'warning')
-                        return redirect(url_for('misc_routes.reset_password', token=token))
-                    except Exception as e:
-                        print(f"Error generating password setup token: {e}")
-                        flash('Account setup required. Please contact your administrator for a password setup link.', 'error')
-                        return render_template('login.html')
-                
-                # Normal login for users with passwords set
                 session.permanent = True
                 session['user_id'] = user['user_id']
                 session['student_id'] = user['student_id']
@@ -189,7 +177,30 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 # Redirect to student dashboard, which will handle admin redirection
                 return redirect(url_for('student_routes.dashboard'))
             else:
-                flash('Invalid username or password.', 'error')
+                # Check if the user exists but has no password set
+                conn = get_db_connection()
+                if conn:
+                    try:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            SELECT Password, s.Name 
+                            FROM UserDetails ud
+                            INNER JOIN Student s ON ud.StudentId = s.StudentId
+                            WHERE ud.Username = ? OR ud.StudentId = ? OR s.Email = ?
+                        """, (username, username, username))
+                        user_check = cursor.fetchone()
+                        
+                        if user_check and user_check[0] is None:
+                            flash(f'Account setup required for {user_check[1]}. Please check your email for the password setup link, or contact your administrator for a new setup link.', 'warning')
+                        else:
+                            flash('Invalid username or password.', 'error')
+                    except:
+                        flash('Invalid username or password.', 'error')
+                    finally:
+                        conn.close()
+                else:
+                    flash('Invalid username or password.', 'error')
+                
                 return render_template('login.html')
         
         return render_template('login.html')
