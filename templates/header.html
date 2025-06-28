@@ -69,7 +69,7 @@
             {% endif %}
             
             <div class="d-flex">
-                {% if back_url %}
+                {% if back_url and session.get('role') != 'admin' %}
                 <a href="{{ back_url }}" class="btn btn-outline-light me-2">{{ back_text or 'Back' }}</a>
                 {% endif %}
                 {% if show_header_user != False and session.get('user_id') %}
