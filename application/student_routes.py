@@ -364,6 +364,11 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/poll/<int:poll_id>/vote', methods=['POST'])
     @login_required
     def submit_vote(poll_id):
+
+        if session.get('role') == 'admin':
+            flash('Admins are not allowed to vote.', 'error')
+            return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+
         conn = get_db_connection()
         if not conn:
             flash('Database connection error.', 'error')
