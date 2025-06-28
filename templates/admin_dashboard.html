@@ -105,6 +105,47 @@
                     </div>
                 </div>
             </div>
+
+            <div class="container mt-4">
+                <h3>Students Requiring Password Setup</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students_needing_password_setup %}
+                            <tr>
+                                <td>{{ student[0] }}</td>
+                                <td>{{ student[1] }}</td>
+                                <td>{{ student[2] if student[2] else 'No email on file' }}</td>
+                                <td>
+                                    {% if student[2] %}
+                                    <form method="POST" action="{{ url_for('admin_routes.resend_password_setup_email', student_id=student[0]) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-warning" 
+                                                onclick="return confirm('Resend password setup email to {{ student[1] }}?')">
+                                            <i class="fas fa-envelope"></i> Resend Setup Email
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-muted">No email available</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">All students have set their passwords</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 

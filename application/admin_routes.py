@@ -31,7 +31,7 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             # Get CCA memberships with details
             membership_query = """
             SELECT s.Name as StudentName, c.Name as CCAName, cm.CCARole, 
-                   s.StudentId, c.CCAId, cm.MemberId
+                s.StudentId, c.CCAId, cm.MemberId
             FROM CCAMembers cm
             INNER JOIN Student s ON cm.UserId IN (
                 SELECT UserId FROM UserDetails WHERE StudentId = s.StudentId
@@ -42,18 +42,31 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             cursor.execute(membership_query)
             memberships = cursor.fetchall()
             
+            # Get students who need password setup (Password is NULL)
+            password_setup_query = """
+            SELECT s.StudentId, s.Name, s.Email
+            FROM Student s
+            INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+            WHERE ud.Password IS NULL
+            ORDER BY s.Name
+            """
+            cursor.execute(password_setup_query)
+            students_needing_password_setup = cursor.fetchall()
+            
             return render_template('admin_dashboard.html',
-                                 ccas=all_ccas,
-                                 students=all_students,
-                                 memberships=memberships,
-                                 user_name=session['name'])
+                                ccas=all_ccas,
+                                students=all_students,
+                                memberships=memberships,
+                                students_needing_password_setup=students_needing_password_setup,
+                                user_name=session['name'])
             
         except Exception as e:
             print(f"Admin dashboard error: {e}")
             flash('Error loading admin dashboard.', 'error')
             return render_template('admin_dashboard.html', 
-                                 ccas=[], students=[], memberships=[],
-                                 user_name=session['name'])
+                                ccas=[], students=[], memberships=[],
+                                students_needing_password_setup=[],
+                                user_name=session['name'])
         finally:
             if conn:
                 conn.close()
@@ -493,6 +506,69 @@ def register_admin_routes(app, get_db_connection, admin_required, validate_stude
             print(f"Add multiple students error: {e}")
             flash('Error adding students to CCA. Please try again.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
+        finally:
+            if conn:
+                conn.close()
+    
+    @admin_bp.route('/resend-password-setup/<int:student_id>', methods=['POST'])
+    @admin_required
+    def resend_password_setup_email(student_id):
+        """Resend password setup email for a student who hasn't set their password yet"""
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        
+        try:
+            cursor = conn.cursor()
+            
+            # Check if student exists and get their details
+            cursor.execute("""
+                SELECT s.StudentId, s.Name, s.Email, ud.Password 
+                FROM Student s
+                INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
+                WHERE s.StudentId = ?
+            """, (student_id,))
+            student_record = cursor.fetchone()
+            
+            if not student_record:
+                flash('Student not found.', 'error')
+                return redirect(url_for('admin_routes.admin_dashboard'))
+            
+            student_id, student_name, student_email, current_password = student_record
+            
+            # Check if password is still NULL (account not set up)
+            if current_password is not None:
+                flash(f'{student_name} has already set their password. No email needed.', 'info')
+                return redirect(url_for('admin_routes.admin_dashboard'))
+            
+            if not student_email:
+                flash(f'No email address on file for {student_name}.', 'error')
+                return redirect(url_for('admin_routes.admin_dashboard'))
+            
+            # Send password setup email
+            try:
+                email_sent = email_service.send_student_credentials(
+                    student_name=student_name,
+                    student_email=student_email,
+                    student_id=student_id,
+                    temp_password=None  
+                )
+                
+                if email_sent:
+                    flash(f'Password setup email resent to {student_name} at {student_email}.', 'success')
+                else:
+                    flash(f'Failed to send email to {student_name}. Please try again later.', 'error')
+            except Exception as e:
+                print(f"Email sending error: {e}")
+                flash(f'Error sending email to {student_name}. Please try again later.', 'error')
+            
+            return redirect(url_for('admin_routes.admin_dashboard'))
+            
+        except Exception as e:
+            print(f"Resend password setup email error: {e}")
+            flash('Error processing request. Please try again.', 'error')
+            return redirect(url_for('admin_routes.admin_dashboard'))
         finally:
             if conn:
                 conn.close()
