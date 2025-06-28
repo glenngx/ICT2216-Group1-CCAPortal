@@ -38,8 +38,9 @@ except KeyError:
 
 # Session Management
 app.config.update(
-    # Timeout after 30 min of inactivity
-    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
+    # Commented out below, permanent set to False so cookies clear when browser closes
+    # # Timeout after 30 min of inactivity
+    # PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
     # Prevent access to stored data from JavaScript
     SESSION_COOKIE_HTTPONLY=True,
     # Ensure cookies only sent over HTTPS

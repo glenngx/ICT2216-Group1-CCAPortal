@@ -168,8 +168,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             user = authenticate_user(username, password)
             
             if user:
-                # Changed to False (Testing)
+                # Cookie expires when user close the browser 
                 session.permanent = False
+
                 session['user_id'] = user['user_id']
                 session['student_id'] = user['student_id']
                 session['role'] = user['role']
