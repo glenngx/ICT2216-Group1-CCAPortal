@@ -155,6 +155,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             return redirect(url_for('student_routes.dashboard'))
         
         if request.method == 'POST':
+            # Clear session to prevent session fixation
+            session.clear()
+
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '')
             
@@ -286,6 +289,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
     @login_required
     def logout():
         name = session.get('name', 'User')
+        # Clear session when logging out
         session.clear()
         flash(f'Goodbye, {name}! You have been logged out successfully.', 'success')
         return redirect(url_for('misc_routes.login'))

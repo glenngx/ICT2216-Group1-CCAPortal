@@ -36,9 +36,17 @@ except KeyError:
     print("ERROR: SECRET_KEY not found in config.Config.")
     exit(1)
 
-
-# Timeout after 30 min of inactivity
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30) 
+# Session Management
+app.config.update(
+    # Timeout after 30 min of inactivity
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
+    # Prevent access to stored data from JavaScript
+    SESSION_COOKIE_HTTPONLY=True,
+    # Ensure cookies only sent over HTTPS
+    SESSION_COOKIE_SECURE=True,
+    # Protects against CSRF
+    SESSION_COOKIE_SAMESITE='Strict'
+)
 
 # Database connection function
 def get_db_connection():
