@@ -199,7 +199,39 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             return redirect(url_for('misc_routes.login'))
         
         student_id = token_data.get('student_id')
-        
+
+        # Check if another account logged in on a different tab
+        if 'user_id' in session:
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute("SELECT UserId FROM UserDetails WHERE StudentId = ?", (student_id,))
+                target_user = cursor.fetchone()
+                if not target_user or session['user_id'] != target_user[0]:
+                    session.clear()  # Logout the other user
+                    flash("You were logged out to proceed with password reset.", "warning")
+            finally:
+                conn.close()
+
+        # Check if user has already used the link to reset their password
+        conn = get_db_connection()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
+                row = cursor.fetchone()
+
+                if row and row[0] is not None:
+                    flash("This reset link has already been used. Redirecting to login page...", "error")
+                    return redirect(url_for('misc_routes.login'))
+
+            except Exception as e:
+                print(f"Password Reset Link Error: {e}")
+                flash("There was an error validating your password reset link.", "error")
+                return redirect(url_for('misc_routes.login'))
+            finally:
+                conn.close()
+            
         if request.method == 'POST':
             new_password = request.form.get('new_password', '').strip()
             confirm_password = request.form.get('confirm_password', '').strip()
