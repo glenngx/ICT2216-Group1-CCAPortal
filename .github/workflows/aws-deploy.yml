@@ -15,7 +15,7 @@ jobs:
       with:
         host: 18.220.138.198
         username: student1
-        key: ${{ secrets.AWS_SSH_KEY }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
         script: |
           cd ICT2216-Group1-CCAPortal
           git pull origin main
