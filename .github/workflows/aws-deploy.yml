@@ -17,7 +17,7 @@ jobs:
         username: limited_student
         key: ${{ secrets.DEPLOY_SSH_KEY }}
         script: |
-          cd ICT2216-Group1-CCAPortal
+          cd /home/student1/ICT2216-Group1-CCAPortal/
           git pull origin main
           cd docker
           docker-compose -f nginx-compose.yml down
