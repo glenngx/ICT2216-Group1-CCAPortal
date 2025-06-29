@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Deploy to AWS EC2 via SSH
-      uses: appleboy/ssh-action@master 
+      uses: appleboy/ssh-action@master  
       with:
         host: 18.220.138.198
         username: limited_student
