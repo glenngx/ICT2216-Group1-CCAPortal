@@ -2,6 +2,58 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime
 from email_service import email_service
 import bcrypt
+import requests
+import hashlib
+import re
+
+def validate_password_nist(password):
+    """
+    Validate password according to NIST SP 800-63B guidelines
+    """
+    errors = []
+    
+    # Length requirements (NIST: min 8, max 64+)
+    if len(password) < 8:
+        errors.append("Password must be at least 8 characters long")
+    
+    if len(password) > 128:
+        errors.append("Password must not exceed 128 characters")
+    
+    # Check for all whitespace 
+    if password.isspace():
+        errors.append("Password cannot be only whitespace")
+    
+    # Check against compromised passwords 
+    if is_compromised_password(password):
+        errors.append("This password has been found in data breaches. Please choose a different password")
+    
+    return len(errors) == 0, errors
+
+def is_compromised_password(password):
+    """
+    Check password against Have I Been Pwned API 
+    """
+    try:
+        # Hash the password
+        sha1_hash = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
+        prefix = sha1_hash[:5]
+        suffix = sha1_hash[5:]
+        
+        # Query Have I Been Pwned API
+        url = f"https://api.pwnedpasswords.com/range/{prefix}"
+        response = requests.get(url, timeout=5)
+        
+        if response.status_code == 200:
+            # Check if suffix appears in results
+            for line in response.text.splitlines():
+                if line.startswith(suffix):
+                    # Password found in breach data
+                    return True
+        
+        return False
+    except:
+        # If API is down, allow password 
+        return False
 
 # Blueprint for misc routes
 misc_bp = Blueprint('misc_routes', __name__)
@@ -235,8 +287,10 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 flash('Passwords do not match.', 'error')
                 return render_template('reset_password.html', token=token)
             
-            if len(new_password) < 6:
-                flash('Password must be at least 6 characters long.', 'error')
+            is_valid, errors = validate_password_nist(new_password)
+            if not is_valid:
+                for error in errors:
+                    flash(error, 'error')
                 return render_template('reset_password.html', token=token)
             
             conn = get_db_connection()

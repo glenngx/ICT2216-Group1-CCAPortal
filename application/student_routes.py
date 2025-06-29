@@ -3,6 +3,8 @@ import pyodbc
 from datetime import datetime, timedelta 
 import secrets
 import hashlib
+import bcrypt
+from application.misc_routes import validate_password_nist
 
 def convert_utc_to_gmt8_display(utc_datetime):
     """Convert UTC datetime to GMT+8 for display purposes"""
@@ -746,9 +748,10 @@ def register_student_routes(app, get_db_connection, login_required):
                                     user_name=session['name'],
                                     user_is_moderator=user_is_moderator)
             
-            # Basic password length check 
-            if len(new_password) < 6:
-                flash('New password must be at least 6 characters long.', 'error')
+            is_valid, errors = validate_password_nist(new_password)
+            if not is_valid:
+                for error in errors:
+                    flash(error, 'error')
                 return render_template('change_password.html',
                                     user_name=session['name'],
                                     user_is_moderator=user_is_moderator)
@@ -776,18 +779,19 @@ def register_student_routes(app, get_db_connection, login_required):
                 stored_password = stored_password_row[0]
                 
                 # Verify current password 
-                if current_password != stored_password:
+                if not bcrypt.checkpw(current_password.encode('utf-8'), stored_password.encode('utf-8')):
                     flash('Current password is incorrect.', 'error')
                     return render_template('change_password.html',
                                         user_name=session['name'],
                                         user_is_moderator=user_is_moderator)
                 
                 # Update password in database 
+                hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 cursor.execute("""
                     UPDATE UserDetails 
                     SET Password = ? 
                     WHERE UserId = ?
-                """, (new_password, session['user_id']))
+                """, (hashed_password, session['user_id']))
                 
                 conn.commit()
                 
