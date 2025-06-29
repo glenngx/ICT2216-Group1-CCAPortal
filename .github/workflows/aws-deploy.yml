@@ -14,7 +14,7 @@ jobs:
       uses: appleboy/ssh-action@master
       with:
         host: 18.220.138.198
-        username: student1
+        username: limited_student
         key: ${{ secrets.DEPLOY_SSH_KEY }}
         script: |
           cd ICT2216-Group1-CCAPortal
