@@ -220,5 +220,19 @@ def health_check():
         return {'status': 'unhealthy', 'error': str(e)}, 503
     
 
+# Global Error Handlers 
+# Global 404 error handler (non-existing path)
+@app.errorhandler(404)
+def handle_404(error):
+    flash("Access Denied.", "error")
+    return redirect(url_for('student_routes.dashboard')), 302
+
+# Global 500 error handler (internal server error)
+@app.errorhandler(500)
+def handle_500(error):
+    flash("An unexpected error occurred.", "error")
+    return redirect(url_for('student_routes.dashboard')), 302
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
