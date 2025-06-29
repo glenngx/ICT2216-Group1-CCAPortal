@@ -200,18 +200,18 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         
         student_id = token_data.get('student_id')
 
-        # Check if another account logged in on a different tab
-        if 'user_id' in session:
-            conn = get_db_connection()
-            try:
-                cursor = conn.cursor()
-                cursor.execute("SELECT UserId FROM UserDetails WHERE StudentId = ?", (student_id,))
-                target_user = cursor.fetchone()
-                if not target_user or session['user_id'] != target_user[0]:
-                    session.clear()  # Logout the other user
-                    flash("You were logged out to proceed with password reset.", "warning")
-            finally:
-                conn.close()
+        # # Check if another account logged in on a different tab
+        # if 'user_id' in session:
+        #     conn = get_db_connection()
+        #     try:
+        #         cursor = conn.cursor()
+        #         cursor.execute("SELECT UserId FROM UserDetails WHERE StudentId = ?", (student_id,))
+        #         target_user = cursor.fetchone()
+        #         if not target_user or session['user_id'] != target_user[0]:
+        #             session.clear()  # Logout the other user
+        #             flash("You were logged out to proceed with password reset.", "warning")
+        #     finally:
+        #         conn.close()
 
         # Check if user has already used the link to reset their password
         conn = get_db_connection()
