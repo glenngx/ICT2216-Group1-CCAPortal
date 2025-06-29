@@ -71,20 +71,10 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             
             print(f"Attempting login with username: '{username}' and password: '{password}'")
             
-            query = """
-            SELECT ud.UserId, ud.StudentId, ud.Password, ud.SystemRole
-            FROM UserDetails ud
-            WHERE ud.Username = ? OR ud.StudentId = ?
-            """
-            cursor.execute(query, (username, username))
-            user_record = cursor.fetchone()
+            user = None  # Initialize user variable
             
-            if not user_record:
-                print(f"No user found with username: {username}")
-                return None
-            
-            # Handle admin login specifically
-            if user_record[3] == 'admin':
+            # Handle admin login specifically first
+            if username == 'admin':  
                 print("Admin login attempt...")
                 query = """
                 SELECT ud.UserId, ud.Username, ud.Password, ud.SystemRole
@@ -104,14 +94,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                         'email': admin_user[1] # Placeholder, admin might not have an email in Student table
                     }
             
-            # SECURITY FIX: Check if password is NULL (account not yet set up) and REJECT login
-            stored_password = user_record[2]
-            if stored_password is None:
-                print(f"User {username} has no password set - login rejected, must use email link")
-                # Return None to reject login 
-                return None
-            
-            # Try email
+            # Try email login
             if validate_email(username):
                 print("Validating as email...")
                 query = """
@@ -136,56 +119,55 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 cursor.execute(query, (int(username),)) # Ensure username is cast to int for StudentId
                 user = cursor.fetchone()
                 print(f"StudentID query result: {user}")
+                
             else:
-                # Fallback to username if not email or student_id format, or if initial query found a user by username
-                # This part handles the case where username is neither email nor student_id but a direct username match
-                if user_record: # user_record was fetched using username or student_id
-                    # We need to fetch Name and Email from Student table if it's not an admin
-                    if user_record[3] != 'admin':
-                        student_id_from_record = user_record[1]
-                        query_student_details = """
-                        SELECT s.Name, s.Email
-                        FROM Student s
-                        WHERE s.StudentId = ?
-                        """
-                        cursor.execute(query_student_details, (student_id_from_record,))
-                        student_details = cursor.fetchone()
-                        if student_details:
-                             user = user_record + student_details # Combine records
-                        else: # Should not happen if DB is consistent
-                            print(f"Student details not found for StudentId: {student_id_from_record}")
-                            user = None
-                    else: # Admin already handled
-                        user = None # Should not reach here if admin was processed correctly
-                else:
-                    print(f"Invalid username format or no initial match: {username}")
-                    return None
+                # Try username login 
+                print("Validating as username...")
+                query = """
+                SELECT ud.UserId, ud.StudentId, ud.Password, ud.SystemRole, s.Name, s.Email
+                FROM UserDetails ud
+                INNER JOIN Student s ON ud.StudentId = s.StudentId
+                WHERE ud.Username = ?
+                """
+                cursor.execute(query, (username,))
+                user = cursor.fetchone()
+                print(f"Username query result: {user}")
             
-            # Check regular user authentication
-            if 'user' in locals() and user: # Ensure 'user' is defined
-                stored_password = user[2] # Password from UserDetails
-                print(f"Stored password: '{stored_password}', Entered password: '{password}'")
-                
-                # Check if password is NULL again (for email/student ID queries)
-                if stored_password is None:
-                    print(f"User {username} has no password set. Login rejected.")
-                    return None
-                
-                # Remove TEMP_ prefix if present before bcrypt check
-                if stored_password.startswith("TEMP_"):
-                    stored_password = stored_password.replace("TEMP_", "", 1)
-                # Assuming non-admin passwords are not hashed for now, based on original logic *\* add comparing for hashing
-                if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
+            # Check if user was found
+            if not user:
+                print(f"No user found with identifier: {username}")
+                return None
+            
+            # Extract password from the result
+            stored_password = user[2]  # Password from UserDetails
+            print(f"Stored password: '{stored_password}', Entered password: '{password}'")
+            
+            # SECURITY CHECK: Reject login if password is NULL (account not yet set up)
+            if stored_password is None:
+                print(f"User {username} has no password set - login rejected, must use email link")
+                return None
+            
+            # Remove TEMP_ prefix if present before bcrypt check
+            password_to_check = stored_password
+            if stored_password.startswith("TEMP_"):
+                password_to_check = stored_password.replace("TEMP_", "", 1)
+            
+            # Verify password using bcrypt
+            try:
+                if bcrypt.checkpw(password.encode('utf-8'), password_to_check.encode('utf-8')):
                     return {
-                        'user_id': user[0],    # UserId
-                        'student_id': user[1], # StudentId from UserDetails
-                        'role': user[3],       # SystemRole
-                        'name': user[4],       # Name from Student table
+                        'user_id': user[0],     # UserId
+                        'student_id': user[1],  # StudentId from UserDetails
+                        'role': user[3],        # SystemRole
+                        'name': user[4],        # Name from Student table
                         'email': user[5],       # Email from Student table
                     }
-            
-            print("Authentication failed - no matching user or wrong password")
-            return None
+                else:
+                    print("Password verification failed")
+                    return None
+            except Exception as bcrypt_error:
+                print(f"Bcrypt error: {bcrypt_error}")
+                return None
             
         except Exception as e:
             print(f"Authentication error: {e}")
