@@ -182,7 +182,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 conn.close()
 
     @moderator_bp.route('/moderator/cca/<int:cca_id>')
-    @login_required
+    @moderator_required
     def moderator_view_cca(cca_id):
         conn = get_db_connection()
         if not conn:
@@ -199,14 +199,14 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             is_moderator = cursor.fetchone()[0] > 0
             
             if not is_moderator:
-                flash('Access denied. You are not a moderator of this CCA.', 'error')
+                flash('Access denied. You are unauthorised to view this CCA.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
             cursor.execute("SELECT CCAId, Name, Description FROM CCA WHERE CCAId = ?", (cca_id,))
             cca = cursor.fetchone()
             
             if not cca:
-                flash('CCA not found.', 'error')
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
             members_query = """
@@ -248,7 +248,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 conn.close()
 
     @moderator_bp.route('/moderator/cca/<int:cca_id>/edit', methods=['POST'])
-    @login_required
+    @moderator_required
     def moderator_edit_cca(cca_id):
         conn = get_db_connection()
         if not conn:
@@ -300,7 +300,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 conn.close()
 
     @moderator_bp.route('/moderator/cca/<int:cca_id>/add-student', methods=['POST'])
-    @login_required
+    @moderator_required
     def moderator_add_student_to_cca(cca_id):
         conn = get_db_connection()
         if not conn:
@@ -316,7 +316,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             is_moderator = cursor.fetchone()[0] > 0
             
             if not is_moderator:
-                flash('Access denied. You are not a moderator of this CCA.', 'error')
+                flash('Access denied. You are unauthorised to access this CCA.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
             student_id = request.form.get('student_id')
@@ -368,7 +368,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 conn.close()
 
     @moderator_bp.route('/moderator/cca/<int:cca_id>/remove-student/<int:member_id>', methods=['POST'])
-    @login_required
+    @moderator_required
     def moderator_remove_student_from_cca(cca_id, member_id):
         conn = get_db_connection()
         if not conn:
@@ -384,7 +384,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             is_moderator = cursor.fetchone()[0] > 0
             
             if not is_moderator:
-                flash('Access denied. You are not a moderator of this CCA.', 'error')
+                flash('Access denied. You are unauthorised to view this CCA.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
             cursor.execute("DELETE FROM CCAMembers WHERE MemberId = ? AND CCAId = ?", (member_id, cca_id))
@@ -403,7 +403,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 conn.close()
 
     @moderator_bp.route('/api/moderator/search-students')
-    @login_required
+    @moderator_required
     def moderator_search_students():
         """API endpoint for moderators to search for students by name or student ID"""
         search_query = request.args.get('q', '').strip()
@@ -462,7 +462,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
                 conn.close()
 
     @moderator_bp.route('/moderator/cca/<int:cca_id>/add-multiple-students', methods=['POST'])
-    @login_required
+    @moderator_required
     def moderator_add_multiple_students_to_cca(cca_id):
         """Allow moderators to add multiple students to their CCA"""
         student_ids = request.form.getlist('student_ids[]')
@@ -486,7 +486,7 @@ def register_moderator_routes(app, get_db_connection, login_required, moderator_
             """, (session['user_id'], cca_id))
             
             if cursor.fetchone()[0] == 0:
-                flash('Access denied. You are not a moderator of this CCA.', 'error')
+                flash('Access denied. You are unauthorised to view this CCA.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
             # Get user IDs for the selected student IDs

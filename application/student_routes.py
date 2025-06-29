@@ -102,6 +102,9 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/my-ccas')
     @login_required
     def my_ccas():
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        
         conn = get_db_connection()
         if not conn:
             flash('Database connection error.', 'error')
@@ -154,6 +157,9 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/polls')
     @login_required
     def view_polls():
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        
         conn = get_db_connection()
         if not conn:
             flash('Database connection error.', 'error')
@@ -249,7 +255,7 @@ def register_student_routes(app, get_db_connection, login_required):
             poll_data_row = cursor.fetchone()
 
             if not poll_data_row:
-                flash('Poll not found.', 'error')
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.view_polls'))
 
             cursor.execute("""
@@ -261,7 +267,7 @@ def register_student_routes(app, get_db_connection, login_required):
             is_member_of_cca = cursor.fetchone()[0] > 0
 
             if not is_member_of_cca and session['role'] != 'admin':
-                flash('You do not have permission to view this poll.', 'error')
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.view_polls'))
 
             start_date_obj = poll_data_row[3]
@@ -396,7 +402,7 @@ def register_student_routes(app, get_db_connection, login_required):
             poll_info = cursor.fetchone()
 
             if not poll_info:
-                flash('Poll not found.', 'error')
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.view_polls'))
 
             live_is_active, cca_id, question_type = poll_info
@@ -409,8 +415,8 @@ def register_student_routes(app, get_db_connection, login_required):
             cursor.execute("SELECT COUNT(*) FROM CCAMembers WHERE UserId = ? AND CCAId = ?", (session['user_id'], cca_id))
             is_member_of_cca = cursor.fetchone()[0] > 0
 
-            if not is_member_of_cca and session['role'] != 'admin':
-                flash('You are not a member of the CCA for this poll and cannot vote.', 'error')
+            if not is_member_of_cca:
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
             # Check if user already voted
@@ -532,7 +538,7 @@ def register_student_routes(app, get_db_connection, login_required):
             poll_data_row = cursor.fetchone()
 
             if not poll_data_row:
-                flash('Poll not found.', 'error')
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.view_polls'))
 
             # Check if user is member of the CCA
@@ -545,7 +551,7 @@ def register_student_routes(app, get_db_connection, login_required):
             is_member_of_cca = cursor.fetchone()[0] > 0
 
             if not is_member_of_cca and session['role'] != 'admin':
-                flash('You do not have permission to view this poll.', 'error')
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.view_polls'))
 
             # Create poll object
@@ -634,6 +640,9 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/cca/<int:cca_id>')
     @login_required
     def student_view_cca(cca_id):
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        
         """View-only CCA page for normal students (non-moderators)"""
         conn = get_db_connection()
         if not conn:
@@ -658,8 +667,8 @@ def register_student_routes(app, get_db_connection, login_required):
             """, (session['user_id'], cca_id))
             membership = cursor.fetchone()
             
-            if not membership and session.get('role') != 'admin':
-                flash('You do not have permission to view this CCA.', 'error')
+            if not membership:
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
             # Get CCA details
@@ -667,7 +676,7 @@ def register_student_routes(app, get_db_connection, login_required):
             cca = cursor.fetchone()
             
             if not cca:
-                flash('CCA not found.', 'error')
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
             # Get CCA members

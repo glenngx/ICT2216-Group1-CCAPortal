@@ -101,10 +101,6 @@ def admin_required(f):
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('misc_routes.login')) # Updated url_for
         
-        if session.get('role') != 'admin':
-            flash('Access denied. Admin privileges required.', 'error')
-            return redirect(url_for('student_routes.dashboard')) # Updated url_for
-        
         # Check if session is expired
         if 'login_time' in session:
             login_time = datetime.fromisoformat(session['login_time'])
@@ -112,6 +108,37 @@ def admin_required(f):
                 session.clear()
                 flash('Your session has expired. Please log in again.', 'warning')
                 return redirect(url_for('misc_routes.login')) # Updated url_for
+        
+        # Check session for admin role
+        if session.get('role') != 'admin':
+            flash('Access denied.', 'error')
+            return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        
+        # Check db for user role
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        
+        try:
+            print(session['user_id'])
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM UserDetails 
+                WHERE UserId = ? AND SystemRole = 'admin'
+            """, (session['user_id'],))
+            is_admin = cursor.fetchone()[0] > 0
+            
+            if not is_admin:
+                flash('Access denied.', 'error')
+                return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        
+        except Exception as e:
+            print(f"Admin check error: {e}")
+            flash('Error checking permissions.', 'error')
+            return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        finally:
+            conn.close()
         
         return f(*args, **kwargs)
     return decorated_function
@@ -147,7 +174,7 @@ def moderator_required(f):
             is_moderator = cursor.fetchone()[0] > 0
             
             if not is_moderator:
-                flash('Access denied. Moderator privileges required.', 'error')
+                flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.dashboard')) # Updated url_for
             
         except Exception as e:
@@ -192,5 +219,6 @@ def health_check():
     except Exception as e:
         return {'status': 'unhealthy', 'error': str(e)}, 503
     
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
