@@ -203,8 +203,8 @@ def validate_student_id(student_id):
 # Register routes from separate files
 register_misc_routes(app, get_db_connection, login_required, validate_email, validate_student_id)
 register_student_routes(app, get_db_connection, login_required)
-register_moderator_routes(app, get_db_connection, login_required, moderator_required)
-register_admin_routes(app, get_db_connection, admin_required, validate_student_id)
+register_moderator_routes(app, get_db_connection)
+register_admin_routes(app, get_db_connection, validate_student_id)
 
 @app.route('/health')
 def health_check():

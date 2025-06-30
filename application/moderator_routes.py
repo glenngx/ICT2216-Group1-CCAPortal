@@ -8,7 +8,7 @@ moderator_bp = Blueprint('moderator_routes', __name__)
 
 # Import necessary functions and decorators from the main app or a shared utility module
 
-def register_moderator_routes(app, get_db_connection, login_required, moderator_required):
+def register_moderator_routes(app, get_db_connection):
 
     @moderator_bp.route('/create-poll', methods=['GET', 'POST'])
     @moderator_required

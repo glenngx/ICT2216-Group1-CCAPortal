@@ -8,7 +8,7 @@ from application.auth_utils import admin_required
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
 
 # registration function for admin routes
-def register_admin_routes(app, get_db_connection, admin_required, validate_student_id):
+def register_admin_routes(app, get_db_connection, validate_student_id):
 
     @admin_bp.route('/')
     @admin_required
