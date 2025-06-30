@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, session, flash, Blueprint
 import pyodbc
 from datetime import datetime, timezone, timedelta
+from application.auth_utils import moderator_required
 
 # Create a Blueprint
 moderator_bp = Blueprint('moderator_routes', __name__)
