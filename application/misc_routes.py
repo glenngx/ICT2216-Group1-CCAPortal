@@ -12,9 +12,9 @@ def validate_password_nist(password):
     """
     errors = []
     
-    # Length requirements (NIST: min 8, max 64+)
-    if len(password) < 8:
-        errors.append("Password must be at least 8 characters long")
+    # Length requirements 
+    if len(password) < 15:
+        errors.append("Password must be at least 15 characters long")
     
     if len(password) > 128:
         errors.append("Password must not exceed 128 characters")
