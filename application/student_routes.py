@@ -8,6 +8,7 @@ import secrets
 import hashlib
 import bcrypt
 from application.misc_routes import validate_password_nist
+from application.misc_routes import login_required_with_mfa
 
 def convert_utc_to_gmt8_display(utc_datetime):
     """Convert UTC datetime to GMT+8 for display purposes"""
