@@ -170,7 +170,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 conn.close()
 
     @student_bp.route('/my-ccas')
-    @login_required
+    @login_required_with_mfa
     def my_ccas():
         if session.get('role') == 'admin':
             return redirect(url_for('admin_routes.admin_dashboard'))
@@ -225,7 +225,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 conn.close()
 
     @student_bp.route('/polls')
-    @login_required
+    @login_required_with_mfa
     def view_polls():
         if session.get('role') == 'admin':
             return redirect(url_for('admin_routes.admin_dashboard'))
@@ -298,7 +298,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 conn.close()
 
     @student_bp.route('/poll/<int:poll_id>')
-    @login_required
+    @login_required_with_mfa
     def view_poll_detail(poll_id):
         conn = get_db_connection()
         if not conn:
@@ -452,7 +452,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 conn.close()
 
     @student_bp.route('/poll/<int:poll_id>/vote', methods=['POST'])
-    @login_required
+    @login_required_with_mfa
     def submit_vote(poll_id):
 
         if session.get('role') == 'admin':
@@ -580,7 +580,7 @@ def register_student_routes(app, get_db_connection, login_required):
 
 
     @student_bp.route('/poll/<int:poll_id>/results')
-    @login_required
+    @login_required_with_mfa
     def view_poll_results(poll_id):
         conn = get_db_connection()
         if not conn:
@@ -708,7 +708,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 conn.close()
     
     @student_bp.route('/cca/<int:cca_id>')
-    @login_required
+    @login_required_with_mfa
     def student_view_cca(cca_id):
         if session.get('role') == 'admin':
             return redirect(url_for('admin_routes.admin_dashboard'))
@@ -776,7 +776,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 conn.close()
 
     @student_bp.route('/change-password', methods=['GET', 'POST'])
-    @login_required
+    @login_required_with_mfa
     def change_password():
         # Helper function to check if user is moderator
         def get_moderator_status():
