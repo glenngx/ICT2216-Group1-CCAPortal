@@ -192,13 +192,31 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             # Verify password using bcrypt
             try:
                 if bcrypt.checkpw(password.encode('utf-8'), password_to_check.encode('utf-8')):
+                    # ── PROMOTE TO MODERATOR IF NEEDED ─────────────────────────
+                    try:
+                        cursor.execute("""
+                            SELECT COUNT(*)
+                            FROM CCAMembers
+                            WHERE UserId = ? AND CCARole = 'moderator'
+                        """, (user[0],))                       # user[0] is the UserId
+                        if cursor.fetchone()[0] > 0:
+                            promoted_role = 'moderator'
+                        else:
+                            promoted_role = user[3]            # keep original SystemRole
+                    except Exception as rerr:
+                        print(f'Role promotion check error: {rerr}')
+                        promoted_role = user[3]                # fail-safe
+                    # ───────────────────────────────────────────────────────────
+
                     return {
-                        'user_id': user[0],     # UserId
-                        'student_id': user[1],  # StudentId from UserDetails
-                        'role': user[3],        # SystemRole
-                        'name': user[4],        # Name from Student table
-                        'email': user[5],       # Email from Student table
+                        'user_id':   user[0],
+                        'student_id': user[1],
+                        'role':      promoted_role,            # ← use the new variable
+                        'name':      user[4],
+                        'email':     user[5],
                     }
+
+
                 else:
                     print("Password verification failed")
                     return None
