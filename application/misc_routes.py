@@ -95,20 +95,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
 
         finally:
             conn.close()    # \*\ END for MFA
-
-        # \*\ Added for MFA
-    def login_required_with_mfa(f):
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            if not session.get('user_id'):
-                return redirect(url_for('misc_routes.login'))
-            if not session.get('mfa_authenticated'):
-                return redirect(url_for('misc_routes.mfa_verify'))
-            return f(*args, **kwargs)
-        return decorated
-     # \*\ END for MFA
-
-
     
     # Authentication function (moved from app.py)
     def authenticate_user(username, password):
