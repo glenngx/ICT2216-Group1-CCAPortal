@@ -223,9 +223,32 @@ def health_check():
 # Global Error Handlers 
 # Global 404 error handler (non-existing path)
 @app.errorhandler(404)
-def handle_404(error):
-    flash("Access Denied.", "error")
+def page_not_found(error):
+    path = request.path.lower()
+
+    # Suppress flash/redirect for static resources and icons
+    if (
+        path.startswith('/static/')
+        or path.startswith('/.well-known/') # Chrome-side Devtools
+        or path.endswith('.ico')
+        or path.endswith('.png')
+        or path.endswith('.jpg')
+        or path.endswith('.jpeg')
+        or path.endswith('.svg')
+        or path.endswith('.js')
+        or path.endswith('.css')
+        or path.endswith('.woff')
+        or path.endswith('.ttf')
+        or path.endswith('.map')
+    ):
+        print(f"[DEBUG] Ignored 404 (asset): {path}")
+        return '', 204  # No content response
+
+    # Only for unknown route 404s:
+    print(f"[DEBUG] Flashing 404 warning for: {path}")
+    flash("Access Denied 404.", "error")
     return redirect(url_for('student_routes.dashboard')), 302
+
 
 # Global 500 error handler (internal server error)
 @app.errorhandler(500)
