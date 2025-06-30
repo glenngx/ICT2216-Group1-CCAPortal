@@ -26,141 +26,66 @@ student_bp = Blueprint('student_routes', __name__)
 def register_student_routes(app, get_db_connection, login_required):
     
     # \*/ Added for MFA
-    @student_bp.route('/mfa-setup', methods=['GET', 'POST'])
+    @student_bp.route("/mfa-setup", methods=["GET", "POST"])
     @login_required
     def mfa_setup():
         conn = get_db_connection()
         if not conn:
-            flash("Database connection error", "error")
-            return redirect(url_for('student_routes.dashboard'))
+            flash("Database connection error.", "error")
+            return redirect(url_for("student_routes.dashboard"))
 
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?", (session['user_id'],))
+            cursor.execute(
+                "SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?",
+                (session["user_id"],),
+            )
             row = cursor.fetchone()
 
             if row and row[0]:
-                # Someone came here even though MFA already enabled
-                return redirect(url_for('misc_routes.mfa_verify'))
+                # Secret already saved — just verify
+                return redirect(url_for("misc_routes.mfa_verify"))
 
-                # keep a temp secret in the session
-            if 'mfa_temp_secret' not in session:
-                session['mfa_temp_secret'] = pyotp.random_base32()
+            # --------------------------------------------
+            # Always ensure we have a temp secret in session
+            # --------------------------------------------
+            if "mfa_temp_secret" not in session:
+                session["mfa_temp_secret"] = pyotp.random_base32()
 
-                secret = session['mfa_temp_secret']
-                totp   = pyotp.TOTP(secret)
-                uri    = totp.provisioning_uri(
-                            name=session['email'],
-                            issuer_name="CCAP Web Portal"
-                        )
+            secret = session["mfa_temp_secret"]
+            totp   = pyotp.TOTP(secret)
+            uri    = totp.provisioning_uri(
+                        name=session["email"],
+                        issuer_name="CCAP Web Portal"
+                    )
 
-                # create QR → base64
-                qr_buf = BytesIO()
-                qrcode.make(uri).save(qr_buf, format='PNG')
-                qr_b64 = b64encode(qr_buf.getvalue()).decode()
+            # Build QR code (base64 once per request)
+            qr_buf = BytesIO()
+            qrcode.make(uri).save(qr_buf, format="PNG")
+            qr_b64 = b64encode(qr_buf.getvalue()).decode()
 
-                # POST: user submits first 6-digit code
-                if request.method == 'POST':
-                    code = request.form.get('mfa_code', '').strip()
-                    if totp.verify(code):
-                        cursor.execute(
-                            "UPDATE UserDetails SET MFATOTPSecret = ? WHERE UserId = ?",
-                            (secret, session['user_id'])
-                        )
-                        conn.commit()
-                        session.pop('mfa_temp_secret', None)
-                        session['mfa_authenticated'] = True
-                        flash("MFA setup complete.", "success")
-                        return redirect(url_for('student_routes.dashboard'))
-                    else:
-                        flash("Invalid code, please try again.", "error")
+            # ---------- POST: user submits first code ----------
+            if request.method == "POST":
+                code = request.form.get("mfa_code", "").strip()
+                if totp.verify(code):
+                    cursor.execute(
+                        "UPDATE UserDetails SET MFATOTPSecret = ? WHERE UserId = ?",
+                        (secret, session["user_id"])
+                    )
+                    conn.commit()
+                    session.pop("mfa_temp_secret", None)
+                    session["mfa_authenticated"] = True
+                    flash("MFA setup complete.", "success")
+                    return redirect(url_for("student_routes.dashboard"))
+                else:
+                    flash("Invalid code, try again.", "error")
 
-                return render_template('mfa_setup.html', qr_b64=qr_b64, secret=secret)
+            # ---------- GET or invalid code: show page ----------
+            return render_template("mfa_setup.html", qr_b64=qr_b64, secret=secret)
 
         finally:
             conn.close()
-    # \*/ ENDED for MFA 
-
-    @student_bp.route('/dashboard')
-    @login_required_with_mfa
-    def dashboard():
-        if session.get('role') == 'admin':
-            return redirect(url_for('admin_routes.admin_dashboard'))
-        
-        conn = get_db_connection()
-        if not conn:
-            flash('Database connection error. Please try again.', 'error')
-            return redirect(url_for('misc_routes.logout'))
-        
-        try:
-            cursor = conn.cursor()
-            
-            cca_query = """
-            SELECT c.CCAId, c.Name, c.Description, cm.CCARole
-            FROM CCA c
-            INNER JOIN CCAMembers cm ON c.CCAId = cm.CCAId
-            WHERE cm.UserId = ?
-            """
-            cursor.execute(cca_query, (session['user_id'],))
-            user_ccas = cursor.fetchall()
-            
-            ccas = []
-            user_is_moderator = False
-            for cca_row in user_ccas:
-                ccas.append({
-                    'id': cca_row[0],
-                    'name': cca_row[1],
-                    'description': cca_row[2],
-                    'role': cca_row[3]
-                })
-                if cca_row[3] == 'moderator':
-                    user_is_moderator = True
-            
-            if ccas:
-                cca_ids = [str(c['id']) for c in ccas]
-                poll_query = """
-                SELECT p.PollId, p.Question, p.EndDate, c.Name as CCAName,
-                    DATEDIFF(day, GETDATE(), p.EndDate) as DaysRemaining
-                FROM v_Poll_With_LiveStatus p
-                INNER JOIN CCA c ON p.CCAId = c.CCAId
-                WHERE p.CCAId IN ({}) AND p.LiveIsActive = 1
-                ORDER BY p.EndDate ASC
-                """.format(','.join(['?'] * len(cca_ids)))
-                
-                cursor.execute(poll_query, cca_ids)
-                poll_results = cursor.fetchall()
-                
-                available_polls = []
-                for poll_row in poll_results:
-                    available_polls.append({
-                        'id': poll_row[0],
-                        'title': poll_row[1],
-                        'end_date': convert_utc_to_gmt8_display(poll_row[2]).split(' ')[0] if poll_row[2] else '',  # Just date part
-                        'cca': poll_row[3],
-                        'days_remaining': poll_row[4] if poll_row[4] is not None else 0
-                    })
-            else:
-                available_polls = []
-            
-            return render_template('dashboard.html', 
-                                ccas=ccas, 
-                                available_polls=available_polls,
-                                user_name=session['name'],
-                                user_role=session['role'],
-                                user_is_moderator=user_is_moderator)
-            
-        except pyodbc.Error as e:
-            print(f"Dashboard data error: {e}")
-            flash('Error loading dashboard data.', 'error')
-            return render_template('dashboard.html', 
-                                ccas=[], 
-                                available_polls=[],
-                                user_name=session['name'],
-                                user_role=session['role'],
-                                user_is_moderator=False)
-        finally:
-            if conn:
-                conn.close()
+    # \*/ Ended for MFA
 
     @student_bp.route('/my-ccas')
     @login_required
