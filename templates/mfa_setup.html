@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h3>Set Up MFA</h3>
+  <img src="data:image/png;base64,{{ qr_b64 }}" alt="MFA QR Code" width="250">
+  <p>Manual key: <code>{{ secret }}</code></p>
+  <form method="POST">
+    <input type="text" name="mfa_code" maxlength="6" required placeholder="Enter 6-digit code">
+    <button type="submit">Verify</button>
+  </form>
+{% endblock %}

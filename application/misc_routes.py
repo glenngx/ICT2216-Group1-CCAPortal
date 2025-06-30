@@ -59,6 +59,53 @@ def is_compromised_password(password):
 misc_bp = Blueprint('misc_routes', __name__)
 
 def register_misc_routes(app, get_db_connection, login_required, validate_email, validate_student_id):
+    # \*\ Added for MFA
+    @misc_bp.route('/mfa-verify', methods=['GET', 'POST'])
+    def mfa_verify():
+        if 'user_id' not in session:
+            return redirect(url_for('misc_routes.login'))
+
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?", (session['user_id'],))
+            row = cursor.fetchone()
+
+            if not row or not row[0]:
+                flash("MFA not set up.", "error")
+                return redirect(url_for('student_routes.dashboard'))
+
+            secret = row[0]
+            totp = pyotp.TOTP(secret)
+
+            if request.method == 'POST':
+                code = request.form.get("mfa_code", "").strip()
+                if totp.verify(code):
+                    session['mfa_authenticated'] = True
+                    flash("MFA verified successfully.", "success")
+                    return redirect(url_for('student_routes.dashboard'))
+                else:
+                    flash("Invalid MFA code.", "error")
+
+            return render_template("mfa_verify.html")
+        finally:
+            conn.close()
+        # \*\ END for MFA
+
+        # \*\ Added for MFA
+    def login_required_with_mfa(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if not session.get('user_id'):
+                return redirect(url_for('misc_routes.login'))
+            if not session.get('mfa_authenticated'):
+                return redirect(url_for('misc_routes.mfa_verify'))
+            return f(*args, **kwargs)
+        return decorated
+     # \*\ END for MFA
+
+
+    
     # Authentication function (moved from app.py)
     def authenticate_user(username, password):
         conn = get_db_connection()
@@ -212,9 +259,23 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session['email'] = user['email']
                 session['login_time'] = datetime.now().isoformat()
 
-                flash(f'Welcome back, {user["name"]}!', 'success')
-                # Redirect to student dashboard, which will handle admin redirection
-                return redirect(url_for('student_routes.dashboard'))
+                # \*\ Added for MFA
+                # Check if user has MFA enabled
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?", (user['user_id'],))
+                row = cursor.fetchone()
+                conn.close()
+
+                if row and row[0]:
+                    # MFA already enabled – ask for code
+                    return redirect(url_for('misc_routes.mfa_verify'))
+                else:
+                    # MFA not yet set up – redirect to setup
+                    return redirect(url_for('student_routes.mfa_setup'))
+                
+                # \*\ Ended for MFA
+
             else:
                 flash('Invalid username or password.', 'error')
                 

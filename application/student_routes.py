@@ -1,4 +1,7 @@
 from flask import render_template, request, redirect, url_for, session, flash, Blueprint
+import pyotp, qrcode
+from io import BytesIO
+from base64 import b64encode
 import pyodbc
 from datetime import datetime, timedelta 
 import secrets
@@ -20,6 +23,53 @@ student_bp = Blueprint('student_routes', __name__)
 # registration function for student routes
 def register_student_routes(app, get_db_connection, login_required):
     
+    # \*/ Added for MFA
+    @student_bp.route('/mfa-setup', methods=['GET', 'POST'])
+    @login_required
+    def mfa_setup():
+        conn = get_db_connection()
+        if not conn:
+            flash("Database connection error", "error")
+            return redirect(url_for('student_routes.dashboard'))
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?", (session['user_id'],))
+            row = cursor.fetchone()
+
+            if row and row[0]:
+                flash("MFA already set up.", "info")
+                return redirect(url_for('student_routes.dashboard'))
+
+            secret = pyotp.random_base32()
+            totp = pyotp.TOTP(secret)
+            uri = totp.provisioning_uri(name=session['email'], issuer_name="CCAP Web Portal")
+
+            qr = qrcode.make(uri)
+            buf = BytesIO()
+            qr.save(buf, format='PNG')
+            qr_b64 = b64encode(buf.getvalue()).decode('utf-8')
+
+            if request.method == 'POST':
+                code_entered = request.form.get("mfa_code", "").strip()
+                if totp.verify(code_entered):
+                    cursor.execute("UPDATE UserDetails SET MFATOTPSecret = ? WHERE UserId = ?", (secret, session['user_id']))
+                    conn.commit()
+                    flash("MFA setup complete.", "success")
+                    return redirect(url_for('student_routes.dashboard'))
+                else:
+                    flash("Invalid code. Please try again.", "error")
+
+            return render_template("mfa_setup.html", qr_b64=qr_b64, secret=secret)
+
+        except Exception as e:
+            print("MFA Setup Error:", e)
+            flash("Error setting up MFA.", "error")
+            return redirect(url_for('student_routes.dashboard'))
+        finally:
+            conn.close()
+    # \*/ ENDED for MFA 
+
     @student_bp.route('/dashboard')
     @login_required
     def dashboard():
