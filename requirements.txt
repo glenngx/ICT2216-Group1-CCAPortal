@@ -6,3 +6,5 @@ bcrypt==4.0.1
 flake8==6.1.0
 Flask-Mail==0.10.0
 requests==2.31.0
+pyotp==2.8.0
+qrcode[pil]==7.4.2
