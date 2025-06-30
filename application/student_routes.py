@@ -85,7 +85,89 @@ def register_student_routes(app, get_db_connection, login_required):
 
         finally:
             conn.close()
-    # \*/ Ended for MFA
+
+    # \*/ ENDED for MFA 
+
+    @student_bp.route('/dashboard')
+    @login_required_with_mfa
+    def dashboard():
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_routes.admin_dashboard'))
+        
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error. Please try again.', 'error')
+            return redirect(url_for('misc_routes.logout'))
+        
+        try:
+            cursor = conn.cursor()
+            
+            cca_query = """
+            SELECT c.CCAId, c.Name, c.Description, cm.CCARole
+            FROM CCA c
+            INNER JOIN CCAMembers cm ON c.CCAId = cm.CCAId
+            WHERE cm.UserId = ?
+            """
+            cursor.execute(cca_query, (session['user_id'],))
+            user_ccas = cursor.fetchall()
+            
+            ccas = []
+            user_is_moderator = False
+            for cca_row in user_ccas:
+                ccas.append({
+                    'id': cca_row[0],
+                    'name': cca_row[1],
+                    'description': cca_row[2],
+                    'role': cca_row[3]
+                })
+                if cca_row[3] == 'moderator':
+                    user_is_moderator = True
+            
+            if ccas:
+                cca_ids = [str(c['id']) for c in ccas]
+                poll_query = """
+                SELECT p.PollId, p.Question, p.EndDate, c.Name as CCAName,
+                    DATEDIFF(day, GETDATE(), p.EndDate) as DaysRemaining
+                FROM v_Poll_With_LiveStatus p
+                INNER JOIN CCA c ON p.CCAId = c.CCAId
+                WHERE p.CCAId IN ({}) AND p.LiveIsActive = 1
+                ORDER BY p.EndDate ASC
+                """.format(','.join(['?'] * len(cca_ids)))
+                
+                cursor.execute(poll_query, cca_ids)
+                poll_results = cursor.fetchall()
+                
+                available_polls = []
+                for poll_row in poll_results:
+                    available_polls.append({
+                        'id': poll_row[0],
+                        'title': poll_row[1],
+                        'end_date': convert_utc_to_gmt8_display(poll_row[2]).split(' ')[0] if poll_row[2] else '',  # Just date part
+                        'cca': poll_row[3],
+                        'days_remaining': poll_row[4] if poll_row[4] is not None else 0
+                    })
+            else:
+                available_polls = []
+            
+            return render_template('dashboard.html', 
+                                ccas=ccas, 
+                                available_polls=available_polls,
+                                user_name=session['name'],
+                                user_role=session['role'],
+                                user_is_moderator=user_is_moderator)
+            
+        except pyodbc.Error as e:
+            print(f"Dashboard data error: {e}")
+            flash('Error loading dashboard data.', 'error')
+            return render_template('dashboard.html', 
+                                ccas=[], 
+                                available_polls=[],
+                                user_name=session['name'],
+                                user_role=session['role'],
+                                user_is_moderator=False)
+        finally:
+            if conn:
+                conn.close()
 
     @student_bp.route('/my-ccas')
     @login_required
