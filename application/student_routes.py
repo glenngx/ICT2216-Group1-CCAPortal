@@ -63,9 +63,12 @@ def register_student_routes(app, get_db_connection, login_required):
             return render_template("mfa_setup.html", qr_b64=qr_b64, secret=secret)
 
         except Exception as e:
-            print("MFA Setup Error:", e)
+            import traceback
+            print("❌ MFA Setup Error:", e)
+            traceback.print_exc()
             flash("Error setting up MFA.", "error")
             return redirect(url_for('student_routes.dashboard'))
+
         finally:
             conn.close()
     # \*/ ENDED for MFA 
