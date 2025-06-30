@@ -38,40 +38,49 @@ def register_student_routes(app, get_db_connection, login_required):
             row = cursor.fetchone()
 
             if row and row[0]:
-                flash("MFA already set up.", "info")
-                return redirect(url_for('student_routes.dashboard'))
+                # Someone came here even though MFA already enabled
+                return redirect(url_for('misc_routes.mfa_verify'))
 
-            secret = pyotp.random_base32()
-            totp = pyotp.TOTP(secret)
-            uri = totp.provisioning_uri(name=session['email'], issuer_name="CCAP Web Portal")
+                # keep a temp secret in the session
+            if 'mfa_temp_secret' not in session:
+                session['mfa_temp_secret'] = pyotp.random_base32()
 
-            qr = qrcode.make(uri)
-            buf = BytesIO()
-            qr.save(buf, format='PNG')
-            qr_b64 = b64encode(buf.getvalue()).decode('utf-8')
+                secret = session['mfa_temp_secret']
+                totp   = pyotp.TOTP(secret)
+                uri    = totp.provisioning_uri(
+                            name=session['email'],
+                            issuer_name="CCAP Web Portal"
+                        )
 
-            if request.method == 'POST':
-                code_entered = request.form.get("mfa_code", "").strip()
-                if totp.verify(code_entered):
-                    cursor.execute("UPDATE UserDetails SET MFATOTPSecret = ? WHERE UserId = ?", (secret, session['user_id']))
-                    conn.commit()
-                    flash("MFA setup complete.", "success")
-                    return redirect(url_for('student_routes.dashboard'))
-                else:
-                    flash("Invalid code. Please try again.", "error")
+                # create QR → base64
+                qr_buf = BytesIO()
+                qrcode.make(uri).save(qr_buf, format='PNG')
+                qr_b64 = b64encode(qr_buf.getvalue()).decode()
 
-            return render_template("mfa_setup.html", qr_b64=qr_b64, secret=secret)
+                # POST: user submits first 6-digit code
+                if request.method == 'POST':
+                    code = request.form.get('mfa_code', '').strip()
+                    if totp.verify(code):
+                        cursor.execute(
+                            "UPDATE UserDetails SET MFATOTPSecret = ? WHERE UserId = ?",
+                            (secret, session['user_id'])
+                        )
+                        conn.commit()
+                        session.pop('mfa_temp_secret', None)
+                        session['mfa_authenticated'] = True
+                        flash("MFA setup complete.", "success")
+                        return redirect(url_for('student_routes.dashboard'))
+                    else:
+                        flash("Invalid code, please try again.", "error")
 
-        except Exception as e:
-            print("MFA Setup Error:", e)
-            flash("Error setting up MFA.", "error")
-            return redirect(url_for('student_routes.dashboard'))
+                return render_template('mfa_setup.html', qr_b64=qr_b64, secret=secret)
+
         finally:
             conn.close()
     # \*/ ENDED for MFA 
 
     @student_bp.route('/dashboard')
-    @login_required
+    @login_required_with_mfa
     def dashboard():
         if session.get('role') == 'admin':
             return redirect(url_for('admin_routes.admin_dashboard'))

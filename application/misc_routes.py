@@ -71,29 +71,30 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?", (session['user_id'],))
+            cursor.execute(
+                "SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?",
+                (session['user_id'],)
+            )
             row = cursor.fetchone()
-
             if not row or not row[0]:
-                flash("MFA not set up.", "error")
-                return redirect(url_for('student_routes.dashboard'))
+                # no secret yet → first-time flow
+                return redirect(url_for('student_routes.mfa_setup'))
 
-            secret = row[0]
-            totp = pyotp.TOTP(secret)
+            totp = pyotp.TOTP(row[0])
 
             if request.method == 'POST':
-                code = request.form.get("mfa_code", "").strip()
+                code = request.form.get('mfa_code', '').strip()
                 if totp.verify(code):
                     session['mfa_authenticated'] = True
-                    flash("MFA verified successfully.", "success")
+                    flash("MFA verified.", "success")
                     return redirect(url_for('student_routes.dashboard'))
                 else:
-                    flash("Invalid MFA code.", "error")
+                    flash("Invalid code.", "error")
 
-            return render_template("mfa_verify.html")
+            return render_template('mfa_verify.html')
+
         finally:
-            conn.close()
-        # \*\ END for MFA
+            conn.close()    # \*\ END for MFA
 
         # \*\ Added for MFA
     def login_required_with_mfa(f):
@@ -270,13 +271,16 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 row = cursor.fetchone()
                 conn.close()
 
+            # clear any stale MFA flag
+                session.pop('mfa_authenticated', None)
+
                 if row and row[0]:
-                    # MFA already enabled – ask for code
+                    # secret already exists → ask for 6-digit code
                     return redirect(url_for('misc_routes.mfa_verify'))
                 else:
-                    # MFA not yet set up – redirect to setup
+                    # first login → force setup
                     return redirect(url_for('student_routes.mfa_setup'))
-                
+
                 # \*\ Ended for MFA
 
             else:
