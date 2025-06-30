@@ -122,15 +122,18 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 admin_user = cursor.fetchone()
                 print(f"Admin query result: {admin_user}")
                 
-                if admin_user and password == admin_user[2]: # Admin passwords are not hashed in the current setup
+                # \*\ Edit for the hashing of admin
+                if admin_user and bcrypt.checkpw(
+                        password.encode('utf-8'),
+                        admin_user[2].encode('utf-8')
+                ):
                     return {
-                        'user_id': admin_user[0],
-                        'student_id': admin_user[1], # Admin might not have a student ID in Student table
-                        'role': admin_user[3],
-                        'name': admin_user[1], # Use username as name for admin
-                        'email': admin_user[1] # Placeholder, admin might not have an email in Student table
+                        'user_id':   admin_user[0],
+                        'student_id': admin_user[1],
+                        'role':      admin_user[3],
+                        'name':      admin_user[1],
+                        'email':     admin_user[1]    # placeholder
                     }
-            
             # Try email login
             if validate_email(username):
                 print("Validating as email...")
