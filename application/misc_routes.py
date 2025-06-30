@@ -110,20 +110,19 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             
             user = None  # Initialize user variable
             
-            # Handle admin login specifically first
-            if username == 'admin':  
-                print("Admin login attempt...")
-                query = """
-                SELECT ud.UserId, ud.Username, ud.Password, ud.SystemRole
-                FROM UserDetails ud
-                WHERE ud.SystemRole = 'admin'
-                """
-                cursor.execute(query)
-                admin_user = cursor.fetchone()
-                print(f"Admin query result: {admin_user}")
-                
-                # \*\ Edit for the hashing of admin
-                if admin_user and bcrypt.checkpw(
+            # Handle admin login specifically first 
+            # \*\ edit for different user name for admin
+            # ── ADMIN SPECIAL-CASE ─────────────────────────────────────────────
+            cursor.execute("""
+                    SELECT ud.UserId, ud.Username, ud.Password, ud.SystemRole
+                    FROM   [dbo].[UserDetails] AS ud
+                    WHERE  ud.[SystemRole] = 'admin'
+                    AND  ud.[Username]   = ?          -- must still match what was typed
+            """, (username,))
+            admin_user = cursor.fetchone()
+
+            # \*\ Edit for the hashing of admin
+            if admin_user and bcrypt.checkpw(
                         password.encode('utf-8'),
                         admin_user[2].encode('utf-8')
                 ):
