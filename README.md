@@ -1,4 +1,4 @@
-# Co-Curricular Activities Portal (CCAP) [TESTING ON CCAP README FILE TO SEE IF IT LINKS BECAUSE OF THE REPO IN VM has existing files hence the ci/cd is not able to link]
+# Co-Curricular Activities Portal (CCAP) 
 The Co-Curricular Activities Portal (CCAP) is a secure web application designed to democratize decision-making within student organizations at SIT. The platform enables:
 
 - **Students** to participate in important CCA decisions through secure, anonymous voting on matters such as scheduling and leadership selection
