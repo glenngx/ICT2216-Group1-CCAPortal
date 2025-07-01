@@ -17,6 +17,6 @@ jobs:
         path: "."  # You can leave this since requirements.txt is in root
         format: "HTML"
         out: "dependency-check-report"
-        arguments: >
+        args: >
           --enableExperimental
           --scan requirements.txt
