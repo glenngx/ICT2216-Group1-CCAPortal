@@ -7,7 +7,8 @@ import hashlib
 import re
 import pyotp
 from functools import wraps
-
+from application.captcha_utils import captcha_is_valid   # top of file
+import os 
 
 def validate_password_nist(password):
     """
@@ -251,11 +252,26 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
 
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '')
-            
+            # \*\ Added for Captcha
+            captcha_token = request.form.get('g-recaptcha-response', '')
+
+            if not captcha_is_valid(captcha_token, request.remote_addr):
+                    flash("CAPTCHA verification failed. Please try again.", "error")
+                    # IMPORTANT: pass the site key when re-rendering
+                    return render_template(
+                        "login.html",
+                        RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY")
+                    )
+            # \*\ Ended for Captcha
+
             if not username or not password:
                 flash('Please enter both username and password.', 'error')
-                return render_template('login.html')
-            
+                #return render_template('login.html')
+                # \*\ Started for Captcha
+                return render_template('login.html',
+                       RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"))
+                # \*\ Ended for Captcha
+                
             user = authenticate_user(username, password)
             
             if user:
