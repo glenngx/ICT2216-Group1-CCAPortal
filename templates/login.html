@@ -27,9 +27,7 @@
                 {% endif %}
             {% endwith %}
             
-            <!-- CAPTCHA \*\ --> 
-            <div class="g-recaptcha mb-3" data-sitekey="{{ RECAPTCHA_SITE_KEY }}"></div>
-            <!-- END CAPTCHA \*\ --> 
+
             <form method="POST" class="login-form" id="loginForm">
                 <div class="mb-3">
                     <label for="username" class="form-label">Student ID or Email</label>
@@ -44,7 +42,9 @@
                            placeholder="Enter your password"
                            autocomplete="current-password">
                 </div>
-                
+             <!-- CAPTCHA \*\ --> 
+            <div class="g-recaptcha mb-3" data-sitekey="{{ RECAPTCHA_SITE_KEY }}"></div>
+            <!-- END CAPTCHA \*\ --> 
                 <button type="submit" class="btn btn-primary login-btn" id="loginBtn">
                     <span class="spinner-border spinner-border-sm d-none" role="status" id="loginSpinner"></span>
                     Sign In
