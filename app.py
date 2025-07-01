@@ -4,6 +4,7 @@ from functools import wraps
 import re
 from datetime import datetime, timedelta
 from email_service import email_service
+import os  
 from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file
 # Removed direct import of DB_CONNECTION_STRING, SECRET_KEY from config
@@ -21,6 +22,12 @@ from application.student_routes import register_student_routes
 from application.misc_routes import register_misc_routes
 
 app = Flask(__name__)
+# \*\ Added for Captcha
+# 2️⃣  NEW  — make the key available in every template on every render
+@app.context_processor
+def inject_recaptcha_key():
+    return dict(RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"))
+# \*\ Ended for Captcha
 
 # Load configuration from config.py using from_object
 try:
