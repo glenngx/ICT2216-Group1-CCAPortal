@@ -31,7 +31,11 @@ def inject_recaptcha_key():
 
 # Load configuration from config.py using from_object
 try:
-    app.config.from_object('config.Config')
+    # app.config.from_object('config.Config')
+    # \*\ For unit testing. Uncomment above ^ and add:
+    from config import Config
+    app.config.from_object(Config)
+    
     # Access SECRET_KEY from app.config after loading
     app.secret_key = app.config['SECRET_KEY'] 
     print("Configuration loaded from config.Config object")
