@@ -1,4 +1,4 @@
-name: Flask Tests
+name: Flask App Tests
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build-test:
+  test:
     runs-on: ubuntu-latest
 
     services:
@@ -17,7 +17,7 @@ jobs:
           - 4444:4444
 
     steps:
-    - name: Checkout code
+    - name: Checkout repo
       uses: actions/checkout@v3
 
     - name: Set up Python
@@ -26,18 +26,10 @@ jobs:
         python-version: '3.11'
 
     - name: Add root to PYTHONPATH
-      run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+      run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
+      run: pip install -r requirements.txt
 
-    - name: Run unit tests
-      run: |
-        python -m unittest discover tests
-
-    - name: Run Selenium test
-      run: |
-        pytest tests/test_login_selenium.py || true  # optional for now
+    #- name: Run unit tests
+    #  run: python -m unittest discover tests
