@@ -76,7 +76,12 @@
                 {% if show_header_user != False and session.get('user_id') %}
                 <div class="dropdown">
                     <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> {{ user_name or 'admin' }}
+                       <i class="bi bi-person-circle"></i> 
+                        {% if session.get('role') == 'admin' %}
+                            Admin
+                        {% else %}
+                            {{ session.get('name') }}
+                        {% endif %}
                         {% if session.get('role') == 'admin' %}
                         <span class="badge bg-warning text-dark ms-1">Admin</span>
                         {% elif user_is_moderator %}
