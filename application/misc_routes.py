@@ -20,8 +20,8 @@ def validate_password_nist(password):
     if len(password) < 15:
         errors.append("Password must be at least 15 characters long")
     
-    if len(password) > 128:
-        errors.append("Password must not exceed 128 characters")
+    if len(password) > 64:
+        errors.append("Password must not exceed 64 characters")
     
     # Check for all whitespace 
     if password.isspace():
