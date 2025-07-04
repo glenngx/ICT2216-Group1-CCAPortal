@@ -37,8 +37,13 @@ jobs:
     - name: Run Bandit and generate SARIF
       run: |
         mkdir -p reports
-        echo "Running Bandit..."
-        bandit -r . -f sarif -o reports/bandit.sarif || echo "⚠️ Bandit did not produce a SARIF file"
+        echo "📂 Python files in repo:"
+        find . -name "*.py"
+        
+        echo "🔍 Running Bandit..."
+        bandit -r . -f sarif -o reports/bandit.sarif || echo "⚠️ Bandit failed or produced no output"
+        
+        echo "📁 Reports folder contents:"
         ls -lah reports
         
     - name: Upload Flake8 SARIF
