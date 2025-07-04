@@ -36,15 +36,17 @@ jobs:
 
     - name: Run Bandit and generate SARIF
       run: |
-        bandit -r . -f sarif -o reports/bandit.sarif || true
-
+        mkdir -p reports     # ✅ Also here
+        echo "Running Bandit..."
+        bandit -r . -f sarif -o reports/bandit.sarif || echo "Bandit failed or found no issues"
+        
     - name: Upload Flake8 SARIF
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: reports/flake8.sarif
 
     - name: Upload Bandit SARIF
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: reports/bandit.sarif
 
