@@ -35,13 +35,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         echo "Dependencies installed successfully"
-    
+
     - name: Create test configuration
       run: |
         echo "Creating test configuration..."
         cat > config.py << EOF
         # Test Configuration for CI
         class Config:
+            SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+            SQLALCHEMY_TRACK_MODIFICATIONS = False
             DB_SERVER = "test-server"
             DB_NAME = "test-db"
             DB_USERNAME = "test-user"
