@@ -53,7 +53,8 @@ except KeyError:
 app.config['SQLALCHEMY_DATABASE_URI'] = app.config.get('SQLALCHEMY_DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = app.config.get('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
-db.init_app(app)
+with app.app_context():
+    db.init_app(app)
 
 # Session Management
 app.config.update(
