@@ -49,6 +49,10 @@ except KeyError:
     print("ERROR: SECRET_KEY not found in config.Config.")
     exit(1)
 
+# Manually set the SQLAlchemy Database URI from the config
+app.config['SQLALCHEMY_DATABASE_URI'] = app.config.get('SQLALCHEMY_DATABASE_URI')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = app.config.get('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+
 db.init_app(app)
 
 # Session Management
