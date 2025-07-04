@@ -20,8 +20,7 @@ class Student(db.Model):
     Email = db.Column(db.String(255), unique=True, nullable=False)
 
     user_details = db.relationship('User', backref='student_details', uselist=False)
-    # test
-    
+
 class CCAMembers(db.Model):
     __tablename__ = 'CCAMembers'
     MemberId = db.Column(db.Integer, primary_key=True)
