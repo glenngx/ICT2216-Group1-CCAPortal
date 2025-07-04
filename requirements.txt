@@ -10,3 +10,4 @@ pyotp==2.8.0
 qrcode[pil]==7.4.2
 pytest==8.2.2
 selenium==4.21.0
+Flask-SQLAlchemy==3.1.1

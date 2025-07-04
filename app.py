@@ -20,6 +20,7 @@ from application.admin_routes import register_admin_routes
 from application.moderator_routes import register_moderator_routes
 from application.student_routes import register_student_routes
 from application.misc_routes import register_misc_routes
+from application.models import db
 
 app = Flask(__name__)
 # \*\ Added for Captcha
@@ -46,6 +47,8 @@ except ImportError:
 except KeyError:
     print("ERROR: SECRET_KEY not found in config.Config.")
     exit(1)
+
+db.init_app(app)
 
 # Session Management
 app.config.update(

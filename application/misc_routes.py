@@ -9,6 +9,8 @@ import pyotp
 from functools import wraps
 from application.captcha_utils import captcha_is_valid   # top of file
 import os 
+from application.models import User, Student, CCAMembers
+import bcrypt
 
 def validate_password_nist(password):
     """
@@ -97,142 +99,74 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         finally:
             conn.close()    # \*\ END for MFA
     
-    # Authentication function (moved from app.py)
     def authenticate_user(username, password):
-        conn = get_db_connection()
-        if not conn:
-            print("Database connection failed")
+        # ── ADMIN SPECIAL-CASE ─────────────────────────────────────────────
+        # Replaces: SELECT ud.UserId, ud.Username, ud.Password, ud.SystemRole FROM [dbo].[UserDetails] AS ud WHERE ud.[SystemRole] = 'admin' AND ud.[Username] = ?
+        admin_user = User.query.filter_by(SystemRole='admin', Username=username).first()
+        if admin_user and bcrypt.checkpw(password.encode('utf-8'), admin_user.Password.encode('utf-8')):
+            return {
+                'user_id': admin_user.UserId,
+                'student_id': admin_user.Username, # Admin has username as student_id in old code
+                'role': admin_user.SystemRole,
+                'name': admin_user.Username,
+                'email': admin_user.Username # placeholder
+            }
+
+        user_details = None
+        # Try email login
+        # Replaces: SELECT ... FROM UserDetails ud INNER JOIN Student s ON ud.StudentId = s.StudentId WHERE s.Email = ?
+        if validate_email(username):
+            student = Student.query.filter_by(Email=username).first()
+            if student:
+                user_details = student.user_details
+        # Try Student ID
+        # Replaces: SELECT ... FROM UserDetails ud INNER JOIN Student s ON ud.StudentId = s.StudentId WHERE s.StudentId = ?
+        elif validate_student_id(username):
+            student = Student.query.filter_by(StudentId=int(username)).first()
+            if student:
+                user_details = student.user_details
+        # Try username login
+        # Replaces: SELECT ... FROM UserDetails ud INNER JOIN Student s ON ud.StudentId = s.StudentId WHERE ud.Username = ?
+        else:
+            user_details = User.query.filter_by(Username=username).first()
+
+        # Check if user was found
+        if not user_details:
+            print(f"No user found with identifier: {username}")
             return None
-        
+
+        # SECURITY CHECK: Reject login if password is NULL (account not yet set up)
+        stored_password = user_details.Password
+        if stored_password is None:
+            print(f"User {username} has no password set - login rejected, must use email link")
+            return None
+
+        # Remove TEMP_ prefix if present before bcrypt check
+        password_to_check = stored_password
+        if stored_password.startswith("TEMP_"):
+            password_to_check = stored_password.replace("TEMP_", "", 1)
+
         try:
-            cursor = conn.cursor()
-            
-            print(f"Attempting login with username: '{username}' and password: '{password}'")
-            
-            user = None  # Initialize user variable
-            
-            # Handle admin login specifically first 
-            # \*\ edit for different user name for admin
-            # ── ADMIN SPECIAL-CASE ─────────────────────────────────────────────
-            cursor.execute("""
-                    SELECT ud.UserId, ud.Username, ud.Password, ud.SystemRole
-                    FROM   [dbo].[UserDetails] AS ud
-                    WHERE  ud.[SystemRole] = 'admin'
-                    AND  ud.[Username]   = ?          -- must still match what was typed
-            """, (username,))
-            admin_user = cursor.fetchone()
-
-            # \*\ Edit for the hashing of admin
-            if admin_user and bcrypt.checkpw(
-                        password.encode('utf-8'),
-                        admin_user[2].encode('utf-8')
-                ):
-                    return {
-                        'user_id':   admin_user[0],
-                        'student_id': admin_user[1],
-                        'role':      admin_user[3],
-                        'name':      admin_user[1],
-                        'email':     admin_user[1]    # placeholder
-                    }
-            # Try email login
-            if validate_email(username):
-                print("Validating as email...")
-                query = """
-                SELECT ud.UserId, ud.StudentId, ud.Password, ud.SystemRole, s.Name, s.Email
-                FROM UserDetails ud
-                INNER JOIN Student s ON ud.StudentId = s.StudentId
-                WHERE s.Email = ?
-                """
-                cursor.execute(query, (username,))
-                user = cursor.fetchone()
-                print(f"Email query result: {user}")
-                
-            # Try Student ID
-            elif validate_student_id(username):
-                print("Validating as Student ID...")
-                query = """
-                SELECT ud.UserId, ud.StudentId, ud.Password, ud.SystemRole, s.Name, s.Email
-                FROM UserDetails ud
-                INNER JOIN Student s ON ud.StudentId = s.StudentId
-                WHERE s.StudentId = ?
-                """
-                cursor.execute(query, (int(username),)) # Ensure username is cast to int for StudentId
-                user = cursor.fetchone()
-                print(f"StudentID query result: {user}")
-                
-            else:
-                # Try username login 
-                print("Validating as username...")
-                query = """
-                SELECT ud.UserId, ud.StudentId, ud.Password, ud.SystemRole, s.Name, s.Email
-                FROM UserDetails ud
-                INNER JOIN Student s ON ud.StudentId = s.StudentId
-                WHERE ud.Username = ?
-                """
-                cursor.execute(query, (username,))
-                user = cursor.fetchone()
-                print(f"Username query result: {user}")
-            
-            # Check if user was found
-            if not user:
-                print(f"No user found with identifier: {username}")
-                return None
-            
-            # Extract password from the result
-            stored_password = user[2]  # Password from UserDetails
-            print(f"Stored password: '{stored_password}', Entered password: '{password}'")
-            
-            # SECURITY CHECK: Reject login if password is NULL (account not yet set up)
-            if stored_password is None:
-                print(f"User {username} has no password set - login rejected, must use email link")
-                return None
-            
-            # Remove TEMP_ prefix if present before bcrypt check
-            password_to_check = stored_password
-            if stored_password.startswith("TEMP_"):
-                password_to_check = stored_password.replace("TEMP_", "", 1)
-            
             # Verify password using bcrypt
-            try:
-                if bcrypt.checkpw(password.encode('utf-8'), password_to_check.encode('utf-8')):
-                    # ── PROMOTE TO MODERATOR IF NEEDED ─────────────────────────
-                    try:
-                        cursor.execute("""
-                            SELECT COUNT(*)
-                            FROM CCAMembers
-                            WHERE UserId = ? AND CCARole = 'moderator'
-                        """, (user[0],))                       # user[0] is the UserId
-                        if cursor.fetchone()[0] > 0:
-                            promoted_role = 'moderator'
-                        else:
-                            promoted_role = user[3]            # keep original SystemRole
-                    except Exception as rerr:
-                        print(f'Role promotion check error: {rerr}')
-                        promoted_role = user[3]                # fail-safe
-                    # ───────────────────────────────────────────────────────────
+            if bcrypt.checkpw(password.encode('utf-8'), password_to_check.encode('utf-8')):
+                # ── PROMOTE TO MODERATOR IF NEEDED ─────────────────────────
+                # Replaces: SELECT COUNT(*) FROM CCAMembers WHERE UserId = ? AND CCARole = 'moderator'
+                is_moderator = CCAMembers.query.filter_by(UserId=user_details.UserId, CCARole='moderator').first()
+                promoted_role = 'moderator' if is_moderator else user_details.SystemRole
 
-                    return {
-                        'user_id':   user[0],
-                        'student_id': user[1],
-                        'role':      promoted_role,            # ← use the new variable
-                        'name':      user[4],
-                        'email':     user[5],
-                    }
-
-
-                else:
-                    print("Password verification failed")
-                    return None
-            except Exception as bcrypt_error:
-                print(f"Bcrypt error: {bcrypt_error}")
+                return {
+                    'user_id': user_details.UserId,
+                    'student_id': user_details.StudentId,
+                    'role': promoted_role,
+                    'name': user_details.student.Name,
+                    'email': user_details.student.Email,
+                }
+            else:
+                print("Password verification failed")
                 return None
-            
-        except Exception as e:
-            print(f"Authentication error: {e}")
+        except Exception as bcrypt_error:
+            print(f"Bcrypt error: {bcrypt_error}")
             return None
-        finally:
-            if conn:
-                conn.close()
 
     @misc_bp.route('/')
     def index():
@@ -256,12 +190,12 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             captcha_token = request.form.get('g-recaptcha-response', '')
 
             if not captcha_is_valid(captcha_token, request.remote_addr):
-                    flash("CAPTCHA verification failed. Please try again.", "error")
-                    # IMPORTANT: pass the site key when re-rendering
-                    return render_template(
-                        "login.html",
-                        RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY")
-                    )
+                flash("CAPTCHA verification failed. Please try again.", "error")
+            # IMPORTANT: pass the site key when re-rendering
+                return render_template(
+                "login.html",
+                RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY")
+                )
             # \*\ Ended for Captcha
 
             if not username or not password:
@@ -293,16 +227,16 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 row = cursor.fetchone()
                 conn.close()
 
-            # clear any stale MFA flag
+                # clear any stale MFA flag
                 session.pop('mfa_authenticated', None)
 
                 if row and row[0]:
-                    # secret already exists → ask for 6-digit code
+                #     # secret already exists → ask for 6-digit code
                     return redirect(url_for('misc_routes.mfa_verify'))
                 else:
-                    # first login → force setup
-                    return redirect(url_for('student_routes.mfa_setup'))
-
+                   # first login → force setup
+                   return redirect(url_for('student_routes.mfa_setup'))
+                #return redirect(url_for('student_routes.dashboard'))
                 # \*\ Ended for MFA
 
             else:
