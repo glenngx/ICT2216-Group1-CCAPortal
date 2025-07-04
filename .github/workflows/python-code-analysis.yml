@@ -7,9 +7,9 @@ on:
     branches: [main]
 
 permissions:
-    contents: read
-    security-events: write
-    
+  contents: read
+  security-events: write
+
 jobs:
   python-analysis:
     runs-on: ubuntu-latest
@@ -37,15 +37,11 @@ jobs:
     - name: Run Bandit and generate SARIF
       run: |
         mkdir -p reports
-        echo "📂 Python files in repo:"
-        find . -name "*.py"
-        
         echo "🔍 Running Bandit..."
-        bandit -r . -f sarif -o reports/bandit.sarif || echo "⚠️ Bandit failed or produced no output"
-        
+        bandit -r . -f sarif -o reports/bandit.sarif
         echo "📁 Reports folder contents:"
         ls -lah reports
-        
+
     - name: Upload Flake8 SARIF
       uses: github/codeql-action/upload-sarif@v3
       with:
@@ -55,4 +51,3 @@ jobs:
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: reports/bandit.sarif
-
