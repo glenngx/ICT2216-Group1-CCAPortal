@@ -1,0 +1,45 @@
+name: Python Static Code Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8 flake8-sarif bandit
+
+    - name: Run Flake8 and generate SARIF
+      run: |
+        mkdir -p reports
+        flake8 . --format sarif --output-file reports/flake8.sarif || true
+
+    - name: Run Bandit and generate SARIF
+      run: |
+        bandit -r . -f sarif -o reports/bandit.sarif || true
+
+    - name: Upload Flake8 SARIF
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: reports/flake8.sarif
+
+    - name: Upload Bandit SARIF
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: reports/bandit.sarif
