@@ -27,18 +27,18 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install flake8 flake8-sarif bandit
+        pip install flake8 flake8-sarif semgrep
 
     - name: Run Flake8 and generate SARIF
       run: |
         mkdir -p reports
         flake8 . --format sarif --output-file reports/flake8.sarif || true
 
-    - name: Run Bandit and generate SARIF
+    - name: Run Semgrep and generate SARIF
       run: |
         mkdir -p reports
-        echo "🔍 Running Bandit..."
-        bandit -r . -f sarif -o reports/bandit.sarif
+        echo "🔍 Running Semgrep with Python security rules..."
+        semgrep --config p/python --sarif --output reports/semgrep.sarif
         echo "📁 Reports folder contents:"
         ls -lah reports
 
@@ -47,7 +47,7 @@ jobs:
       with:
         sarif_file: reports/flake8.sarif
 
-    - name: Upload Bandit SARIF
+    - name: Upload Semgrep SARIF
       uses: github/codeql-action/upload-sarif@v3
       with:
-        sarif_file: reports/bandit.sarif
+        sarif_file: reports/semgrep.sarif
