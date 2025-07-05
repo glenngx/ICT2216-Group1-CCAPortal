@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask_session import Session
+from flask_session.sqlalchemy import SqlAlchemySessionInterface
 import pyodbc
 from functools import wraps
 import re
@@ -58,9 +60,13 @@ with app.app_context():
 
 # Session Management
 app.config.update(
-    # Commented out below, permanent set to False so cookies clear when browser closes
-    # # Timeout after 30 min of inactivity
-    # PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
+    # Server-side
+    SESSION_TYPE='sqlalchemy',
+    SESSION_SQLALCHEMY=db,
+    # Temporary session cookie to clear when browser closes
+    SESSION_PERMANENT=False,
+    # Sign session cookie
+    SESSION_USE_SIGNER=True,
     # Prevent access to stored data from JavaScript
     SESSION_COOKIE_HTTPONLY=True,
     # Ensure cookies only sent over HTTPS
@@ -68,6 +74,15 @@ app.config.update(
     # Protects against CSRF
     SESSION_COOKIE_SAMESITE='Strict'
 )
+
+# Initialise session
+Session(app)
+
+# To run once to create Sessions table
+with app.app_context():
+    app.session_interface = SqlAlchemySessionInterface(app, db, "session", "sess_")
+    db.create_all()
+    print("[INFO] Session table created successfully.")
 
 # Database connection function
 def get_db_connection():
