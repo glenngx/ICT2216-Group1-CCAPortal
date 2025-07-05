@@ -32,37 +32,59 @@ jobs:
     - name: Run Safety check (dependency vulnerabilities)
       run: |
         echo "Checking for known security vulnerabilities in dependencies..."
-        safety check --json --output safety-report.json || SAFETY_FAILED=true
+        safety check --output json > safety-report.json || SAFETY_FAILED=true
+        safety check --output text > safety-report.txt || true
         
         if [ "$SAFETY_FAILED" = "true" ]; then
           echo "⚠️ Security vulnerabilities found in dependencies!"
           echo "Check safety-report.json for details"
+          cat safety-report.txt
           exit 1
         else
-          echo "✅ No dependency vulnerabilities found"
+          echo "No dependency vulnerabilities found"
         fi
-
+    
     - name: Run Bandit check (code security issues)
       run: |
         echo "Scanning code for security issues..."
-        # Only fail on medium/high severity issues
+        # Run bandit with JSON output and only fail on medium/high severity
         bandit -r . -ll -f json -o bandit-report.json || BANDIT_FAILED=true
+        bandit -r . -ll -f txt || true  
         
         if [ "$BANDIT_FAILED" = "true" ]; then
           echo "⚠️ Security issues found in code!"
           echo "Check bandit-report.json for details"
           exit 1
         else
-          echo "✅ No significant security issues found"
+          echo "No significant security issues found"
         fi
     
     - name: Run pip-audit (additional dependency check)
       run: |
         echo "Running additional dependency vulnerability scan..."
-        pip-audit || echo "Some vulnerabilities found, check the output above"
+        pip-audit --format=json --output=pip-audit-report.json || PIP_AUDIT_FAILED=true
+        pip-audit || true 
+        
+        if [ "$PIP_AUDIT_FAILED" = "true" ]; then
+          echo "⚠️ Vulnerabilities found in dependencies!"
+          echo "Check pip-audit-report.json for details"
+          exit 1
+        else
+          echo "No vulnerabilities found by pip-audit"
+        fi
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()  # Upload even if security checks fail
+      with:
+        name: security-reports-${{ github.run_number }}
+        path: |
+          safety-report.json
+          safety-report.txt
+          bandit-report.json
+          pip-audit-report.json
     
     - name: Security scan completed
       run: |
-        echo "Security scanning completed"
-        echo "Check the logs above for any security findings"
-        echo "Regular security scanning helps keep your app secure"
+        echo "Security scanning completed successfully"
+        echo "All security checks passed!"
