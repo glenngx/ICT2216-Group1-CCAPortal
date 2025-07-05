@@ -759,5 +759,11 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if conn:
                 conn.close()
 
+    @admin_bp.route('/logs')
+    @admin_required
+    def view_logs():
+        """Admin view to see system logs"""
+        return render_template('admin_logs.html', user_name=session['name'])
+
     # Register the blueprint with the app
     app.register_blueprint(admin_bp)
