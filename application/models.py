@@ -62,9 +62,10 @@ class PollOption(db.Model):
 class PollVote(db.Model):
     __tablename__ = 'Votes'
     VoteId = db.Column(db.Integer, primary_key=True)
+    PollId = db.Column(db.Integer, db.ForeignKey('Poll.PollId'))
     UserId = db.Column(db.Integer, db.ForeignKey('UserDetails.UserId'))
     OptionId = db.Column(db.Integer, db.ForeignKey('Options.OptionId'))
-
+    VotedTime = db.Column(db.DateTime, nullable=False)
     user = db.relationship('User', backref='votes')
 
 class VoteToken(db.Model):
