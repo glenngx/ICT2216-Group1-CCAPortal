@@ -35,7 +35,6 @@ class CCA(db.Model):
     __tablename__ = 'CCA'
     CCAId = db.Column(db.Integer, primary_key=True)
     Name = db.Column(db.String(255), nullable=False)
-    Category = db.Column(db.String(255))
     Description = db.Column(db.Text)
 
 class Poll(db.Model):
