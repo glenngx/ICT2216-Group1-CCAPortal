@@ -123,7 +123,7 @@ def login_required(f):
     return decorated_function
 
 # Admin required decorator
-def admin_required(f):
+# def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -173,7 +173,7 @@ def admin_required(f):
     return decorated_function
 
 # Moderator required decorator
-def moderator_required(f):
+# def moderator_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -250,6 +250,19 @@ def health_check():
     
 
 # Global Error Handlers 
+# 401 error handler 
+@app.errorhandler(401)
+def unauthorized(error):
+    flash("Please log in to continue.", "warning")
+    return redirect(url_for('misc_routes.login')), 302
+
+# 403 error handler 
+@app.errorhandler(403)
+def forbidden(error):
+    flash("You do not have permission to access this page.", "error")
+    return redirect(url_for('student_routes.dashboard')), 302
+
+
 # Global 404 error handler (non-existing path)
 @app.errorhandler(404)
 def page_not_found(error):
@@ -275,9 +288,14 @@ def page_not_found(error):
 
     # Only for unknown route 404s:
     print(f"[DEBUG] Flashing 404 warning for: {path}")
-    flash("Access Denied 404.", "error")
+    flash("Access Denied.", "error")
     return redirect(url_for('student_routes.dashboard')), 302
 
+# 405 error handler 
+@app.errorhandler(405)
+def method_not_allowed(error):
+    flash("An unexpected error occurred.", "error")
+    return redirect(url_for('student_routes.dashboard')), 302
 
 # Global 500 error handler (internal server error)
 @app.errorhandler(500)
@@ -287,4 +305,5 @@ def handle_500(error):
 
 
 if __name__ == '__main__':
+    # set debug to false for deployment
     app.run(host='0.0.0.0', port=5000, debug=True)
