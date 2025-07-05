@@ -1,4 +1,4 @@
-from application import app
+from app import app
 
 def test_login_page_loads():
     with app.test_client() as client:
