@@ -123,12 +123,22 @@ def register_student_routes(app, get_db_connection, login_required):
             # \*\ Added for password expiration
 
             # ✅ Get user and calculate password expiry warning
-            user = User.query.filter_by(UserId=session['user_id']).first()
-            days_left = None
-            if user and user.PasswordLastSet:
-                days_since = (datetime.utcnow() - user.PasswordLastSet).days
-                days_left = 365 - days_since
+            user = User.query.filter_by(Username=session['name']).first()
 
+            if user:
+                print("✅ User found:", user.Username)
+                print("✅ PasswordLastSet =", user.PasswordLastSet)
+
+                if user.PasswordLastSet:
+                    days_since = (datetime.utcnow() - user.PasswordLastSet).days
+                    days_left = 365 - days_since
+                    print("✅ days_left =", days_left)
+                else:
+                    print("❌ PasswordLastSet is None")
+
+            else:
+                print("❌ User not found")
+                
             # \*\ Ended for password expiration
 
             user_ccas = db.session.query(CCA.CCAId, CCA.Name, CCA.Description, CCAMembers.CCARole).join(CCAMembers, CCA.CCAId == CCAMembers.CCAId).filter(CCAMembers.UserId == session['user_id']).all()
@@ -182,22 +192,28 @@ def register_student_routes(app, get_db_connection, login_required):
             else:
                 available_polls = []
             
-            return render_template('dashboard.html', 
-                                ccas=ccas, 
-                                available_polls=available_polls,
-                                user_name=session['name'],
-                                user_role=session['role'],
-                                user_is_moderator=user_is_moderator)
+            return render_template(
+                'dashboard.html',
+                ccas=ccas,
+                available_polls=available_polls,
+                user_name=session['name'],
+                user_role=session['role'],
+                user_is_moderator=user_is_moderator,
+                password_days_left=days_left  # ✅ pass to template
+            )
             
         except Exception as e:
             print(f"Dashboard data error: {e}")
             flash('Error loading dashboard data.', 'error')
-            return render_template('dashboard.html', 
-                                ccas=[], 
-                                available_polls=[],
-                                user_name=session['name'],
-                                user_role=session['role'],
-                                user_is_moderator=False)
+            return render_template(
+                'dashboard.html',
+                ccas=[],
+                available_polls=[],
+                user_name=session['name'],
+                user_role=session['role'],
+                user_is_moderator=False,
+                password_days_left=None
+            )
 
     @student_bp.route('/my-ccas')
     @login_required_with_mfa
