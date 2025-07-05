@@ -78,12 +78,6 @@ app.config.update(
 # Initialise session
 Session(app)
 
-# To run once to create Sessions table
-with app.app_context():
-    app.session_interface = SqlAlchemySessionInterface(app, db, "session", "sess_")
-    db.create_all()
-    print("[INFO] Session table created successfully.")
-
 # Database connection function
 def get_db_connection():
     try:
