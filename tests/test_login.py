@@ -18,3 +18,13 @@ def test_login_with_invalid_credentials():
         # Relaxed check:
         assert b"login" in response.data.lower() or b"invalid" in response.data.lower()
 
+def test_login_with_valid_credentials():
+    with app.test_client() as client:
+        response = client.post("/login", data={
+            "username": "2305105",
+            "password": "pppppp"
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
+
