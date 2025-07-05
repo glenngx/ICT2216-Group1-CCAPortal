@@ -1,4 +1,4 @@
-name: Flask App Tests (Pytest + Selenium)
+name: Flask UI + Unit Testing (Selenium)
 
 on:
   push:
@@ -16,28 +16,32 @@ jobs:
         ports:
           - 4444:4444
 
+    env:
+      TESTING: "1"
+      FLASK_ENV: "development"
+
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 📦 Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest selenium
 
-      - name: Start Flask app
+      - name: 🚀 Start Flask App
         run: |
           nohup python app.py &
           sleep 5
 
-      - name: Run Unit Tests
+      - name: ✅ Run Unit Tests
         run: pytest tests/test_login.py
 
-      - name: Run Selenium UI Tests
+      - name: 🧪 Run Selenium UI Tests
         run: pytest tests/test_login_ui.py
