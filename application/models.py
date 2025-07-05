@@ -41,10 +41,12 @@ class Poll(db.Model):
     __tablename__ = 'Poll'
     PollId = db.Column(db.Integer, primary_key=True)
     CCAId = db.Column(db.Integer, db.ForeignKey('CCA.CCAId'))
-    Title = db.Column(db.String(255), nullable=False)
-    Description = db.Column(db.Text)
+    Question = db.Column(db.String(255), nullable=False)
+    QuestionType = db.Column(db.String(20))
     StartDate = db.Column(db.DateTime, nullable=False)
     EndDate = db.Column(db.DateTime, nullable=False)
+    IsAnonymous = db.Column(db.Boolean, nullable=False)
+    IsActive = db.Column(db.Boolean, nullable=False)
 
     cca = db.relationship('CCA', backref='polls')
     options = db.relationship('PollOption', backref='poll', cascade='all, delete-orphan')
