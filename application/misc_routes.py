@@ -9,7 +9,7 @@ import pyotp
 from functools import wraps
 from application.captcha_utils import captcha_is_valid   # top of file
 import os 
-from application.models import User, Student, CCAMembers
+from application.models import User, Student, CCAMembers, db
 import bcrypt
 
 def validate_password_nist(password):
@@ -71,33 +71,36 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         if 'user_id' not in session:
             return redirect(url_for('misc_routes.login'))
 
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?",
-                (session['user_id'],)
-            )
-            row = cursor.fetchone()
-            if not row or not row[0]:
-                # no secret yet → first-time flow
-                return redirect(url_for('student_routes.mfa_setup'))
+        # SQL refactoring
+        # conn = get_db_connection()
+        # try:
+        #     cursor = conn.cursor()
+        #     cursor.execute(
+        #         "SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?",
+        #         (session['user_id'],)
+        #     )
+        #     row = cursor.fetchone()
+        user = User.query.filter_by(UserId=session['user_id']).first()
+        # Fetches the user by id to get the MFA secret.
 
-            totp = pyotp.TOTP(row[0])
+        if not user or not user.MFATOTPSecret:
+            # no secret yet → first-time flow
+            return redirect(url_for('student_routes.mfa_setup'))
 
-            if request.method == 'POST':
-                code = request.form.get('mfa_code', '').strip()
-                if totp.verify(code):
-                    session['mfa_authenticated'] = True
-                    flash("MFA verified.", "success")
-                    return redirect(url_for('student_routes.dashboard'))
-                else:
-                    flash("Invalid code.", "error")
+        totp = pyotp.TOTP(user.MFATOTPSecret)
 
-            return render_template('mfa_verify.html')
+        if request.method == 'POST':
+            code = request.form.get('mfa_code', '').strip()
+            if totp.verify(code):
+                session['mfa_authenticated'] = True
+                flash("MFA verified.", "success")
+                return redirect(url_for('student_routes.dashboard'))
+            else:
+                flash("Invalid code.", "error")
 
-        finally:
-            conn.close()    # \*\ END for MFA
+        return render_template('mfa_verify.html')
+
+    # \*\ END for MFA
     
     def authenticate_user(username, password):
         # ── ADMIN SPECIAL-CASE ─────────────────────────────────────────────
@@ -221,16 +224,19 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
 
                 # \*\ Added for MFA
                 # Check if user has MFA enabled
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?", (user['user_id'],))
-                row = cursor.fetchone()
-                conn.close()
+                # SQL refactoring
+                # conn = get_db_connection()
+                # cursor = conn.cursor()
+                # cursor.execute("SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?", (user['user_id'],))
+                # row = cursor.fetchone()
+                # conn.close()
+                mfa_user = User.query.filter_by(UserId=user['user_id']).first()
+                # Fetches user by id to check for an MFA secret.
 
                 # clear any stale MFA flag
                 session.pop('mfa_authenticated', None)
 
-                if row and row[0]:
+                if mfa_user and mfa_user.MFATOTPSecret:
                 #     # secret already exists → ask for 6-digit code
                     return redirect(url_for('misc_routes.mfa_verify'))
                 else:
@@ -262,23 +268,29 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         student_id = token_data.get('student_id')
 
         # Check if user has already used the link to reset their password
-        conn = get_db_connection()
-        if conn:
-            try:
-                cursor = conn.cursor()
-                cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
-                row = cursor.fetchone()
-
-                if row and row[0] is not None:
-                    flash("This reset link has already been used. Redirecting to login page...", "error")
-                    return redirect(url_for('misc_routes.login'))
-
-            except Exception as e:
-                print(f"Password Reset Link Error: {e}")
-                flash("There was an error validating your password reset link.", "error")
-                return redirect(url_for('misc_routes.login'))
-            finally:
-                conn.close()
+        # SQL refactoring
+        # conn = get_db_connection()
+        # if conn:
+        #     try:
+        #         cursor = conn.cursor()
+        #         cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
+        #         row = cursor.fetchone()
+        #
+        #         if row and row[0] is not None:
+        #             flash("This reset link has already been used. Redirecting to login page...", "error")
+        #             return redirect(url_for('misc_routes.login'))
+        #
+        #     except Exception as e:
+        #         print(f"Password Reset Link Error: {e}")
+        #         flash("There was an error validating your password reset link.", "error")
+        #         return redirect(url_for('misc_routes.login'))
+        #     finally:
+        #         conn.close()
+        user_for_reset = User.query.filter_by(StudentId=student_id).first()
+        # Fetches user by student_id to check if password exists.
+        if user_for_reset and user_for_reset.Password is not None:
+            flash("This reset link has already been used. Redirecting to login page...", "error")
+            return redirect(url_for('misc_routes.login'))
             
         if request.method == 'POST':
             new_password = request.form.get('new_password', '').strip()
@@ -299,23 +311,26 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                     flash(error, 'error')
                 return render_template('reset_password.html', token=token)
             
-            conn = get_db_connection()
-            if not conn:
-                flash('Database connection error.', 'error')
-                return render_template('reset_password.html', token=token)
+            # SQL refactoring
+            # conn = get_db_connection()
+            # if not conn:
+            #     flash('Database connection error.', 'error')
+            #     return render_template('reset_password.html', token=token)
             
             try:
-                cursor = conn.cursor()
+                # cursor = conn.cursor()
                 
                 # Get current password to check if it exists
-                cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
-                current_password_row = cursor.fetchone()
-                
-                if not current_password_row:
+                # cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
+                # current_password_row = cursor.fetchone()
+                user_to_update = User.query.filter_by(StudentId=student_id).first()
+                # Fetches user by student_id to update password.
+
+                if not user_to_update:
                     flash('User account not found. Please contact support.', 'error')
                     return render_template('reset_password.html', token=token)
                 
-                current_password = current_password_row[0]
+                current_password = user_to_update.Password
                 
                 # Check if they're trying to reuse the temporary password 
                 if current_password and current_password.startswith('TEMP_'):
@@ -327,45 +342,44 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 
                 # Update password *\* added hashing
                 hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                cursor.execute("""
-                    UPDATE UserDetails 
-                    SET Password = ? 
-                    WHERE StudentId = ?
-                """, (hashed_password, student_id))
+                # cursor.execute("""
+                #     UPDATE UserDetails 
+                #     SET Password = ? 
+                #     WHERE StudentId = ?
+                # """, (hashed_password, student_id))
+                user_to_update.Password = hashed_password
+                db.session.commit()
+                # Updates user password and commits the change.
                 
-                if cursor.rowcount > 0:
-                    conn.commit()
-                    flash('Password set successfully! You can now log in to CCA Portal with your Student ID and new password.', 'success')
-                    return redirect(url_for('misc_routes.login'))
-                else:
-                    flash('User not found. Please contact support.', 'error')
-                    return render_template('reset_password.html', token=token)
+                flash('Password set successfully! You can now log in to CCA Portal with your Student ID and new password.', 'success')
+                return redirect(url_for('misc_routes.login'))
                 
             except Exception as e:
-                conn.rollback()
+                db.session.rollback()
                 print(f"Password reset error: {e}")
                 flash('Error setting password. Please try again.', 'error')
                 return render_template('reset_password.html', token=token)
-            finally:
-                if conn:
-                    conn.close()
         
         # GET request - show the reset form
         # Get student details for display
-        conn = get_db_connection()
+        # SQL refactoring
+        # conn = get_db_connection()
         student_name = "Student"  # Default fallback
-        
-        if conn:
-            try:
-                cursor = conn.cursor()
-                cursor.execute("SELECT Name FROM Student WHERE StudentId = ?", (student_id,))
-                name_row = cursor.fetchone()
-                if name_row:
-                    student_name = name_row[0]
-            except:
-                pass  # Use default name
-            finally:
-                conn.close()
+        # if conn:
+        #     try:
+        #         cursor = conn.cursor()
+        #         cursor.execute("SELECT Name FROM Student WHERE StudentId = ?", (student_id,))
+        #         name_row = cursor.fetchone()
+        #         if name_row:
+        #             student_name = name_row[0]
+        #     except:
+        #         pass  # Use default name
+        #     finally:
+        #         conn.close()
+        student = Student.query.filter_by(StudentId=student_id).first()
+        # Fetches student by id to display their name.
+        if student:
+            student_name = student.Name
         
         return render_template('reset_password.html', token=token, student_name=student_name)
 
