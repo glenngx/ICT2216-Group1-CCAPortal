@@ -3,6 +3,7 @@ import pyodbc
 from email_service import email_service
 import bcrypt 
 from application.auth_utils import admin_required
+from application.models import db, User
 
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
@@ -93,7 +94,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             try:
                 cursor = conn.cursor()
+                # Check admin access
+                is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
                 
+                if not is_admin:
+                    flash('Access denied.', 'error')
+                    print(f'DEBUG: Not admin, unauthorised to view.')
+                    return redirect(url_for('student_routes.dashboard'))
+            
                 # Check if student exists 
                 cursor.execute("SELECT StudentId, Name, Email FROM Student WHERE StudentId = ?", (int(student_id),))
                 student_record = cursor.fetchone()
@@ -177,6 +185,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             try:
                 cursor = conn.cursor()
                 
+                # Check admin access
+                is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+                if not is_admin:
+                    flash('Access denied.', 'error')
+                    print(f'DEBUG: Not admin, unauthorised to view.')
+                    return redirect(url_for('student_routes.dashboard'))
+            
                 # Check if CCA name already exists
                 cursor.execute("SELECT CCAId FROM CCA WHERE Name = ?", (name,))
                 if cursor.fetchone():
@@ -214,6 +230,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+            
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             # Get CCA details
             cursor.execute("SELECT CCAId, Name, Description FROM CCA WHERE CCAId = ?", (cca_id,))
@@ -278,6 +302,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             # Check if new name conflicts with existing CCAs (excluding current one)
             cursor.execute("SELECT CCAId FROM CCA WHERE Name = ? AND CCAId != ?", (name, cca_id))
@@ -322,6 +354,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             cursor.execute("SELECT UserId FROM v_ActiveUserDetails WHERE StudentId = ?", (int(student_id),))
             user_result = cursor.fetchone()
@@ -359,6 +399,15 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
+            
             cursor.execute("DELETE FROM CCAMembers WHERE MemberId = ? AND CCAId = ?", (member_id, cca_id))
             conn.commit()
             flash('Student removed from CCA successfully!', 'success')
@@ -383,6 +432,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             cursor.execute("SELECT Name FROM CCA WHERE CCAId = ?", (cca_id,))
             cca_result = cursor.fetchone()
@@ -427,6 +484,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             search_sql = """
             SELECT s.StudentId, s.Name, s.Email
@@ -478,6 +543,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             placeholders = ','.join(['?' for _ in student_ids])
             cursor.execute(f"""
@@ -522,6 +595,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             # Check if student exists and get their details
             cursor.execute("""
@@ -585,6 +666,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             # Get all CCAs with member counts
             cursor.execute("""
@@ -621,6 +710,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         try:
             cursor = conn.cursor()
+
+            # Check admin access
+            is_admin = db.session.query(User).filter_by(UserId=session["user_id"],SystemRole="admin").first() is not None 
+                
+            if not is_admin:
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not admin, unauthorised to view.')
+                return redirect(url_for('student_routes.dashboard'))
             
             # Get all polls with CCA info and vote counts
             cursor.execute("""

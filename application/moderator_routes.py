@@ -200,7 +200,8 @@ def register_moderator_routes(app, get_db_connection):
             #This query checks if a CCAMembers record exists for the user and CCA.
             
             if not is_moderator:
-                flash('Access denied. You are unauthorised to view this CCA.', 'error')
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not moderator, unauthorised to view.')
                 return redirect(url_for('student_routes.my_ccas'))
             
             cca = db.session.query(CCA).filter_by(CCAId=cca_id).first()
@@ -208,6 +209,7 @@ def register_moderator_routes(app, get_db_connection):
             
             if not cca:
                 flash('Access denied.', 'error')
+                print(f'DEBUG: CCA not found.')
                 return redirect(url_for('student_routes.my_ccas'))
             
             v_ActiveUserDetails = aliased(User, name='v_ActiveUserDetails')
