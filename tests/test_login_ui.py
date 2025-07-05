@@ -12,7 +12,7 @@ def test_student_login():
 
     try:
         print("▶ Opening login page...")
-        driver.get("http://localhost:5000/login")
+        driver.get("http://http://localhost:5000/login")
 
         print("▶ Entering student credentials...")
         driver.find_element(By.NAME, "username").send_keys("2305105")

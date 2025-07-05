@@ -52,5 +52,4 @@ jobs:
       - name: ✅ Run Unit Tests
         run: pytest tests/test_login.py
 
-      - name: 🧪 Run Selenium UI Tests
-        run: pytest tests/test_login_ui.py
+

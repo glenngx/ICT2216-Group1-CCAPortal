@@ -2,6 +2,14 @@ from app import app
 
 def test_login_page_loads():
     with app.test_client() as client:
-        response = client.get('/login')
+        response = client.get("/login")
         assert response.status_code == 200
-        assert b"Login" in response.data or b"Student ID" in response.data
+        assert b"Student ID" in response.data  # or "Login"
+
+def test_login_with_invalid_credentials():
+    with app.test_client() as client:
+        response = client.post("/login", data={
+            "username": "2305105",
+            "password": "pppppp",
+        }, follow_redirects=True)
+        assert b"invalid" in response.data.lower()
