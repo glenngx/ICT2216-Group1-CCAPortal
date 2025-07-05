@@ -21,6 +21,12 @@ class User(db.Model):
 
    # \*\ End for MFA and Block login attempts
 
+    # \*\ Added for password expiration
+    PasswordLastSet = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # \*\ End for MFA and Block login attempts
+
+
     student = db.relationship('Student', backref='user', uselist=False)
 
 class Student(db.Model):

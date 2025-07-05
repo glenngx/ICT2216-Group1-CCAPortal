@@ -120,6 +120,17 @@ def register_student_routes(app, get_db_connection, login_required):
             # cursor.execute(cca_query, (session['user_id'],))
             # user_ccas = cursor.fetchall()
 
+            # \*\ Added for password expiration
+
+            # ✅ Get user and calculate password expiry warning
+            user = User.query.filter_by(UserId=session['user_id']).first()
+            days_left = None
+            if user and user.PasswordLastSet:
+                days_since = (datetime.utcnow() - user.PasswordLastSet).days
+                days_left = 365 - days_since
+
+            # \*\ Ended for password expiration
+
             user_ccas = db.session.query(CCA.CCAId, CCA.Name, CCA.Description, CCAMembers.CCARole).join(CCAMembers, CCA.CCAId == CCAMembers.CCAId).filter(CCAMembers.UserId == session['user_id']).all()
             #The new line queries the database for CCAs the user is a member of.
             
@@ -907,6 +918,9 @@ def register_student_routes(app, get_db_connection, login_required):
                     # cursor.execute("UPDATE UserDetails SET Password = ? WHERE UserId = ?", (hashed_new_password.decode('utf-8'), session['user_id']))
                     # conn.commit()
                     user.Password = hashed_new_password.decode('utf-8')
+                    # \*\ Added for Password expiration
+                    user.PasswordLastSet = datetime.utcnow()
+                    # \*\ Ended for Password expiration
                     db.session.commit()
                     #The new line updates the user's password.
                     

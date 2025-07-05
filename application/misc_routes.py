@@ -168,6 +168,13 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             # Verify password using bcrypt
             if bcrypt.checkpw(password.encode('utf-8'), password_to_check.encode('utf-8')):
                 
+                # \*\ Edited for Password Expiration
+                if user_details.PasswordLastSet and (datetime.utcnow() - user_details.PasswordLastSet).days > 365:
+                    flash("Your password has expired. Please reset it to continue.", "warning")
+                    session['force_password_change'] = True
+                    return None
+                # \*\ End for Password Expiration
+                
                 # \*\ Edited for Failed login attempt
                 user_details.FailedLoginAttempts = 0
                 user_details.IsLocked = False
@@ -271,6 +278,12 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session['name'] = user['name']
                 session['email'] = user['email']
                 session['login_time'] = datetime.now().isoformat()
+
+                # \*\ Added for Password Expiration
+                # 🔒 Enforce password reset if expired
+                if session.pop('force_password_change', False):
+                    return redirect(url_for('student_routes.change_password'))
+                # \*\ Ended for Password Expiration
 
                 # \*\ Added for MFA
                 # Check if user has MFA enabled
@@ -398,8 +411,12 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 #     WHERE StudentId = ?
                 # """, (hashed_password, student_id))
                 user_to_update.Password = hashed_password
+                #Update for \*\ password expiration
+                user_to_update.PasswordLastSet = datetime.utcnow()
+                #End for \*\ password expiration
+                
                 db.session.commit()
-                # Updates user password and commits the change.
+                # \*\ End Updates user password and commits the change.
                 
                 flash('Password set successfully! You can now log in to CCA Portal with your Student ID and new password.', 'success')
                 return redirect(url_for('misc_routes.login'))
