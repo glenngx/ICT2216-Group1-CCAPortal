@@ -1,8 +1,7 @@
-
-{% set page_title = cca[1] ~ " (Moderator)" %}
+{% set page_title = cca.Name ~ " (Moderator)" %}
 {% set active_page = "my_ccas" %}
 {% set show_welcome_section = true %}
-{% set welcome_title = cca[1] %}
+{% set welcome_title = cca.Name %}
 {% set welcome_subtitle = "CCA Management - Moderator View" %}
 {% set welcome_size = "5" %}
 {% set welcome_subtitle_size = "4" %}
@@ -24,11 +23,11 @@
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <strong>Name:</strong> {{ cca[1] }}
+                            <strong>Name:</strong> {{ cca.Name }}
                         </div>
                         <div class="mb-3">
                             <strong>Description:</strong>
-                            <p class="mt-1">{{ cca[2] if cca[2] else 'No description provided.' }}</p>
+                            <p class="mt-1">{{ cca.Description if cca.Description else 'No description provided.' }}</p>
                         </div>
                     </div>
                 </div>
@@ -64,7 +63,7 @@
                                             </td>
                                             <td>
                                                 {% if member[3] == 'member' %}
-                                                <form method="POST" action="{{ url_for('moderator_routes.moderator_remove_student_from_cca', cca_id=cca[0], member_id=member[4]) }}" style="display: inline;" onsubmit="return confirm('Remove {{ member[1] }} from this CCA?')">
+                                                <form method="POST" action="{{ url_for('moderator_routes.moderator_remove_student_from_cca', cca_id=cca.CCAId, member_id=member[4]) }}" style="display: inline;" onsubmit="return confirm('Remove {{ member[1] }} from this CCA?')">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
                                                 </form>
                                                 {% else %}
@@ -97,7 +96,7 @@
                         <!-- Single Add Mode (default) -->
                         <div id="single-add-mode">
                             {% if available_students %}
-                            <form method="POST" action="{{ url_for('moderator_routes.moderator_add_student_to_cca', cca_id=cca[0]) }}">
+                            <form method="POST" action="{{ url_for('moderator_routes.moderator_add_student_to_cca', cca_id=cca.CCAId) }}">
                                 <div class="mb-3">
                                     <label for="student_id" class="form-label">Select Student</label>
                                     <select class="form-select form-select-sm" id="student_id" name="student_id" required>
@@ -135,7 +134,7 @@
                                 <div id="selected-tags"></div>
                             </div>
 
-                            <form method="POST" action="{{ url_for('moderator_routes.moderator_add_multiple_students_to_cca', cca_id=cca[0]) }}" id="bulk-add-form">
+                            <form method="POST" action="{{ url_for('moderator_routes.moderator_add_multiple_students_to_cca', cca_id=cca.CCAId) }}" id="bulk-add-form">
                                 <div id="selected-student-inputs"></div>
                                 <button type="submit" class="btn btn-sm btn-success w-100" id="bulk-submit-btn" disabled>
                                     Add Selected Students as Members
@@ -172,16 +171,16 @@
                     <h5 class="modal-title">Edit CCA</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST" action="{{ url_for('moderator_routes.moderator_edit_cca', cca_id=cca[0]) }}">
+                <form method="POST" action="{{ url_for('moderator_routes.moderator_edit_cca', cca_id=cca.CCAId) }}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="edit_name" class="form-label">CCA Name</label>
                             <input type="text" class="form-control" id="edit_name" name="name" 
-                                   value="{{ cca[1] }}" required>
+                                   value="{{ cca.Name }}" required>
                         </div>
                         <div class="mb-3">
                             <label for="edit_description" class="form-label">Description</label>
-                            <textarea class="form-control" id="edit_description" name="description" rows="4">{{ cca[2] if cca[2] else '' }}</textarea>
+                            <textarea class="form-control" id="edit_description" name="description" rows="4">{{ cca.Description if cca.Description else '' }}</textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -197,7 +196,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        const ccaId = parseInt('{{ cca[0] }}');
+        const ccaId = parseInt('{{ cca.CCAId }}');
         
         let selectedStudents = new Map();
         let searchTimeout;
