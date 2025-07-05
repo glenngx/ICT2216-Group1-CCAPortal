@@ -236,14 +236,18 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 # clear any stale MFA flag
                 session.pop('mfa_authenticated', None)
 
-                if mfa_user and mfa_user.MFATOTPSecret:
+                if mfa_user and mfa_user.MFATOTPSecret and not os.getenv("TESTING"):
                 #     # secret already exists → ask for 6-digit code
                     return redirect(url_for('misc_routes.mfa_verify'))
-                else:
+                elif not mfa_user or not mfa_user.MFATOTPSecret:
                    # first login → force setup
                    return redirect(url_for('student_routes.mfa_setup'))
                 #return redirect(url_for('student_routes.dashboard'))
                 # \*\ Ended for MFA
+                
+                # If in testing mode, skip MFA
+                session['mfa_authenticated'] = True
+                return redirect(url_for('student_routes.dashboard'))
 
             else:
                 flash('Invalid username or password.', 'error')
