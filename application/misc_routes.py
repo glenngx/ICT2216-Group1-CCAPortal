@@ -144,6 +144,21 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             print(f"User {username} has no password set - login rejected, must use email link")
             return None
 
+        # \*\ Edit for MFA
+        # 🔒 Check if account is locked
+        if hasattr(user_details, 'IsLocked') and user_details.IsLocked:
+            # Auto-unlock logic
+            last_failed = user_details.LastFailedLogin
+            if last_failed and (datetime.utcnow() - last_failed > timedelta(minutes=30)):
+                print(f"Auto-unlocking user {username} (30 minutes passed)")
+                user_details.IsLocked = False
+                user_details.FailedLoginAttempts = 0
+                db.session.commit()
+            else:
+                print(f"User {username} is locked out due to too many failed login attempts.")
+                return None
+        # \*\ End for MFA
+
         # Remove TEMP_ prefix if present before bcrypt check
         password_to_check = stored_password
         if stored_password.startswith("TEMP_"):
@@ -152,6 +167,13 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         try:
             # Verify password using bcrypt
             if bcrypt.checkpw(password.encode('utf-8'), password_to_check.encode('utf-8')):
+                
+                # \*\ Edited for Failed login attempt
+                user_details.FailedLoginAttempts = 0
+                user_details.IsLocked = False
+                db.session.commit()
+               # \*\ End for Failed login attempt
+                
                 # ── PROMOTE TO MODERATOR IF NEEDED ─────────────────────────
                 # Replaces: SELECT COUNT(*) FROM CCAMembers WHERE UserId = ? AND CCARole = 'moderator'
                 is_moderator = CCAMembers.query.filter_by(UserId=user_details.UserId, CCARole='moderator').first()
@@ -165,6 +187,16 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                     'email': user_details.student.Email,
                 }
             else:
+                # ❌ Wrong password: increment failure counter
+                user_details.FailedLoginAttempts = (user_details.FailedLoginAttempts or 0) + 1
+                user_details.LastFailedLogin = datetime.utcnow()
+
+                # \*\ Edit for Failed login attempt
+                if user_details.FailedLoginAttempts >= 5:
+                    user_details.IsLocked = True
+                    print(f"User {username} account locked after 5 failed attempts.")
+               # \*\ End for Failed login attempt
+                db.session.commit()
                 print("Password verification failed")
                 return None
         except Exception as bcrypt_error:
@@ -210,6 +242,24 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 # \*\ Ended for Captcha
                 
             user = authenticate_user(username, password)
+            # \*\ Edit for MFA
+            # 🔒 If user is locked, show message
+            locked_user = User.query.filter_by(Username=username).first()
+            if locked_user and locked_user.IsLocked:
+                remaining_minutes = None
+                if locked_user.LastFailedLogin:
+                    elapsed = datetime.utcnow() - locked_user.LastFailedLogin
+                    if elapsed < timedelta(minutes=30):
+                        remaining = timedelta(minutes=30) - elapsed
+                        remaining_minutes = int(remaining.total_seconds() // 60) + 1  # Round up
+
+                flash("Your account is locked due to too many failed login attempts.", "error")
+                return render_template(
+                    'login.html',
+                    RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"),
+                    lockout_remaining=remaining_minutes
+                )
+            # \*\ End for MFA
             
             if user:
                 # Cookie expires when user close the browser 

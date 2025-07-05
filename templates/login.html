@@ -28,6 +28,13 @@
                 {% endif %}
             {% endwith %}
             
+            <!-- \*\ Edit for login attempts Messages -->
+            {% if lockout_remaining %}
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    Your account is temporarily locked. Please try again in {{ lockout_remaining }} minute{{ 's' if lockout_remaining != 1 else '' }}.
+                </div>
+            {% endif %}
+            <!-- \*\ End for login attempts Messages -->
 
             <form method="POST" class="login-form" id="loginForm">
                 <div class="mb-3">

@@ -9,7 +9,17 @@ class User(db.Model):
     Password = db.Column(db.String(255), nullable=False)
     SystemRole = db.Column(db.String(50), nullable=False)
     StudentId = db.Column(db.Integer, db.ForeignKey('Student.StudentId'))
+
+    # \*\ Added for MFA and Block login attempts
     MFATOTPSecret = db.Column(db.String(255))
+
+
+    # Add these:
+    FailedLoginAttempts = db.Column(db.Integer, default=0)
+    IsLocked = db.Column(db.Boolean, default=False)
+    LastFailedLogin = db.Column(db.DateTime)
+
+   # \*\ End for MFA and Block login attempts
 
     student = db.relationship('Student', backref='user', uselist=False)
 
