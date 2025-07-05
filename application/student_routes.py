@@ -123,22 +123,12 @@ def register_student_routes(app, get_db_connection, login_required):
             # \*\ Added for password expiration
 
             # ✅ Get user and calculate password expiry warning
-            user = User.query.filter_by(Username=session['name']).first()
+            user = User.query.filter_by(UserId=session['user_id']).first()
+            days_left = None
+            if user and user.PasswordLastSet:
+                days_since = (datetime.utcnow() - user.PasswordLastSet).days
+                days_left = 365 - days_since
 
-            if user:
-                print("✅ User found:", user.Username)
-                print("✅ PasswordLastSet =", user.PasswordLastSet)
-
-                if user.PasswordLastSet:
-                    days_since = (datetime.utcnow() - user.PasswordLastSet).days
-                    days_left = 365 - days_since
-                    print("✅ days_left =", days_left)
-                else:
-                    print("❌ PasswordLastSet is None")
-
-            else:
-                print("❌ User not found")
-                
             # \*\ Ended for password expiration
 
             user_ccas = db.session.query(CCA.CCAId, CCA.Name, CCA.Description, CCAMembers.CCARole).join(CCAMembers, CCA.CCAId == CCAMembers.CCAId).filter(CCAMembers.UserId == session['user_id']).all()
