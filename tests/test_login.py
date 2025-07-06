@@ -32,12 +32,14 @@ def test_login_with_valid_credentials():
 
 def setup_admin_and_user():
     with app.app_context():
+        # Delete from child tables first (those with FK to User or Student)
+        db.session.execute("DELETE FROM LoginLog")  # raw SQL for exact order control
         db.session.query(CCAMembers).delete()
         db.session.query(PollVote).delete()
         db.session.query(PollOption).delete()
         db.session.query(Poll).delete()
         db.session.query(CCA).delete()
-        db.session.query(CCAMembers).delete()
+
         db.session.query(User).delete()
         db.session.query(Student).delete()
         db.session.commit()
@@ -63,7 +65,6 @@ def setup_admin_and_user():
         db.session.commit()
 
         return admin, student_user, cca
-
 
 def test_admin_assigns_student_to_cca():
     admin, student_user, cca = setup_admin_and_user()

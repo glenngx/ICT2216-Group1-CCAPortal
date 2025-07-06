@@ -1,4 +1,4 @@
-name: Flask UI + Unit Testing (Selenium)
+name: Flask UI + Unit Testing
 
 on:
   push:
