@@ -819,7 +819,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_bp.route('/logs')
     @admin_required
         # \*\ Added Logging
-    def view_combined_logs():
+    def view_logs():
         login_logs = (
             db.session.query(LoginLog, User)
             .outerjoin(User, LoginLog.UserId == User.UserId)
