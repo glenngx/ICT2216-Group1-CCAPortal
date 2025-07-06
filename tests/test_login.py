@@ -31,34 +31,56 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
-def setup_test_user_userdetails():
+
+from sqlalchemy import text
+
+def insert_test_student():
     with app.app_context():
-        student_id = 2305999
-        username = "2305999"
-        password_plain = "pppppp"
+        student = Student.query.get(2399999)
+        if not student:
+            db.session.execute(text("""
+                INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
+                VALUES (:sid, :name, :email, :dob, :phone)
+            """), {
+                'sid': 2399999,
+                'name': 'Fallback Student',
+                'email': 'student@example.com',
+                'dob': '2000-01-01',
+                'phone': '91234567'
+            })
+            db.session.commit()
+            print("✅ Student added.")
+        else:
+            print("ℹ️ Student already exists.")
 
-        # # Remove existing user if present
-        # existing = User.query.filter_by(Username=username).first()
-        # if existing:
-        #     db.session.delete(existing)
-        #     db.session.commit()
-        #     print(f"🗑️ Removed existing user '{username}'")
+# def setup_test_user_userdetails():
+#     with app.app_context():
+#         student_id = 2305999
+#         username = "2305999"
+#         password_plain = "pppppp"
 
-        # Hash password
-        hashed_pw = bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode()
+#         # # Remove existing user if present
+#         # existing = User.query.filter_by(Username=username).first()
+#         # if existing:
+#         #     db.session.delete(existing)
+#         #     db.session.commit()
+#         #     print(f"🗑️ Removed existing user '{username}'")
 
-        # Add new test user
-        user = User(
-            StudentId=student_id,
-            Username=username,
-            Password=hashed_pw,
-            SystemRole="student",
-            PasswordLastSet=datetime.utcnow()
-        )
-        db.session.add(user)
-        db.session.commit()
-        print(f"✅ Created fresh test user '{username}' with StudentId {student_id}")
-        return user.UserId
+#         # Hash password
+#         hashed_pw = bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode()
+
+#         # Add new test user
+#         user = User(
+#             StudentId=student_id,
+#             Username=username,
+#             Password=hashed_pw,
+#             SystemRole="student",
+#             PasswordLastSet=datetime.utcnow()
+#         )
+#         db.session.add(user)
+#         db.session.commit()
+#         print(f"✅ Created fresh test user '{username}' with StudentId {student_id}")
+#         return user.UserId
 
 
 # def test_authenticated_user_vote():
