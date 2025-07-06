@@ -37,6 +37,8 @@ def setup_admin_and_user():
         db.session.query(PollOption).delete()
         db.session.query(Poll).delete()
         db.session.query(CCA).delete()
+        db.session.query(LoginLog).delete()
+        db.session.query(CCAMembers).delete()
         db.session.query(User).delete()
         db.session.query(Student).delete()
         db.session.commit()
