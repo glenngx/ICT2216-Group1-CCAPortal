@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, session, flash, B
 from email_service import email_service
 import bcrypt
 from application.auth_utils import admin_required
-from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote, LoginLog
+from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote, LoginLog, AdminLog
 from application.auth_utils import log_admin_action
 
 # Create a Blueprint
@@ -818,16 +818,31 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
 
     @admin_bp.route('/logs')
     @admin_required
-    def view_logs():
         # \*\ Added Logging
-        """Admin view to see system logs"""
-        logs = (
+    def view_combined_logs():
+        login_logs = (
             db.session.query(LoginLog, User)
             .outerjoin(User, LoginLog.UserId == User.UserId)
             .order_by(LoginLog.Timestamp.desc())
-            .limit(100)
+            .limit(50)
             .all()
         )
+
+        admin_logs = (
+            db.session.query(AdminLog, User)
+            .outerjoin(User, AdminLog.AdminUserId == User.UserId)
+            .order_by(AdminLog.Timestamp.desc())
+            .limit(50)
+            .all()
+        )
+
+        logs = sorted(
+            [('auth', log, user) for log, user in login_logs] +
+            [('admin', log, user) for log, user in admin_logs],
+            key=lambda x: x[1].Timestamp,
+            reverse=True
+        )
+
         return render_template('admin_logs.html', user_name=session['name'],logs=logs)
         # \*\ Ended added Logging
 
