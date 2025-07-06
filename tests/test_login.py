@@ -1,5 +1,5 @@
 from app import app
-from application.models import db, User, Student, CCA, CCAMembers, Poll, Vote, Option
+from application.models import db, User, Student, CCA, CCAMembers, Poll, PollVote, PollOption
 import bcrypt
 
 def test_login_page_loads():
@@ -33,8 +33,8 @@ def test_login_with_valid_credentials():
 def setup_admin_and_user():
     with app.app_context():
         db.session.query(CCAMembers).delete()
-        db.session.query(Vote).delete()
-        db.session.query(Option).delete()
+        db.session.query(PollVote).delete()
+        db.session.query(PollOption).delete()
         db.session.query(Poll).delete()
         db.session.query(CCA).delete()
         db.session.query(User).delete()
