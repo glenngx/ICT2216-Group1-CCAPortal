@@ -49,7 +49,7 @@ def setup_student_and_cca():
             ContactNumber="91234567"
         )
         db.session.add(student)
-        db.session.flush()
+        db.session.flush()  # get StudentId
 
         user = User(
             StudentId=student.StudentId,
@@ -57,13 +57,14 @@ def setup_student_and_cca():
             Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
             SystemRole="student"
         )
+        db.session.add(user)
+        db.session.flush()  # get UserId
 
-        cca = CCA(Name="Chess Club", Description="Test club")
-        db.session.add_all([user, cca])
-        db.session.flush()
+        cca = CCA(Name="Test CCA", Description="Testing CCA assignment")
+        db.session.add(cca)
+        db.session.flush()  # get CCAId
 
         return student, user, cca
-
 
 def test_student_assigned_to_cca_directly():
     student, user, cca = setup_student_and_cca()
