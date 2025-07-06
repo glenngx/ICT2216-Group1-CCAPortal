@@ -68,10 +68,7 @@ def setup_existing_student_and_cca():
             PasswordLastSet=datetime.utcnow()
         )
         db.session.add(user)
-        db.session.commit()
-
-        # ✅ This is the missing step
-        user = User.query.filter_by(Username="testuser").first()
+        db.session.flush()
 
         # Ensure CCA
         cca = CCA.query.filter_by(Name="Test CCA").first()
