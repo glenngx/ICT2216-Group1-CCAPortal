@@ -161,7 +161,7 @@ def test_anonymous_token_vote():
 
         # Insert into DB manually (adjust table/model as needed)
         db.session.execute(text("""
-            INSERT INTO VoteTokens (PollId, TokenHash, ExpiryTime, IsUsed)
+            INSERT INTO VoteTokens (PollId, Token, ExpiryTime, IsUsed)
             VALUES (:poll_id, :token_hash, DATEADD(day, 1, GETUTCDATE()), 0)
         """), {"poll_id": 1, "token_hash": token_hash})
         db.session.commit()
