@@ -65,7 +65,7 @@ services:
       POSTGRES_PASSWORD: sonar
       POSTGRES_DB: sonarqube
     volumes:
-      - postgresql:/var/lib/postgresql
+      - postgresql:/var/lib/postgresql/data
     networks:
       - ccap-network
 
