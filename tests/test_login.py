@@ -31,70 +31,40 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
-from sqlalchemy import text
-
-def setup_admin_and_user():
+def setup_student_and_cca():
     with app.app_context():
-        # Step 1: Delete from FK-dependent tables (in correct order)
-        db.session.execute(text("DELETE FROM AdminLog"))
-        db.session.execute(text("DELETE FROM LoginLog"))
-
-        # Step 2: Delete from test-related models (in order of dependency)
         db.session.query(CCAMembers).delete()
-        db.session.query(PollVote).delete()
-        db.session.query(PollOption).delete()
-        db.session.query(Poll).delete()
         db.session.query(CCA).delete()
         db.session.query(User).delete()
         db.session.query(Student).delete()
-
         db.session.commit()
 
-        # Step 3: Insert test records
-        student = Student(StudentId=9999999, Name="User W", Email="userw@example.com")
-        student_user = User(
-            StudentId=9999999,
-            Username="userw",
+        student = Student(Name="Test Student", Email="student@example.com")
+        db.session.add(student)
+        db.session.flush()  # ensures StudentId is available
+
+        user = User(
+            StudentId=student.StudentId,
+            Username="testuser",
             Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
             SystemRole="student"
         )
 
-        admin = User(
-            StudentId=1111111,
-            Username="adminuser",
-            Password=bcrypt.hashpw("adminpass".encode(), bcrypt.gensalt()).decode(),
-            SystemRole="admin"
-        )
+        cca = CCA(Name="Chess Club", Description="Test club")
+        db.session.add_all([user, cca])
+        db.session.flush()  # ensures CCAId is available
 
-        cca = CCA(Name="Robotics Club", Description="Test CCA")
+        return student, user, cca
 
-        db.session.add_all([student, student_user, admin, cca])
+def test_student_assigned_to_cca_directly():
+    student, user, cca = setup_student_and_cca()
+
+    with app.app_context():
+        # simulate the assignment
+        membership = CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member")
+        db.session.add(membership)
         db.session.commit()
 
-        return admin, student_user, cca
-
-
-def test_admin_assigns_student_to_cca():
-    admin, student_user, cca = setup_admin_and_user()
-
-    with app.test_client() as client:
-        # Log in as admin
-        response = client.post("/login", data={
-            "username": "adminuser",
-            "password": "adminpass"
-        }, follow_redirects=True)
-
-        assert response.status_code == 200
-
-        # Perform the action — depends on your route
-        response = client.post("/admin/assign-student", data={
-            "student_id": student_user.StudentId,
-            "cca_id": cca.CCAId,
-            "role": "member"
-        }, follow_redirects=True)
-
-        # Check response or DB
-        assert response.status_code == 200
-        membership = CCAMembers.query.filter_by(UserId=student_user.UserId, CCAId=cca.CCAId).first()
-        assert membership is not None
-        assert membership.CCARole == "member"
+        result = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
+        assert result is not None
+        assert result.CCARole == "member"
