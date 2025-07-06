@@ -50,21 +50,19 @@ def test_authenticated_user_vote():
             db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
             db.session.commit()
 
-        # ✅ Reset vote value instead of deleting
-        vote = PollVote.query.filter_by(UserId=user.UserId, VoteId=71).first()
-        if vote:
-            vote.Vote = 0  # Set to default or neutral value
+        # Update vote to 0 instead of deleting (for PollId 9)
+        existing_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=9).first()
+        if existing_vote:
+            existing_vote.OptionId = 0  # or any placeholder/neutral OptionId your app accepts
             db.session.commit()
 
-    # Client actions
+    # Perform login and try voting
     with app.test_client() as client:
         client.post("/login", data={
             "username": "2305105",
             "password": "pppppp"
         }, follow_redirects=True)
 
-        poll_id = 9
+        poll_id = 9  # target poll ID
         response = client.get(f"/poll/{poll_id}")
         assert response.status_code == 200
-
-
