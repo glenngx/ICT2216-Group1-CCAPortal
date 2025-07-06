@@ -37,12 +37,12 @@ def setup_test_user_userdetails():
         username = "2305999"
         password_plain = "pppppp"
 
-        # Remove existing user if present
-        existing = User.query.filter_by(Username=username).first()
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
-            print(f"🗑️ Removed existing user '{username}'")
+        # # Remove existing user if present
+        # existing = User.query.filter_by(Username=username).first()
+        # if existing:
+        #     db.session.delete(existing)
+        #     db.session.commit()
+        #     print(f"🗑️ Removed existing user '{username}'")
 
         # Hash password
         hashed_pw = bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode()
