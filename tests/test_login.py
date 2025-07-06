@@ -2,6 +2,8 @@ from app import app
 from application.models import db, User, Student, CCA, CCAMembers, Poll, PollVote, PollOption
 import bcrypt
 from sqlalchemy import text
+from datetime import datetime
+import hashlib
 
 def test_login_page_loads():
     with app.test_client() as client:
@@ -30,9 +32,6 @@ def test_login_with_valid_credentials():
 
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
-
-from sqlalchemy import text
-from datetime import datetime
 
 def setup_existing_student_and_cca():
     with app.app_context():
@@ -132,11 +131,31 @@ def setup_existing_student_and_cca():
 
 def test_authenticated_user_vote():
     with app.test_client() as client:
-        # Login first
-        client.post("/login", data={
-            "username": "2305105",
-            "password": "pppppp"
-        }, follow_redirects=True)
+        # Ensure student exists
+        student = Student.query.get(2305105)
+    if not student:
+        student = Student(
+            StudentId=2305105,
+            Name='Test User',
+            Email='2305105@example.com',
+            DOB='2000-01-01',
+            ContactNumber='81234567'
+        )
+        db.session.add(student)
+        db.session.commit()
+
+        # Ensure user exists
+    user = User.query.filter_by(Username="2305105").first()
+    if not user:
+        user = User(
+            StudentId=2305105,
+            Username="2305105",
+            Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+            SystemRole="student",
+            PasswordLastSet=datetime.utcnow()
+        )
+        db.session.add(user)
+        db.session.commit()
 
         # Access the poll
         poll_id = 1  # change as needed
@@ -150,8 +169,6 @@ def test_authenticated_user_vote():
 
         assert vote_response.status_code == 200
         assert b"thank you" in vote_response.data.lower() or b"voted" in vote_response.data.lower()
-
-import hashlib
 
 def test_anonymous_token_vote():
     with app.app_context():
