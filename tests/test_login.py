@@ -1,4 +1,5 @@
 from app import app
+from application.models import db, User, Student, CCA, CCAMembers
 
 def test_login_page_loads():
     with app.test_client() as client:
@@ -28,3 +29,35 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
+def setup_admin_and_user():
+    # Clean up
+    db.session.query(CCAMembers).delete()
+    db.session.query(CCA).delete()
+    db.session.query(User).delete()
+    db.session.query(Student).delete()
+    db.session.commit()
+
+     # Create student "User w"
+    student = Student(StudentId=9999999, Name="User W", Email="userw@example.com")
+    user = User(
+        StudentId=9999999,
+        Username="userw",
+        Password="pppppp",  # NOTE: Should be hashed if using bcrypt
+        SystemRole="student"
+    )
+
+    # Create an admin
+    admin = User(
+        StudentId=1111111,
+        Username="adminuser",
+        Password="adminpass",  # also hash if bcrypt
+        SystemRole="admin"
+    )
+
+    # Create a test CCA
+    cca = CCA(Name="Robotics Club", Description="Test CCA")
+
+    db.session.add_all([student, user, admin, cca])
+    db.session.commit()
+
+    return admin, user, cca
