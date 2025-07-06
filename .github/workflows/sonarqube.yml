@@ -12,6 +12,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Wait for SonarQube to be ready
+        run: |
+          for i in {1..10}; do
+            curl -sSf ${{ secrets.SONAR_HOST_URL }}/api/system/status && break
+            echo "Waiting for SonarQube..."
+            sleep 5
+          done
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
