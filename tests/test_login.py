@@ -1,5 +1,5 @@
 from app import app
-from application.models import db, User, Student, CCA, CCAMembers, Poll, PollVote, PollOption
+from application.models import db, User, Student, CCA, CCAMembers, Poll, PollVote, PollOption, LoginLog
 import bcrypt
 
 def test_login_page_loads():
