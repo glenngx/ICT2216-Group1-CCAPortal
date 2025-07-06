@@ -31,6 +31,8 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
+from datetime import date
+
 def setup_student_and_cca():
     with app.app_context():
         db.session.query(CCAMembers).delete()
@@ -40,9 +42,11 @@ def setup_student_and_cca():
         db.session.commit()
 
         student = Student(
+            StudentId=9999999,
             Name="Test Student",
             Email="student@example.com",
-            ContactNumber="91234567"  # ✅ Required non-nullable field
+            DOB=date(2000, 1, 1),
+            ContactNumber="91234567"
         )
         db.session.add(student)
         db.session.flush()
@@ -60,11 +64,11 @@ def setup_student_and_cca():
 
         return student, user, cca
 
+
 def test_student_assigned_to_cca_directly():
     student, user, cca = setup_student_and_cca()
 
     with app.app_context():
-        # simulate the assignment
         membership = CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member")
         db.session.add(membership)
         db.session.commit()
