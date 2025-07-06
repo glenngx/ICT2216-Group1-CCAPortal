@@ -1,7 +1,10 @@
 # application/auth_utils.py
 from functools import wraps
-from flask import session, redirect, url_for, flash
+from flask import session, redirect, url_for, flash, request
 from application.models import db, User, CCAMembers
+from application.models import LoginLog, db
+
+
 
 # ───────────────────────────────────────────────────────────
 def _mfa_guard():
@@ -93,3 +96,16 @@ def moderator_required(f):
         
         return f(*args, **kwargs)
     return decorated
+
+
+
+def log_login_attempt(username, user_id, success, reason=None):
+    log = LoginLog(
+        Username=username,
+        UserId=user_id,
+        IPAddress=request.remote_addr,
+        Success=success,
+        Reason=reason
+    )
+    db.session.add(log)
+    db.session.commit()
