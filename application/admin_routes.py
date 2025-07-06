@@ -78,6 +78,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"Admin dashboard error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error loading admin dashboard.', 'error')
             return render_template('admin_dashboard.html', 
                                 ccas=[], students=[], memberships=[],
@@ -165,6 +166,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                         else:
                             flash(f'{base_message} However, email notification failed. Please provide password setup link manually.', 'warning')
                     except Exception as e:
+                        log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
                         print(f"Email sending error: {e}")
                         flash(f'{base_message} However, email notification failed. Please provide password setup link manually.', 'warning')
                 else:
@@ -175,6 +177,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             except Exception as e:
                 db.session.rollback()
                 print(f"Create student account error: {e}")
+                log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
                 flash('Error creating student account. Please try again.', 'error')
                 return render_template('create_student.html')
         
@@ -230,6 +233,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
             except Exception as e:
                 db.session.rollback()
+                log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
                 print(f"Create CCA error: {e}")
                 flash('Error creating CCA. Please try again.', 'error')
                 return render_template('create_cca.html')
@@ -300,6 +304,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"View CCA error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error loading CCA details.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
 
@@ -355,6 +360,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         except Exception as e:
             db.session.rollback()
             print(f"Edit CCA error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error updating CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
 
@@ -406,6 +412,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             db.session.rollback()
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             print(f"Add student to CCA error: {e}")
             flash('Error adding student to CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
@@ -436,6 +443,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             db.session.rollback()
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             print(f"Remove student from CCA error: {e}")
             flash('Error removing student from CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
@@ -500,6 +508,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         except Exception as e:
             db.session.rollback()
             print(f"Delete CCA error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error deleting CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
     
@@ -557,6 +566,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"Search students error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             return {'error': 'Search failed'}, 500
 
     @admin_bp.route('/cca/<int:cca_id>/add-multiple-students', methods=['POST'])
@@ -623,6 +633,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         except Exception as e:
             db.session.rollback()
             print(f"Add multiple students error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             flash('An error occurred while adding students.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
     
@@ -682,6 +693,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                         flash('Email notification failed. Please try again.', 'error')
                 except Exception as e:
                     print(f"Email sending error: {e}")
+                    log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
                     flash('Email notification failed. Please try again.', 'error')
             else:
                 flash('No email on file for this student. Cannot send email.', 'warning')
@@ -690,6 +702,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"Resend password setup error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             flash('An error occurred. Please try again.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
     
@@ -731,6 +744,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"View all CCAs error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error loading CCA list.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
 
@@ -813,6 +827,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"View all polls error: {e}")
+            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error loading polls.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
 
