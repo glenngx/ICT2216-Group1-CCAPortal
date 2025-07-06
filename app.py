@@ -306,6 +306,4 @@ def handle_500(error):
 
 if __name__ == '__main__':
     # set debug to false for deployment
-    with app.app_context():
-        db.create_all()  # 👈 This will create LoginLog if it doesn’t exist
     app.run(host='0.0.0.0', port=5000, debug=True)
