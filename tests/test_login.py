@@ -34,41 +34,48 @@ def test_login_with_valid_credentials():
 from sqlalchemy import text
 from datetime import date
 
+from sqlalchemy import text
+from datetime import datetime
+
 def setup_existing_student_and_cca():
     with app.app_context():
-        student = Student.query.first()
+        # Create student if needed
+        student = Student.query.get(2301000)
         if not student:
-            # Insert directly using raw SQL to avoid missing fields in model
             db.session.execute(text("""
                 INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
                 VALUES (:sid, :name, :email, :dob, :phone)
             """), {
-                'sid': 9999999,
+                'sid': 2301000,
                 'name': 'Fallback Student',
                 'email': 'student@example.com',
                 'dob': '2000-01-01',
                 'phone': '91234567'
             })
             db.session.commit()
-            student = Student.query.get(9999999)
+            student = Student.query.get(2301000)
 
+        # Reuse existing user if already linked to the student
         user = User.query.filter_by(StudentId=student.StudentId).first()
         if not user:
             user = User(
                 StudentId=student.StudentId,
                 Username="testuser",
                 Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
-                SystemRole="student"
+                SystemRole="student",
+                PasswordLastSet=datetime.utcnow()
             )
             db.session.add(user)
             db.session.commit()
+        else:
+            user = User.query.get(user.UserId)  # reattach to session
 
+        # Always create a fresh CCA for test isolation
         cca = CCA(Name="Test CCA", Description="Created for test")
         db.session.add(cca)
         db.session.commit()
 
         return student, user, cca
-
 
 def test_student_assigned_to_cca_directly():
     student, user, cca = setup_existing_student_and_cca()
