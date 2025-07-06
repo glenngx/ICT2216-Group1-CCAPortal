@@ -827,6 +827,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             .limit(50)
             .all()
         )
+
         admin_logs = (
             db.session.query(AdminLog, User)
             .outerjoin(User, AdminLog.AdminUserId == User.UserId)
@@ -835,13 +836,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             .all()
         )
 
-        # Combine and sort by timestamp descending
-        combined_logs = sorted(
-            [('auth', l, u) for l, u in login_logs] + [('admin', l, u) for l, u in admin_logs],
-            key=lambda tup: tup[1].Timestamp,
+        logs = sorted(
+            [('auth', log, user) for log, user in login_logs] +
+            [('admin', log, user) for log, user in admin_logs],
+            key=lambda x: x[1].Timestamp,
             reverse=True
-    )
-        return render_template('admin_logs.html', user_name=session['name'],logs=combined_logs)
+        )
+
+        return render_template('admin_logs.html', user_name=session['name'],logs=logs)
         # \*\ Ended added Logging
 
     # Register the blueprint with the app
