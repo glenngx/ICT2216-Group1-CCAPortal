@@ -702,14 +702,11 @@ def register_student_routes(app, get_db_connection, login_required):
             #SQL refactoring
             # cursor.execute("SELECT IsAnonymous FROM Poll WHERE PollId = ?", (poll_id,))
             # is_anonymous = cursor.fetchone()[0]
-            is_anonymous = db.session.query(Poll.IsAnonymous).filter_by(PollId=poll_id).scalar()
-            #The new line checks if the poll is anonymous.
+            is_anonymous = db.session.query(Poll.IsAnonymous).filter_by(PollId=poll_id).scalar()            #The new line checks if the poll is anonymous.
 
             if is_anonymous and not user_is_moderator and session['role'] != 'admin':
                 flash('You cannot view the results of an anonymous poll.', 'error')
-                return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-
-            #SQL refactoring
+                return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))            #SQL refactoring
             # cursor.execute("""
             #     SELECT p.Question, p.IsAnonymous, c.Name AS CCAName
             #     FROM Poll p
@@ -717,15 +714,59 @@ def register_student_routes(app, get_db_connection, login_required):
             #     WHERE p.PollId = ?
             # """, (poll_id,))
             # poll_info = cursor.fetchone()
-            poll_info = db.session.query(Poll.Question, Poll.IsAnonymous, CCA.Name.label('CCAName')).join(CCA, Poll.CCAId == CCA.CCAId).filter(Poll.PollId == poll_id).first()
+            poll_info = db.session.query(
+                Poll.PollId, Poll.Question, Poll.IsAnonymous, Poll.StartDate, Poll.EndDate, 
+                Poll.QuestionType, CCA.Name.label('CCAName')
+            ).join(CCA, Poll.CCAId == CCA.CCAId).filter(Poll.PollId == poll_id).first()
             #The new line gets basic poll information for the results page.
 
             if not poll_info:
                 flash('Poll not found.', 'error')
                 return redirect(url_for('student_routes.view_polls'))
 
-            poll = {'Question': poll_info[0], 'IsAnonymous': poll_info[1], 'CCAName': poll_info[2]}
-
+            poll = {
+                'PollId': poll_info[0], 
+                'Question': poll_info[1], 
+                'IsAnonymous': poll_info[2], 
+                'StartDate': convert_utc_to_gmt8_display(poll_info[3]),
+                'EndDate': convert_utc_to_gmt8_display(poll_info[4]),
+                'QuestionType': poll_info[5],
+                'CCAName': poll_info[6]
+            }
+            
+            # Get poll options with vote counts
+            options_data = db.session.query(
+                PollOption.OptionId, PollOption.OptionText, func.count(PollVote.VoteId).label('VoteCount')
+            ).outerjoin(PollVote, PollOption.OptionId == PollVote.OptionId).filter(PollOption.PollId == poll_id).group_by(PollOption.OptionId, PollOption.OptionText).order_by(func.count(PollVote.VoteId).desc()).all()
+            
+            # Calculate total votes
+            total_votes = sum(opt[2] for opt in options_data)
+            
+            # Process options with percentages
+            options = []
+            for opt in options_data:
+                percentage = round((opt[2] / total_votes * 100), 1) if total_votes > 0 else 0
+                options.append({
+                    'OptionId': opt[0],
+                    'OptionText': opt[1],
+                    'VoteCount': opt[2],
+                    'Percentage': percentage
+                })
+            
+            # Get total eligible voters (CCA members)
+            poll_cca_id = db.session.query(Poll.CCAId).filter_by(PollId=poll_id).scalar()
+            total_eligible_voters = db.session.query(CCAMembers).filter_by(CCAId=poll_cca_id).count()
+            
+            # Calculate participation rate
+            participation_rate = round((total_votes / total_eligible_voters * 100), 1) if total_eligible_voters > 0 else 0
+            
+            # Check if current user voted and get their votes
+            user_voted = db.session.query(PollVote).filter_by(PollId=poll_id, UserId=session['user_id']).count() > 0
+            user_votes = []
+            if user_voted:
+                user_votes_data = db.session.query(PollVote.OptionId).filter_by(PollId=poll_id, UserId=session['user_id']).all()
+                user_votes = [uv[0] for uv in user_votes_data]
+            
             #SQL refactoring
             # cursor.execute("""
             #     SELECT o.OptionText, u.Name AS VoterName, u.Email AS VoterEmail
@@ -737,9 +778,9 @@ def register_student_routes(app, get_db_connection, login_required):
             # """, (poll_id,))
             # results_data = cursor.fetchall()
             results_data = db.session.query(
-                PollOption.OptionText, User.Name.label('VoterName'), User.Email.label('VoterEmail')
-            ).join(PollVote, PollOption.OptionId == PollVote.OptionId).join(User, PollVote.UserId == User.UserId).filter(PollVote.PollId == poll_id).order_by(PollOption.OptionText, User.Name).all()
-            #The new line gets the results for a non-anonymous poll.
+                PollOption.OptionText, Student.Name.label('VoterName'), Student.Email.label('VoterEmail')
+            ).join(PollVote, PollOption.OptionId == PollVote.OptionId).join(User, PollVote.UserId == User.UserId).join(Student, User.StudentId == Student.StudentId).filter(PollVote.PollId == poll_id).order_by(PollOption.OptionText, Student.Name).all()
+            #The new line gets the results for a non-anonymous poll, joining with Student table to get name and email.
 
             results = {}
             for row in results_data:
@@ -748,7 +789,16 @@ def register_student_routes(app, get_db_connection, login_required):
                     results[option_text] = []
                 results[option_text].append({'name': voter_name, 'email': voter_email})
 
-            return render_template('view_result.html', poll=poll, results=results, user_name=session.get('name'))
+            return render_template('view_result.html', 
+                                 poll=poll, 
+                                 results=results, 
+                                 options=options,
+                                 total_votes=total_votes,
+                                 total_eligible_voters=total_eligible_voters,
+                                 participation_rate=participation_rate,
+                                 user_voted=user_voted,
+                                 user_votes=user_votes,
+                                 user_name=session.get('name'))
 
         except Exception as e:
             print(f"Error fetching poll results for poll {poll_id}: {e}")
