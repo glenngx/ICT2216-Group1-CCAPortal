@@ -36,7 +36,7 @@ from datetime import datetime
 
 def setup_existing_student_and_cca():
     with app.app_context():
-        # Step 1: Ensure student exists
+        # Ensure student exists
         student = Student.query.get(2301000)
         if not student:
             db.session.execute(text("""
@@ -52,7 +52,7 @@ def setup_existing_student_and_cca():
             db.session.commit()
             student = Student.query.get(2301000)
 
-        # Step 2: Delete existing user if one exists for this StudentId or username (safe reset for testing)
+        # Reuse or recreate user
         existing_user = User.query.filter(
             (User.StudentId == student.StudentId) | (User.Username == "testuser")
         ).first()
@@ -60,7 +60,6 @@ def setup_existing_student_and_cca():
             db.session.delete(existing_user)
             db.session.commit()
 
-        # Step 3: Create user
         user = User(
             StudentId=student.StudentId,
             Username="testuser",
@@ -71,10 +70,12 @@ def setup_existing_student_and_cca():
         db.session.add(user)
         db.session.commit()
 
-        # Step 4: Create test CCA
-        cca = CCA(Name="Test CCA", Description="Created for test")
-        db.session.add(cca)
-        db.session.commit()
+        # Reuse or recreate CCA
+        cca = CCA.query.filter_by(Name="Test CCA").first()
+        if not cca:
+            cca = CCA(Name="Test CCA", Description="Created for test")
+            db.session.add(cca)
+            db.session.commit()
 
         return student, user, cca
 
