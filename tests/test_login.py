@@ -45,7 +45,6 @@ def setup_student_and_cca():
             StudentId=9999999,
             Name="Test Student",
             Email="student@example.com",
-            DOB=date(2000, 1, 1),
             ContactNumber="91234567"
         )
         db.session.add(student)
