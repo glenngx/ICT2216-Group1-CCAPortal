@@ -70,7 +70,7 @@ def setup_existing_student_and_cca():
         db.session.add(user)
         db.session.commit()
 
-        # Re-fetch the user to ensure UserId is available and attached to session
+        # ✅ This is the missing step
         user = User.query.filter_by(Username="testuser").first()
 
         # Ensure CCA
