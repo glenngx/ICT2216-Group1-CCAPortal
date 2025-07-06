@@ -61,3 +61,28 @@ def setup_admin_and_user():
     db.session.commit()
 
     return admin, user, cca
+
+def test_admin_assigns_student_to_cca():
+    admin, student_user, cca = setup_admin_and_user()
+
+    with app.test_client() as client:
+        # Log in as admin
+        response = client.post("/login", data={
+            "username": "adminuser",
+            "password": "adminpass"
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+
+        # Perform the action — depends on your route
+        response = client.post("/admin/assign-student", data={
+            "student_id": student_user.StudentId,
+            "cca_id": cca.CCAId,
+            "role": "member"
+        }, follow_redirects=True)
+
+        # Check response or DB
+        assert response.status_code == 200
+        membership = CCAMembers.query.filter_by(UserId=student_user.UserId, CCAId=cca.CCAId).first()
+        assert membership is not None
+        assert membership.CCARole == "member"
