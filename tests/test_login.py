@@ -74,12 +74,14 @@ def test_student_assigned_to_cca_directly():
     student, user, cca = setup_existing_student_and_cca()
 
     with app.app_context():
-        # Step 4: Assign the user to the CCA
+        # Reload user so it's attached to the active session
+        user = User.query.get(user.UserId)
+
         membership = CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member")
         db.session.add(membership)
         db.session.commit()
 
-        # Step 5: Verify assignment
         result = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
         assert result is not None
         assert result.CCARole == "member"
+
