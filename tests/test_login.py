@@ -36,7 +36,7 @@ from datetime import datetime
 
 def setup_existing_student_and_cca():
     with app.app_context():
-        # Ensure student exists
+        # Ensure student
         student = Student.query.get(2301000)
         if not student:
             db.session.execute(text("""
@@ -52,7 +52,7 @@ def setup_existing_student_and_cca():
             db.session.commit()
             student = Student.query.get(2301000)
 
-        # Reuse or recreate user
+        # Ensure user
         existing_user = User.query.filter(
             (User.StudentId == student.StudentId) | (User.Username == "testuser")
         ).first()
@@ -70,21 +70,21 @@ def setup_existing_student_and_cca():
         db.session.add(user)
         db.session.commit()
 
-        # Reuse or recreate CCA
+        # Ensure CCA
         cca = CCA.query.filter_by(Name="Test CCA").first()
         if not cca:
             cca = CCA(Name="Test CCA", Description="Created for test")
             db.session.add(cca)
             db.session.commit()
 
-        return student, user, cca
+        return student.StudentId, user.UserId, cca.CCAId
 
 def test_student_assigned_to_cca_directly():
-    student, user, cca = setup_existing_student_and_cca()
+    student_id, user_id, cca_id = setup_existing_student_and_cca()
 
     with app.app_context():
-        # Reload user so it's attached to the active session
-        user = User.query.get(user.UserId)
+        user = User.query.get(user_id)
+        cca = CCA.query.get(cca_id)
 
         membership = CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member")
         db.session.add(membership)
@@ -93,4 +93,5 @@ def test_student_assigned_to_cca_directly():
         result = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
         assert result is not None
         assert result.CCARole == "member"
+
 
