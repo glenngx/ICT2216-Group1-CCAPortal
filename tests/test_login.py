@@ -31,20 +31,26 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
+from sqlalchemy import text
+
 def setup_admin_and_user():
     with app.app_context():
-        # Delete from child tables first (those with FK to User or Student)
-        db.session.execute(text("DELETE FROM LoginLog"))  # Fix raw SQL usage
+        # Step 1: Delete from FK-dependent tables (in correct order)
+        db.session.execute(text("DELETE FROM AdminLog"))
+        db.session.execute(text("DELETE FROM LoginLog"))
+
+        # Step 2: Delete from test-related models (in order of dependency)
         db.session.query(CCAMembers).delete()
         db.session.query(PollVote).delete()
         db.session.query(PollOption).delete()
         db.session.query(Poll).delete()
         db.session.query(CCA).delete()
-
         db.session.query(User).delete()
         db.session.query(Student).delete()
+
         db.session.commit()
 
+        # Step 3: Insert test records
         student = Student(StudentId=9999999, Name="User W", Email="userw@example.com")
         student_user = User(
             StudentId=9999999,
@@ -66,6 +72,7 @@ def setup_admin_and_user():
         db.session.commit()
 
         return admin, student_user, cca
+
 
 def test_admin_assigns_student_to_cca():
     admin, student_user, cca = setup_admin_and_user()
