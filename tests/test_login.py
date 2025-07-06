@@ -129,3 +129,53 @@ def setup_existing_student_and_cca():
         db.session.commit()
 
         return student.StudentId, user_id, cca_id
+
+def test_authenticated_user_vote():
+    with app.test_client() as client:
+        # Login first
+        client.post("/login", data={
+            "username": "2305105",
+            "password": "pppppp"
+        }, follow_redirects=True)
+
+        # Access the poll
+        poll_id = 1  # change as needed
+        get_poll = client.get(f"/poll/{poll_id}")
+        assert get_poll.status_code == 200
+
+        # Submit a vote (option ID 1 assumed — update as needed)
+        vote_response = client.post(f"/poll/{poll_id}/vote", data={
+            "option": 1
+        }, follow_redirects=True)
+
+        assert vote_response.status_code == 200
+        assert b"thank you" in vote_response.data.lower() or b"voted" in vote_response.data.lower()
+
+import hashlib
+
+def test_anonymous_token_vote():
+    with app.app_context():
+        # Create a token and its hash
+        token_plain = "test-anon-token"
+        token_hash = hashlib.sha256(token_plain.encode()).hexdigest()
+
+        # Insert into DB manually (adjust table/model as needed)
+        db.session.execute(text("""
+            INSERT INTO VoteTokens (PollId, TokenHash, ExpiryTime, IsUsed)
+            VALUES (:poll_id, :token_hash, DATEADD(day, 1, GETUTCDATE()), 0)
+        """), {"poll_id": 1, "token_hash": token_hash})
+        db.session.commit()
+
+    with app.test_client() as client:
+        # Access vote page using token
+        poll_id = 1
+        response = client.get(f"/poll/{poll_id}?token={token_plain}")
+        assert response.status_code == 200
+
+        # Submit vote
+        vote_response = client.post(f"/poll/{poll_id}/vote?token={token_plain}", data={
+            "option": 1
+        }, follow_redirects=True)
+
+        assert vote_response.status_code == 200
+        assert b"thank you" in vote_response.data.lower() or b"voted" in vote_response.data.lower()
