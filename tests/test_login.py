@@ -39,9 +39,13 @@ def setup_student_and_cca():
         db.session.query(Student).delete()
         db.session.commit()
 
-        student = Student(Name="Test Student", Email="student@example.com")
+        student = Student(
+            Name="Test Student",
+            Email="student@example.com",
+            ContactNumber="91234567"  # ✅ Required non-nullable field
+        )
         db.session.add(student)
-        db.session.flush()  # ensures StudentId is available
+        db.session.flush()
 
         user = User(
             StudentId=student.StudentId,
@@ -52,7 +56,7 @@ def setup_student_and_cca():
 
         cca = CCA(Name="Chess Club", Description="Test club")
         db.session.add_all([user, cca])
-        db.session.flush()  # ensures CCAId is available
+        db.session.flush()
 
         return student, user, cca
 
