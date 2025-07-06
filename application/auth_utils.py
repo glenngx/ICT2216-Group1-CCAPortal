@@ -3,6 +3,7 @@ from functools import wraps
 from flask import session, redirect, url_for, flash, request
 from application.models import db, User, CCAMembers
 from application.models import LoginLog, db
+from application.models import AdminLog, db
 
 
 
@@ -106,6 +107,17 @@ def log_login_attempt(username, user_id, success, reason=None):
         IPAddress=request.remote_addr,
         Success=success,
         Reason=reason
+    )
+    db.session.add(log)
+    db.session.commit()
+
+
+
+def log_admin_action(admin_user_id, action_desc):
+    log = AdminLog(
+        AdminUserId=admin_user_id,
+        Action=action_desc,
+        IPAddress=request.remote_addr
     )
     db.session.add(log)
     db.session.commit()

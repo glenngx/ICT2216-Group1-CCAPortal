@@ -3,6 +3,7 @@ from email_service import email_service
 import bcrypt
 from application.auth_utils import admin_required
 from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote, LoginLog
+from application.auth_utils import log_admin_action
 
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
@@ -137,6 +138,9 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 new_user = User(Username=student_id, StudentId=int(student_id), Password=None, SystemRole='student')
                 db.session.add(new_user)
                 db.session.commit()
+                # \*\ Added for logging
+                log_admin_action(session["user_id"], f"Created login for student ID {student_id}")
+                # \*\ Ended for logging
                 # Creates a new user with a NULL password.
                 
                 # Send password setup email immediately after successful account creation
@@ -216,6 +220,9 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 new_cca = CCA(Name=name, Description=description or '')
                 db.session.add(new_cca)
                 db.session.commit()
+                # \*\ Added for logging
+                log_admin_action(session["user_id"], f"Created CCA: {name}")
+                # \*\ Ended for logging
                 # Creates a new CCA.
                 
                 flash(f'CCA "{name}" created successfully!', 'success')
@@ -338,7 +345,10 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             cca_to_update.Description = description
             db.session.commit()
             # Updates the name and description of a CCA.
-            
+            # \*\ Added for logging    
+            log_admin_action(session["user_id"], f"Edited CCA ID {cca_id}: renamed to '{name}'")
+            # \*\ Ended for logging    
+
             flash('CCA updated successfully!', 'success')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             
@@ -388,7 +398,9 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             db.session.add(new_member)
             db.session.commit()
             # Adds a new member to a CCA.
-            
+            # \*\ Added for logging
+            log_admin_action(session["user_id"], f"Added student {student_id} to CCA {cca_id} as {role}")
+            # \*\ Ended for logging
             flash('Student added to CCA successfully!', 'success')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             
@@ -414,6 +426,10 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             # cursor.execute("DELETE FROM CCAMembers WHERE MemberId = ? AND CCAId = ?", (member_id, cca_id))
             CCAMembers.query.filter_by(MemberId=member_id, CCAId=cca_id).delete()
             db.session.commit()
+            # \*\ Added for logging
+            log_admin_action(session["user_id"], f"Removed member {member_id} from CCA {cca_id}")
+            # \*\ Ended for logging
+
             # Deletes a CCA membership entry by member and CCA ID.
             flash('Student removed from CCA successfully!', 'success')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
@@ -475,6 +491,9 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             # Deletes the CCA itself.
             
             db.session.commit()
+            # \*\ Added for logging
+            log_admin_action(session["user_id"], f"Deleted CCA '{cca_name}' (ID: {cca_id})")
+            # \*\ Ended for logging
             flash(f'CCA "{cca_name}" and all related data deleted successfully!', 'success')
             return redirect(url_for('admin_routes.admin_dashboard'))
             
@@ -592,6 +611,9 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if new_members:
                 db.session.bulk_insert_mappings(CCAMembers, new_members)
                 db.session.commit()
+                # Added for logging                   
+                log_admin_action(session["user_id"], f"Bulk added {len(new_members)} students to CCA {cca_id} as {role}")
+                # Ended for logging
                 flash(f'{len(new_members)} students added successfully!', 'success')
             else:
                 flash('All selected students are already in this CCA.', 'info')
