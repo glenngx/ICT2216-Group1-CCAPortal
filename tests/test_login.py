@@ -31,48 +31,35 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
-from datetime import date
-
-def setup_student_and_cca():
+def setup_existing_student_and_cca():
     with app.app_context():
-        db.session.query(CCAMembers).delete()
-        db.session.query(CCA).delete()
-        db.session.query(User).delete()
-        db.session.query(Student).delete()
-        db.session.commit()
+        # Step 1: Find any existing student
+        student = Student.query.first()
+        if not student:
+            raise Exception("No student exists in the database.")
 
-        student = Student(
-            StudentId=9999999,
-            Name="Test Student",
-            Email="student@example.com",
-            ContactNumber="91234567"
-        )
-        db.session.add(student)
-        db.session.flush()  # get StudentId
+        # Step 2: Find user linked to student
+        user = User.query.filter_by(StudentId=student.StudentId).first()
+        if not user:
+            raise Exception(f"No user found for StudentId={student.StudentId}")
 
-        user = User(
-            StudentId=student.StudentId,
-            Username="testuser",
-            Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
-            SystemRole="student"
-        )
-        db.session.add(user)
-        db.session.flush()  # get UserId
-
-        cca = CCA(Name="Test CCA", Description="Testing CCA assignment")
+        # Step 3: Create a new test CCA
+        cca = CCA(Name="Test CCA", Description="Created for testing")
         db.session.add(cca)
-        db.session.flush()  # get CCAId
+        db.session.commit()  # save to get CCAId
 
         return student, user, cca
 
 def test_student_assigned_to_cca_directly():
-    student, user, cca = setup_student_and_cca()
+    student, user, cca = setup_existing_student_and_cca()
 
     with app.app_context():
+        # Step 4: Assign the user to the CCA
         membership = CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member")
         db.session.add(membership)
         db.session.commit()
 
+        # Step 5: Verify assignment
         result = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
         assert result is not None
         assert result.CCARole == "member"
