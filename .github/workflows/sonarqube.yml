@@ -25,6 +25,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Test SonarQube URL reachability
+        run: |
+          curl -v ${{ secrets.SONAR_HOST_URL }}
+
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
         env:
