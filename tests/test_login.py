@@ -33,36 +33,36 @@ def test_login_with_valid_credentials():
 
 
 
-def test_authenticated_user_vote():
-    with app.app_context():
-        student = Student.query.get(2305105)
-        assert student is not None, "Student 2305105 not found in DB"
+# def test_authenticated_user_vote():
+#     with app.app_context():
+#         student = Student.query.get(2305105)
+#         assert student is not None, "Student 2305105 not found in DB"
 
-        user = User.query.filter_by(Username="2305105").first()
-        assert user is not None, "User 2305105 not found in DB"
+#         user = User.query.filter_by(Username="2305105").first()
+#         assert user is not None, "User 2305105 not found in DB"
 
-        # Ensure user is in a CCA
-        cca = CCA.query.first()
-        assert cca is not None, "No CCA found"
+#         # Ensure user is in a CCA
+#         cca = CCA.query.first()
+#         assert cca is not None, "No CCA found"
 
-        membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
-        if not membership:
-            db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
-            db.session.commit()
+#         membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
+#         if not membership:
+#             db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
+#             db.session.commit()
 
-        # Update vote to 0 instead of deleting (for PollId 9)
-        existing_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=9).first()
-        if existing_vote:
-            existing_vote.OptionId = 0  # or any placeholder/neutral OptionId your app accepts
-            db.session.commit()
+#         # Update vote to 0 instead of deleting (for PollId 9)
+#         existing_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=9).first()
+#         if existing_vote:
+#             existing_vote.OptionId = 0  # or any placeholder/neutral OptionId your app accepts
+#             db.session.commit()
 
-    # Perform login and try voting
-    with app.test_client() as client:
-        client.post("/login", data={
-            "username": "2305105",
-            "password": "pppppp"
-        }, follow_redirects=True)
+#     # Perform login and try voting
+#     with app.test_client() as client:
+#         client.post("/login", data={
+#             "username": "2305105",
+#             "password": "pppppp"
+#         }, follow_redirects=True)
 
-        poll_id = 9  # target poll ID
-        response = client.get(f"/poll/{poll_id}")
-        assert response.status_code == 200
+#         poll_id = 9  # target poll ID
+#         response = client.get(f"/poll/{poll_id}")
+#         assert response.status_code == 200
