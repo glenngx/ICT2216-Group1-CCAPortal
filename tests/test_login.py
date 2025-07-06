@@ -31,56 +31,34 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
-def setup_student_user_and_cca_membership():
+def setup_test_user_userdetails():
     with app.app_context():
-        # Ensure student exists
-        student = Student.query.get(2301000)
-        if not student:
-            db.session.execute(text("""
-                INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
-                VALUES (:sid, :name, :email, :dob, :phone)
-            """), {
-                'sid': 2301000,
-                'name': 'Test Student',
-                'email': 'student@example.com',
-                'dob': '2000-01-01',
-                'phone': '91234567'
-            })
-            db.session.commit()
-            student = Student.query.get(2301000)
+        student_id = 2305999
+        username = "2305999"
+        password_plain = "pppppp"
 
-        # Remove and recreate user
-        existing_user = User.query.filter_by(Username="testuser").first()
-        if existing_user:
-            db.session.delete(existing_user)
+        # Remove existing user if present
+        existing = User.query.filter_by(Username=username).first()
+        if existing:
+            db.session.delete(existing)
             db.session.commit()
+            print(f"🗑️ Removed existing user '{username}'")
 
+        # Hash password
+        hashed_pw = bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode()
+
+        # Add new test user
         user = User(
-            StudentId=student.StudentId,
-            Name="testuser",
-            Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+            StudentId=student_id,
+            Username=username,
+            Password=hashed_pw,
             SystemRole="student",
             PasswordLastSet=datetime.utcnow()
         )
         db.session.add(user)
-        db.session.flush()
-        user_id = user.UserId
-
-        # Create or retrieve a test CCA
-        cca = CCA.query.filter_by(Name="Test CCA").first()
-        if not cca:
-            cca = CCA(Name="Test CCA", Description="This is a test CCA")
-            db.session.add(cca)
-            db.session.flush()
-        cca_id = cca.CCAId
-
-        # Ensure user is added to CCA
-        membership = CCAMembers.query.filter_by(UserId=user_id, CCAId=cca_id).first()
-        if not membership:
-            db.session.add(CCAMembers(UserId=user_id, CCAId=cca_id, CCARole="member"))
-
         db.session.commit()
-        return student.StudentId, user_id, cca_id
+        print(f"✅ Created fresh test user '{username}' with StudentId {student_id}")
+        return user.UserId
 
 
 # def test_authenticated_user_vote():
