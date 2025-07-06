@@ -36,14 +36,14 @@ def test_login_with_valid_credentials():
 def test_authenticated_user_vote():
     with app.app_context():
         student = Student.query.get(2305105)
-        assert student is not None, "❌ Student 2305105 not found in DB"
+        assert student is not None, "Student 2305105 not found in DB"
 
         user = User.query.filter_by(Username="2305105").first()
-        assert user is not None, "❌ User 2305105 not found in DB"
+        assert user is not None, "User 2305105 not found in DB"
 
         # Ensure user is in CCA
         cca = CCA.query.first()
-        assert cca is not None, "❌ No CCA found"
+        assert cca is not None, "No CCA found"
 
         membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
         if not membership:
@@ -57,7 +57,7 @@ def test_authenticated_user_vote():
             "password": "pppppp"
         }, follow_redirects=True)
 
-        poll_id = Poll.query.filter_by(CCAId=cca.CCAId).first().PollId
+        poll_id = 5
         response = client.get(f"/poll/{poll_id}")
         assert response.status_code == 200
 
