@@ -1,7 +1,7 @@
-{% set page_title = cca[1] %}
+{% set page_title = cca.Name %}
 {% set active_page = "view_cca" %}
 {% set show_welcome_section = true %}
-{% set welcome_title = cca[1] %}
+{% set welcome_title = cca.Name %}
 {% set welcome_subtitle = "CCA Information" %}
 {% set welcome_size = "6" %}
 {% set welcome_subtitle_size = "5" %}
@@ -19,14 +19,13 @@
                 <div class="card mb-4">
                     <div class="card-header">
                         <h5 class="mb-0">CCA Details</h5>
-                    </div>
-                    <div class="card-body">
+                    </div>                    <div class="card-body">
                         <div class="mb-3">
-                            <strong>Name:</strong> {{ cca[1] }}
+                            <strong>Name:</strong> {{ cca.Name }}
                         </div>
                         <div class="mb-3">
                             <strong>Description:</strong>
-                            <p class="mt-1">{{ cca[2] if cca[2] else 'No description provided.' }}</p>
+                            <p class="mt-1">{{ cca.Description if cca.Description else 'No description provided.' }}</p>
                         </div>
                     </div>
                 </div>
@@ -48,15 +47,14 @@
                                             <th>Role</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {% for member in members %}
+                                    <tbody>                                        {% for member in members %}
                                         <tr>
-                                            <td>{{ member[0] }}</td>
-                                            <td>{{ member[1] }}</td>
-                                            <td>{{ member[2] }}</td>
+                                            <td>{{ member.StudentId }}</td>
+                                            <td>{{ member.Name }}</td>
+                                            <td>{{ member.Email }}</td>
                                             <td>
-                                                <span class="badge bg-{{ 'success' if member[3] == 'moderator' else 'primary' }}">
-                                                    {{ member[3].title() }}
+                                                <span class="badge bg-{{ 'success' if member.CCARole == 'moderator' else 'primary' }}">
+                                                    {{ member.CCARole.title() }}
                                                 </span>
                                             </td>
                                         </tr>

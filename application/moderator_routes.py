@@ -4,11 +4,96 @@ from sqlalchemy import text, cast
 from application.models import db, CCA, CCAMembers, User, Student, Poll, PollOption
 from datetime import datetime, timezone, timedelta
 from application.auth_utils import moderator_required
+import re
+import unicodedata
 
 # Create a Blueprint
 moderator_bp = Blueprint('moderator_routes', __name__)
 
 # Import necessary functions and decorators from the main app or a shared utility module
+
+def sanitize_input(text, max_length=None):
+    """
+    Sanitize input text to prevent encoding issues and remove potentially harmful characters.
+    
+    Args:
+        text (str): The input text to sanitize
+        max_length (int, optional): Maximum allowed length for the text
+        
+    Returns:
+        str: Sanitized text safe for database storage and display
+    """
+    if not text:
+        return ""
+    
+    try:
+        # Normalize unicode characters
+        text = unicodedata.normalize('NFKC', text)
+        
+        # Remove or replace problematic characters
+        # Allow letters, numbers, spaces, basic punctuation, and common symbols
+        text = re.sub(r'[^\w\s\-.,!?()&@#%*+/=:;"\'\[\]{}]', '', text)
+        
+        # Collapse multiple whitespace into single space
+        text = re.sub(r'\s+', ' ', text)
+        
+        # Strip leading/trailing whitespace
+        text = text.strip()
+        
+        # Truncate if max_length is specified
+        if max_length and len(text) > max_length:
+            text = text[:max_length].strip()
+        
+        # Ensure the text is valid ASCII or UTF-8
+        text.encode('utf-8').decode('utf-8')
+        
+        return text
+        
+    except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError) as e:
+        # If there are any encoding issues, return empty string and log the error
+        print(f"Input sanitization error: {e}")
+        return ""
+
+def validate_cca_input(name, description):
+    """
+    Validate CCA name and description inputs.
+    
+    Args:
+        name (str): CCA name
+        description (str): CCA description
+        
+    Returns:
+        tuple: (is_valid, error_message, sanitized_name, sanitized_description)
+    """
+    try:
+        # Sanitize inputs
+        sanitized_name = sanitize_input(name, max_length=100)
+        sanitized_description = sanitize_input(description, max_length=1000)
+        
+        # Validate name
+        if not sanitized_name:
+            return False, "CCA name is required and must contain valid characters.", "", ""
+        
+        if len(sanitized_name) < 2:
+            return False, "CCA name must be at least 2 characters long.", "", ""
+        
+        # Check for SQL injection patterns (basic protection)
+        dangerous_patterns = [
+            r'(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|\bUNION\b|\bEXEC\b)',
+            r'(\-\-|\#|\/\*|\*\/)',
+            r'(\bOR\b|\bAND\b)\s+\d+\s*=\s*\d+',
+            r'(\bor\b|\band\b)\s+\d+\s*=\s*\d+'
+        ]
+        
+        for pattern in dangerous_patterns:
+            if re.search(pattern, sanitized_name, re.IGNORECASE) or re.search(pattern, sanitized_description, re.IGNORECASE):
+                return False, "Invalid characters detected in input.", "", ""
+        
+        return True, "", sanitized_name, sanitized_description
+        
+    except Exception as e:
+        print(f"Input validation error: {e}")
+        return False, "Input validation failed. Please try again.", "", ""
 
 def register_moderator_routes(app, get_db_connection):
 
@@ -42,6 +127,37 @@ def register_moderator_routes(app, get_db_connection):
                 end_date = request.form.get('end_date')      
                 is_anonymous = request.form.get('is_anonymous') == '1'
                 options = request.form.getlist('options[]')
+                
+                # Sanitize and validate the question
+                try:
+                    sanitized_question = sanitize_input(question, max_length=500)
+                    if not sanitized_question:
+                        flash('Poll question is required and must contain valid characters.', 'error')
+                        return render_template('create_poll.html', user_ccas=user_ccas,
+                                            user_name=session['name'], user_role='moderator',
+                                            user_is_moderator=True)
+                except Exception as e:
+                    print(f"Question sanitization error: {e}")
+                    flash('Invalid characters in poll question. Please use standard text.', 'error')
+                    return render_template('create_poll.html', user_ccas=user_ccas,
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
+                
+                # Sanitize poll options
+                try:
+                    sanitized_options = []
+                    for opt in options:
+                        if opt.strip():
+                            sanitized_opt = sanitize_input(opt.strip(), max_length=200)
+                            if sanitized_opt:
+                                sanitized_options.append(sanitized_opt)
+                    valid_options = sanitized_options
+                except Exception as e:
+                    print(f"Options sanitization error: {e}")
+                    flash('Invalid characters in poll options. Please use standard text.', 'error')
+                    return render_template('create_poll.html', user_ccas=user_ccas,
+                                        user_name=session['name'], user_role='moderator',
+                                        user_is_moderator=True)
                 
                 # Debug print to see what's being received
                 print(f"Received form data:")
@@ -200,7 +316,8 @@ def register_moderator_routes(app, get_db_connection):
             #This query checks if a CCAMembers record exists for the user and CCA.
             
             if not is_moderator:
-                flash('Access denied. You are unauthorised to view this CCA.', 'error')
+                flash('Access denied.', 'error')
+                print(f'DEBUG: Not moderator, unauthorised to view.')
                 return redirect(url_for('student_routes.my_ccas'))
             
             cca = db.session.query(CCA).filter_by(CCAId=cca_id).first()
@@ -208,6 +325,7 @@ def register_moderator_routes(app, get_db_connection):
             
             if not cca:
                 flash('Access denied.', 'error')
+                print(f'DEBUG: CCA not found.')
                 return redirect(url_for('student_routes.my_ccas'))
             
             v_ActiveUserDetails = aliased(User, name='v_ActiveUserDetails')
@@ -265,22 +383,23 @@ def register_moderator_routes(app, get_db_connection):
             if not is_moderator:
                 flash('Access denied. You are not a moderator of this CCA.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
-            
             name = request.form.get('name', '').strip()
             description = request.form.get('description', '').strip()
             
-            if not name:
-                flash('CCA name is required.', 'error')
-                return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
+            # Validate and sanitize inputs
+            is_valid, error_message, sanitized_name, sanitized_description = validate_cca_input(name, description)
             
-            if db.session.query(CCA).filter(CCA.Name == name, CCA.CCAId != cca_id).first():
-                #This query checks if the new CCA name already exists.
+            if not is_valid:
+                flash(error_message, 'error')
+                return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
+            if db.session.query(CCA).filter(CCA.Name == sanitized_name, CCA.CCAId != cca_id).first():
+            #This query checks if the new CCA name already exists.
                 flash('CCA name already exists.', 'error')
                 return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             
             cca_to_update = db.session.query(CCA).filter_by(CCAId=cca_id).one()
-            cca_to_update.Name = name
-            cca_to_update.Description = description
+            cca_to_update.Name = sanitized_name
+            cca_to_update.Description = sanitized_description
             #This code updates the name and description for the specified CCA.
             
             # SQL refactoring

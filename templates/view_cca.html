@@ -1,7 +1,7 @@
-{% set page_title = cca[1] %}
+{% set page_title = cca.Name %}
 {% set active_page = "manage_cca" %}
 {% set show_welcome_section = true %}
-{% set welcome_title = cca[1] %}
+{% set welcome_title = cca.Name %}
 {% set welcome_subtitle = "CCA Management & Member Assignment" %}
 {% set welcome_size = "6" %}
 {% set welcome_subtitle_size = "5" %}
@@ -21,14 +21,13 @@
                         <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editCCAModal">
                             <i class="bi bi-pencil"></i> Edit CCA
                         </button>
-                    </div>
-                    <div class="card-body">
+                    </div>                    <div class="card-body">
                         <div class="mb-3">
-                            <strong>Name:</strong> {{ cca[1] }}
+                            <strong>Name:</strong> {{ cca.Name }}
                         </div>
                         <div class="mb-3">
                             <strong>Description:</strong>
-                            <p class="mt-1">{{ cca[2] if cca[2] else 'No description provided.' }}</p>
+                            <p class="mt-1">{{ cca.Description if cca.Description else 'No description provided.' }}</p>
                         </div>
                     </div>
                 </div>
@@ -51,19 +50,18 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {% for member in members %}
+                                    <tbody>                                        {% for member in members %}
                                         <tr>
-                                            <td>{{ member[0] }}</td>
-                                            <td>{{ member[1] }}</td>
-                                            <td>{{ member[2] }}</td>
+                                            <td>{{ member.StudentId }}</td>
+                                            <td>{{ member.Name }}</td>
+                                            <td>{{ member.Email }}</td>
                                             <td>
-                                                <span class="badge bg-{{ 'success' if member[3] == 'moderator' else 'primary' }}">
-                                                    {{ member[3].title() }}
+                                                <span class="badge bg-{{ 'success' if member.CCARole == 'moderator' else 'primary' }}">
+                                                    {{ member.CCARole.title() }}
                                                 </span>
                                             </td>
                                             <td>
-                                                <form method="POST" action="{{ url_for('admin_routes.remove_student_from_cca', cca_id=cca[0], member_id=member[4]) }}" style="display: inline;" onsubmit="return confirm('Remove {{ member[1] }} from this CCA?')">
+                                                <form method="POST" action="{{ url_for('admin_routes.remove_student_from_cca', cca_id=cca.CCAId, member_id=member.MemberId) }}" style="display: inline;" onsubmit="return confirm('Remove {{ member.Name }} from this CCA?')">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
                                                 </form>
                                             </td>
@@ -92,14 +90,13 @@
                     <div class="card-body">
                         <!-- Single Add Mode (default) -->
                         <div id="single-add-mode">
-                            {% if available_students %}
-                            <form method="POST" action="{{ url_for('admin_routes.add_student_to_cca', cca_id=cca[0]) }}">
+                            {% if available_students %}                            <form method="POST" action="{{ url_for('admin_routes.add_student_to_cca', cca_id=cca.CCAId) }}">
                                 <div class="mb-3">
                                     <label for="student_id" class="form-label">Select Student</label>
                                     <select class="form-select form-select-sm" id="student_id" name="student_id" required>
                                         <option value="">Choose student...</option>
                                         {% for student in available_students %}
-                                        <option value="{{ student[0] }}">{{ student[0] }} - {{ student[1] }}</option>
+                                        <option value="{{ student.StudentId }}">{{ student.StudentId }} - {{ student.Name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -137,7 +134,7 @@
                                 <div id="selected-tags"></div>
                             </div>
 
-                            <form method="POST" action="{{ url_for('admin_routes.add_multiple_students_to_cca', cca_id=cca[0]) }}" id="bulk-add-form">
+                            <form method="POST" action="{{ url_for('admin_routes.add_multiple_students_to_cca', cca_id=cca.CCAId) }}" id="bulk-add-form">
                                 <div class="mb-3">
                                     <label for="bulk-role" class="form-label">Role for all selected students</label>
                                     <select class="form-select form-select-sm" id="bulk-role" name="role" required>
@@ -162,7 +159,7 @@
                     </div>
                     <div class="card-body">
                         <p class="small text-muted">Permanently delete this CCA and all related data.</p>
-                        <form method="POST" action="{{ url_for('admin_routes.delete_cca', cca_id=cca[0]) }}" onsubmit="return confirm('Are you sure you want to delete {{ cca[1] }}? This action cannot be undone and will remove all members, polls, and votes.')">
+                        <form method="POST" action="{{ url_for('admin_routes.delete_cca', cca_id=cca.CCAId) }}" onsubmit="return confirm('Are you sure you want to delete {{ cca.Name }}? This action cannot be undone and will remove all members, polls, and votes.')">>
                             <button type="submit" class="btn btn-sm btn-danger w-100">Delete CCA</button>
                         </form>
                     </div>
@@ -178,17 +175,16 @@
                 <div class="modal-header">
                     <h5 class="modal-title">Edit CCA</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form method="POST" action="{{ url_for('admin_routes.edit_cca', cca_id=cca[0]) }}">
+                </div>                <form method="POST" action="{{ url_for('admin_routes.edit_cca', cca_id=cca.CCAId) }}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="edit_name" class="form-label">CCA Name</label>
                             <input type="text" class="form-control" id="edit_name" name="name" 
-                                   value="{{ cca[1] }}" required>
+                                   value="{{ cca.Name }}" required>
                         </div>
                         <div class="mb-3">
                             <label for="edit_description" class="form-label">Description</label>
-                            <textarea class="form-control" id="edit_description" name="description" rows="4">{{ cca[2] if cca[2] else '' }}</textarea>
+                            <textarea class="form-control" id="edit_description" name="description" rows="4">{{ cca.Description if cca.Description else '' }}</textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -203,7 +199,7 @@
     {% include 'footer.html' %}
     
 <script>
-    const ccaId = parseInt('{{ cca[0] }}');
+    const ccaId = parseInt('{{ cca.CCAId }}');
     
     let selectedStudents = new Map();
     let searchTimeout;

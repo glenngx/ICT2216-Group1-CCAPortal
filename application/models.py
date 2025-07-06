@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-
+from datetime import datetime
 db = SQLAlchemy()
 
 class User(db.Model):
@@ -9,7 +9,23 @@ class User(db.Model):
     Password = db.Column(db.String(255), nullable=False)
     SystemRole = db.Column(db.String(50), nullable=False)
     StudentId = db.Column(db.Integer, db.ForeignKey('Student.StudentId'))
+
+    # \*\ Added for MFA and Block login attempts
     MFATOTPSecret = db.Column(db.String(255))
+
+
+    # Add these:
+    FailedLoginAttempts = db.Column(db.Integer, default=0)
+    IsLocked = db.Column(db.Boolean, default=False)
+    LastFailedLogin = db.Column(db.DateTime)
+
+   # \*\ End for MFA and Block login attempts
+
+    # \*\ Added for password expiration
+    PasswordLastSet = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # \*\ End for MFA and Block login attempts
+
 
     student = db.relationship('Student', backref='user', uselist=False)
 
@@ -70,10 +86,9 @@ class PollVote(db.Model):
 
 class VoteToken(db.Model):
     __tablename__ = 'VoteTokens'
-    TokenId = db.Column(db.Integer, primary_key=True)
+    Token = db.Column(db.String(255), unique=True, nullable=False, primary_key=True)
     UserId = db.Column(db.Integer, db.ForeignKey('UserDetails.UserId'))
     PollId = db.Column(db.Integer, db.ForeignKey('Poll.PollId'))
-    Token = db.Column(db.String(255), unique=True, nullable=False)
     IsUsed = db.Column(db.Boolean, default=False)
     IssuedTime = db.Column(db.DateTime, nullable=False)
     ExpiryTime = db.Column(db.DateTime, nullable=False)
@@ -81,3 +96,25 @@ class VoteToken(db.Model):
     user = db.relationship('User', backref='vote_tokens')
     poll = db.relationship('Poll', backref='vote_tokens')
 
+# \*\ Added for logging
+
+class LoginLog(db.Model):
+    __tablename__ = 'LoginLog'
+    LogId = db.Column(db.Integer, primary_key=True)
+    Username = db.Column(db.String(255))
+    UserId = db.Column(db.Integer, db.ForeignKey('UserDetails.UserId'), nullable=True)
+    IPAddress = db.Column(db.String(45))
+    Timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    Success = db.Column(db.Boolean, nullable=False)
+    Reason = db.Column(db.String(255))
+
+class AdminLog(db.Model):
+    __tablename__ = 'AdminLog'
+    LogId = db.Column(db.Integer, primary_key=True)
+    AdminUserId = db.Column(db.Integer, db.ForeignKey('UserDetails.UserId'))
+    Action = db.Column(db.String(255), nullable=False)
+    Timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    IPAddress = db.Column(db.String(45))
+
+
+# \*\ Ended for logging

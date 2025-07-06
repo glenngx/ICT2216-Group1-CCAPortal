@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask_session import Session
+from flask_session.sqlalchemy import SqlAlchemySessionInterface
 import pyodbc
 from functools import wraps
 import re
@@ -58,9 +60,13 @@ with app.app_context():
 
 # Session Management
 app.config.update(
-    # Commented out below, permanent set to False so cookies clear when browser closes
-    # # Timeout after 30 min of inactivity
-    # PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
+    # Server-side
+    SESSION_TYPE='sqlalchemy',
+    SESSION_SQLALCHEMY=db,
+    # Temporary session cookie to clear when browser closes
+    SESSION_PERMANENT=False,
+    # Sign session cookie
+    SESSION_USE_SIGNER=True,
     # Prevent access to stored data from JavaScript
     SESSION_COOKIE_HTTPONLY=True,
     # Ensure cookies only sent over HTTPS
@@ -68,6 +74,9 @@ app.config.update(
     # Protects against CSRF
     SESSION_COOKIE_SAMESITE='Strict'
 )
+
+# Initialise session
+Session(app)
 
 # Database connection function
 def get_db_connection():
@@ -114,7 +123,7 @@ def login_required(f):
     return decorated_function
 
 # Admin required decorator
-def admin_required(f):
+# def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -164,7 +173,7 @@ def admin_required(f):
     return decorated_function
 
 # Moderator required decorator
-def moderator_required(f):
+# def moderator_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -241,6 +250,19 @@ def health_check():
     
 
 # Global Error Handlers 
+# 401 error handler 
+@app.errorhandler(401)
+def unauthorized(error):
+    flash("Please log in to continue.", "warning")
+    return redirect(url_for('misc_routes.login')), 302
+
+# 403 error handler 
+@app.errorhandler(403)
+def forbidden(error):
+    flash("You do not have permission to access this page.", "error")
+    return redirect(url_for('student_routes.dashboard')), 302
+
+
 # Global 404 error handler (non-existing path)
 @app.errorhandler(404)
 def page_not_found(error):
@@ -266,9 +288,14 @@ def page_not_found(error):
 
     # Only for unknown route 404s:
     print(f"[DEBUG] Flashing 404 warning for: {path}")
-    flash("Access Denied 404.", "error")
+    flash("Access Denied.", "error")
     return redirect(url_for('student_routes.dashboard')), 302
 
+# 405 error handler 
+@app.errorhandler(405)
+def method_not_allowed(error):
+    flash("An unexpected error occurred.", "error")
+    return redirect(url_for('student_routes.dashboard')), 302
 
 # Global 500 error handler (internal server error)
 @app.errorhandler(500)
@@ -278,4 +305,7 @@ def handle_500(error):
 
 
 if __name__ == '__main__':
+    # set debug to false for deployment
+    with app.app_context():
+        db.create_all()  # 👈 This will create LoginLog if it doesn’t exist
     app.run(host='0.0.0.0', port=5000, debug=True)

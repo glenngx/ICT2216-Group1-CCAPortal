@@ -8,6 +8,15 @@
 
 {% include 'header.html' %}
 
+{% if password_days_left is defined and password_days_left is not none and password_days_left <= 30 %}
+<div class="alert alert-warning alert-dismissible fade show mx-3 mt-3" role="alert">
+  ⚠️ Your password will expire in {{ password_days_left }} day{{ 's' if password_days_left != 1 else '' }}.
+  <a href="{{ url_for('student_routes.change_password') }}" class="alert-link">Change it now</a>.
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+
     <!-- Main Content -->
     <div class="container">
         <div class="row">
