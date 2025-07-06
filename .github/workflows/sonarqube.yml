@@ -12,14 +12,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Wait for SonarQube to be ready
-        run: |
-          for i in {1..10}; do
-            curl -sSf ${{ secrets.SONAR_HOST_URL }}/api/system/status && break
-            echo "Waiting for SonarQube..."
-            sleep 5
-          done
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -33,9 +25,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Testing SonarQube URL reachability
+      - name: Single SonarQube connectivity check
         run: |
-          curl -v ${{ secrets.SONAR_HOST_URL }}
+          echo "Checking SonarQube once..."
+          curl -sSf "${{ secrets.SONAR_HOST_URL }}/api/system/status"
+          echo "Waiting 30 seconds for stability..."
+          sleep 30
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
