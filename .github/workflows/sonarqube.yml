@@ -28,13 +28,6 @@ jobs:
       - name: DNS check
         run: nslookup ccap-sonar.domloh.com
 
-      - name: Single SonarQube connectivity check
-        run: |
-          echo "Checking SonarQube once..."
-          curl -sSf "${{ secrets.SONAR_HOST_URL }}/api/system/status"
-          echo "Waiting 30 seconds for stability..."
-          sleep 30
-
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
         env:
