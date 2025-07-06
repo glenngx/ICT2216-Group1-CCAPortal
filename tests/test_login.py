@@ -31,24 +31,44 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
+from sqlalchemy import text
+from datetime import date
+
 def setup_existing_student_and_cca():
     with app.app_context():
-        # Step 1: Find any existing student
         student = Student.query.first()
         if not student:
-            raise Exception("No student exists in the database.")
+            # Insert directly using raw SQL to avoid missing fields in model
+            db.session.execute(text("""
+                INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
+                VALUES (:sid, :name, :email, :dob, :phone)
+            """), {
+                'sid': 9999999,
+                'name': 'Fallback Student',
+                'email': 'student@example.com',
+                'dob': '2000-01-01',
+                'phone': '91234567'
+            })
+            db.session.commit()
+            student = Student.query.get(9999999)
 
-        # Step 2: Find user linked to student
         user = User.query.filter_by(StudentId=student.StudentId).first()
         if not user:
-            raise Exception(f"No user found for StudentId={student.StudentId}")
+            user = User(
+                StudentId=student.StudentId,
+                Username="testuser",
+                Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+                SystemRole="student"
+            )
+            db.session.add(user)
+            db.session.commit()
 
-        # Step 3: Create a new test CCA
-        cca = CCA(Name="Test CCA", Description="Created for testing")
+        cca = CCA(Name="Test CCA", Description="Created for test")
         db.session.add(cca)
-        db.session.commit()  # save to get CCAId
+        db.session.commit()
 
         return student, user, cca
+
 
 def test_student_assigned_to_cca_directly():
     student, user, cca = setup_existing_student_and_cca()
