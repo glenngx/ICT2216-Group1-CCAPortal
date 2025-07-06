@@ -1,6 +1,7 @@
 from app import app
 from application.models import db, User, Student, CCA, CCAMembers, Poll, PollVote, PollOption
 import bcrypt
+from sqlalchemy import text
 
 def test_login_page_loads():
     with app.test_client() as client:
@@ -33,7 +34,7 @@ def test_login_with_valid_credentials():
 def setup_admin_and_user():
     with app.app_context():
         # Delete from child tables first (those with FK to User or Student)
-        db.session.execute("DELETE FROM LoginLog")  # raw SQL for exact order control
+        db.session.execute(text("DELETE FROM LoginLog"))  # Fix raw SQL usage
         db.session.query(CCAMembers).delete()
         db.session.query(PollVote).delete()
         db.session.query(PollOption).delete()
