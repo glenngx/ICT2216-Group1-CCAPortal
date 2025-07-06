@@ -57,7 +57,7 @@ def setup_student_user_and_cca_membership():
 
         user = User(
             StudentId=student.StudentId,
-            Username="testuser",
+            Name="testuser",
             Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
             SystemRole="student",
             PasswordLastSet=datetime.utcnow()
