@@ -8,7 +8,7 @@ on:
 
 jobs:
   sonarqube:
-    name: Analyze with SonarQube
+    name: Analyzing with SonarQube
     runs-on: ubuntu-latest
 
     steps:
