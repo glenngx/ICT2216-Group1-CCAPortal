@@ -54,10 +54,10 @@
                                     <tbody>
                                         {% for cca in ccas %}
                                         <tr>
-                                            <td><strong>{{ cca[1] }}</strong></td>
-                                            <td>{{ cca[2][:50] }}{% if cca[2]|length > 50 %}...{% endif %}</td>
+                                            <td><a href="{{ url_for('admin_routes.view_cca', cca_id=cca.CCAId) }}">{{ cca.Name }}</a></td>
+                                            <td>{{ cca.Description }}</td>
                                             <td>
-                                                <a href="{{ url_for('admin_routes.view_cca', cca_id=cca[0]) }}" class="btn btn-sm btn-outline-primary">View CCA</a>
+                                                <a href="{{ url_for('admin_routes.view_cca', cca_id=cca.CCAId) }}" class="btn btn-sm btn-info">View</a>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -91,9 +91,9 @@
                                     <tbody>
                                         {% for student in students %}
                                         <tr>
-                                            <td>{{ student[0] }}</td>
-                                            <td>{{ student[1] }}</td>
-                                            <td>{{ student[2] }}</td>
+                                            <td>{{ student.StudentId }}</td>
+                                            <td>{{ student.Name }}</td>
+                                            <td>{{ student.Email }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -121,14 +121,14 @@
                         <tbody>
                             {% for student in students_needing_password_setup %}
                             <tr>
-                                <td>{{ student[0] }}</td>
-                                <td>{{ student[1] }}</td>
-                                <td>{{ student[2] if student[2] else 'No email on file' }}</td>
+                                <td>{{ student.StudentId }}</td>
+                                <td>{{ student.Name }}</td>
+                                <td>{{ student.Email if student.Email else 'No email on file' }}</td>
                                 <td>
-                                    {% if student[2] %}
-                                    <form method="POST" action="{{ url_for('admin_routes.resend_password_setup_email', student_id=student[0]) }}" style="display: inline;">
+                                    {% if student.Email %}
+                                    <form method="POST" action="{{ url_for('admin_routes.resend_password_setup_email', student_id=student.StudentId) }}" style="display: inline;">
                                         <button type="submit" class="btn btn-sm btn-warning" 
-                                                onclick="return confirm('Resend password setup email to {{ student[1] }}?')">
+                                                onclick="return confirm('Resend password setup email to {{ student.Name }}?')">
                                             <i class="fas fa-envelope"></i> Resend Setup Email
                                         </button>
                                     </form>

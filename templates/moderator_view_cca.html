@@ -50,20 +50,19 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {% for member in members %}
+                                    <tbody>                                        {% for member in members %}
                                         <tr>
-                                            <td>{{ member[0] }}</td>
-                                            <td>{{ member[1] }}</td>
-                                            <td>{{ member[2] }}</td>
+                                            <td>{{ member.StudentId }}</td>
+                                            <td>{{ member.Name }}</td>
+                                            <td>{{ member.Email }}</td>
                                             <td>
-                                                <span class="badge bg-{{ 'success' if member[3] == 'moderator' else 'primary' }}">
-                                                    {{ member[3].title() }}
+                                                <span class="badge bg-{{ 'success' if member.CCARole == 'moderator' else 'primary' }}">
+                                                    {{ member.CCARole.title() }}
                                                 </span>
                                             </td>
                                             <td>
-                                                {% if member[3] == 'member' %}
-                                                <form method="POST" action="{{ url_for('moderator_routes.moderator_remove_student_from_cca', cca_id=cca.CCAId, member_id=member[4]) }}" style="display: inline;" onsubmit="return confirm('Remove {{ member[1] }} from this CCA?')">
+                                                {% if member.CCARole == 'member' %}
+                                                <form method="POST" action="{{ url_for('moderator_routes.moderator_remove_student_from_cca', cca_id=cca.CCAId, member_id=member.MemberId) }}" style="display: inline;" onsubmit="return confirm('Remove {{ member.Name }} from this CCA?')">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
                                                 </form>
                                                 {% else %}
@@ -100,9 +99,8 @@
                                 <div class="mb-3">
                                     <label for="student_id" class="form-label">Select Student</label>
                                     <select class="form-select form-select-sm" id="student_id" name="student_id" required>
-                                        <option value="">Choose student...</option>
-                                        {% for student in available_students %}
-                                        <option value="{{ student[0] }}">{{ student[0] }} - {{ student[1] }}</option>
+                                        <option value="">Choose student...</option>                                        {% for student in available_students %}
+                                        <option value="{{ student.StudentId }}">{{ student.StudentId }} - {{ student.Name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
