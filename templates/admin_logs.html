@@ -138,52 +138,52 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                {% if logs %}
-                                    {% for log_type, log, user in logs %}
-                                    <tr>
-                                        <td>{{ log.Timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                        <td>
-                                            {% if log_type == 'auth' %}
-                                                <span class="badge {% if log.Success %}bg-success{% else %}bg-danger{% endif %}">Authentication</span>
-                                            {% else %}
-                                                <span class="badge bg-info">Admin Action</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ user.Username if user else log.Username or 'Unknown' }}</td>
-                                        <td>{{ log.IPAddress or 'N/A' }}</td>
-                                        <td>
-                                            {% if log_type == 'auth' %}
-                                                {% if log.Success %}
-                                                    Login success
-                                                {% else %}
-                                                    Failed: {{ log.Reason }}
-                                                {% endif %}
-                                            {% else %}
-                                                {{ log.Action }}
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
-                                                    data-bs-target="#logDetailModal"
-                                                    data-timestamp="{{ log.Timestamp }}"
-                                                    data-log-type="{% if log_type == 'auth' %}Authentication{% else %}Admin Action{% endif %}"
-                                                    data-user="{{ user.Username if user else log.Username or 'Unknown' }}"
-                                                    data-ip="{{ log.IPAddress }}"
-                                                    data-message="{% if log_type == 'auth' %}{{ log.Reason or 'Login success' }}{% else %}{{ log.Action }}{% endif %}"
-                                                    data-agent="{{ request.headers.get('User-Agent', '-') }}">
-                                                View
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">
-                                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                                            No system logs available.
-                                        </td>
-                                    </tr>
-                                {% endif %}
+                                    {% if logs %}
+                                        {% for log, user in logs %}
+                                            <tr>
+                                                <td>{{ log.Timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                                <td>
+                                                    <span class="badge {% if log.Success %}bg-success{% else %}bg-danger{% endif %}">
+                                                        Authentication
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {% if user %}
+                                                        {{ user.Username }}
+                                                    {% else %}
+                                                        {{ log.Username }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ log.IPAddress or 'N/A' }}</td>
+                                                <td>
+                                                    {% if log.Success %}
+                                                        Login success
+                                                    {% else %}
+                                                        Failed: {{ log.Reason }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                                                            data-bs-target="#logDetailModal"
+                                                            data-timestamp="{{ log.Timestamp }}"
+                                                            data-log-type="Authentication"
+                                                            data-user="{{ user.Username if user else log.Username }}"
+                                                            data-ip="{{ log.IPAddress }}"
+                                                            data-message="{{ log.Reason or 'Login success' }}"
+                                                            data-agent="{{ request.headers.get('User-Agent', '-') }}">
+                                                        View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                                No login logs available.
+                                            </td>
+                                        </tr>
+                                    {% endif %}
                                 </tbody>
 
                             </table>
