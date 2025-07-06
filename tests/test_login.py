@@ -50,11 +50,9 @@ def setup_existing_student_and_cca():
                 'phone': '91234567'
             })
             db.session.commit()
+            student = Student.query.get(2301000)
 
-        # Always re-fetch to ensure session binding
-        student = Student.query.get(2301000)
-
-        # Clean up any old user (same StudentId or Username)
+        # Ensure user
         existing_user = User.query.filter(
             (User.StudentId == student.StudentId) | (User.Username == "testuser")
         ).first()
@@ -62,7 +60,6 @@ def setup_existing_student_and_cca():
             db.session.delete(existing_user)
             db.session.commit()
 
-        # Create new user
         user = User(
             StudentId=student.StudentId,
             Username="testuser",
@@ -73,9 +70,6 @@ def setup_existing_student_and_cca():
         db.session.add(user)
         db.session.commit()
 
-        # Re-fetch to ensure `UserId` is bound
-        user = User.query.filter_by(Username="testuser").first()
-
         # Ensure CCA
         cca = CCA.query.filter_by(Name="Test CCA").first()
         if not cca:
@@ -83,11 +77,7 @@ def setup_existing_student_and_cca():
             db.session.add(cca)
             db.session.commit()
 
-        # Re-fetch CCA
-        cca = CCA.query.filter_by(Name="Test CCA").first()
-
         return student.StudentId, user.UserId, cca.CCAId
-
 
 def test_student_assigned_to_cca_directly():
     student_id, user_id, cca_id = setup_existing_student_and_cca()
@@ -103,5 +93,6 @@ def test_student_assigned_to_cca_directly():
         result = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
         assert result is not None
         assert result.CCARole == "member"
+
 
 

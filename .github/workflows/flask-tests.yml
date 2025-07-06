@@ -9,6 +9,13 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      selenium:
+        image: selenium/standalone-chrome
+        ports:
+          - 4444:4444
+
     env:
       TESTING: "1"
       FLASK_ENV: "development"
@@ -35,6 +42,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest selenium
 
       - name: 🚀 Start Flask App
         run: |
