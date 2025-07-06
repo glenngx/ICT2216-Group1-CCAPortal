@@ -32,7 +32,6 @@ def test_login_with_valid_credentials():
 
 def setup_admin_and_user():
     with app.app_context():
-        # Clean up existing test data
         db.session.query(CCAMembers).delete()
         db.session.query(Vote).delete()
         db.session.query(Option).delete()
@@ -42,7 +41,6 @@ def setup_admin_and_user():
         db.session.query(Student).delete()
         db.session.commit()
 
-        # Create student
         student = Student(StudentId=9999999, Name="User W", Email="userw@example.com")
         student_user = User(
             StudentId=9999999,
@@ -51,7 +49,6 @@ def setup_admin_and_user():
             SystemRole="student"
         )
 
-        # Create admin
         admin = User(
             StudentId=1111111,
             Username="adminuser",
@@ -59,7 +56,6 @@ def setup_admin_and_user():
             SystemRole="admin"
         )
 
-        # Create a CCA
         cca = CCA(Name="Robotics Club", Description="Test CCA")
 
         db.session.add_all([student, student_user, admin, cca])
@@ -67,21 +63,6 @@ def setup_admin_and_user():
 
         return admin, student_user, cca
 
-    # Create an admin
-    admin = User(
-        StudentId=1111111,
-        Username="adminuser",
-        Password="adminpass",  # also hash if bcrypt
-        SystemRole="admin"
-    )
-
-    # Create a test CCA
-    cca = CCA(Name="Robotics Club", Description="Test CCA")
-
-    db.session.add_all([student, user, admin, cca])
-    db.session.commit()
-
-    return admin, user, cca
 
 def test_admin_assigns_student_to_cca():
     admin, student_user, cca = setup_admin_and_user()
