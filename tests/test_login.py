@@ -32,14 +32,11 @@ def test_login_with_valid_credentials():
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
 from sqlalchemy import text
-from datetime import date
-
-from sqlalchemy import text
 from datetime import datetime
 
 def setup_existing_student_and_cca():
     with app.app_context():
-        # Create student if needed
+        # Step 1: Ensure student exists
         student = Student.query.get(2301000)
         if not student:
             db.session.execute(text("""
@@ -55,22 +52,26 @@ def setup_existing_student_and_cca():
             db.session.commit()
             student = Student.query.get(2301000)
 
-        # Reuse existing user if already linked to the student
-        user = User.query.filter_by(StudentId=student.StudentId).first()
-        if not user:
-            user = User(
-                StudentId=student.StudentId,
-                Username="testuser",
-                Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
-                SystemRole="student",
-                PasswordLastSet=datetime.utcnow()
-            )
-            db.session.add(user)
+        # Step 2: Delete existing user if one exists for this StudentId or username (safe reset for testing)
+        existing_user = User.query.filter(
+            (User.StudentId == student.StudentId) | (User.Username == "testuser")
+        ).first()
+        if existing_user:
+            db.session.delete(existing_user)
             db.session.commit()
-        else:
-            user = User.query.get(user.UserId)  # reattach to session
 
-        # Always create a fresh CCA for test isolation
+        # Step 3: Create user
+        user = User(
+            StudentId=student.StudentId,
+            Username="testuser",
+            Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+            SystemRole="student",
+            PasswordLastSet=datetime.utcnow()
+        )
+        db.session.add(user)
+        db.session.commit()
+
+        # Step 4: Create test CCA
         cca = CCA(Name="Test CCA", Description="Created for test")
         db.session.add(cca)
         db.session.commit()
