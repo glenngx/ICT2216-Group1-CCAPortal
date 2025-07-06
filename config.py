@@ -7,7 +7,7 @@ class Config:
     # Database Configuration
     DB_DRIVER = "ODBC Driver 18 for SQL Server"
     DB_SERVER = "tcp:ict2116.database.windows.net,1433"
-    DB_NAME = "ict2216_restore"
+    DB_NAME = "ict2216"
     DB_USER = "ict2116"
     DB_PASSWORD = "RedBull]2"
     DB_CONNECTION_STRING = f"DRIVER={{{DB_DRIVER}}};SERVER={DB_SERVER};DATABASE={DB_NAME};UID={DB_USER};PWD={DB_PASSWORD};Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
