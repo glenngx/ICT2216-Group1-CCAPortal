@@ -4,7 +4,6 @@ import bcrypt
 from application.auth_utils import admin_required
 from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote, LoginLog, AdminLog
 from application.auth_utils import log_admin_action
-import logging
 
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
@@ -78,7 +77,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                                 user_name=session['name'])
             
         except Exception as e:
-            logging.error(f"[Admin Dashboard] Error loading data: {e}")
             print(f"Admin dashboard error: {e}")
             flash('Error loading admin dashboard.', 'error')
             return render_template('admin_dashboard.html', 
@@ -176,7 +174,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
             except Exception as e:
                 db.session.rollback()
-                logging.error(f"[Create Student] Unexpected error: {e}")
                 print(f"Create student account error: {e}")
                 flash('Error creating student account. Please try again.', 'error')
                 return render_template('create_student.html')
@@ -233,7 +230,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
             except Exception as e:
                 db.session.rollback()
-                logging.error(f"[Create CCA] Unexpected error: {e}")
                 print(f"Create CCA error: {e}")
                 flash('Error creating CCA. Please try again.', 'error')
                 return render_template('create_cca.html')
@@ -503,7 +499,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             db.session.rollback()
-            logging.error(f"[Delete CCA] Unexpected error for CCA ID {cca_id}: {e}")
             print(f"Delete CCA error: {e}")
             flash('Error deleting CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
@@ -694,7 +689,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             return redirect(url_for('admin_routes.admin_dashboard'))
             
         except Exception as e:
-            logging.error(f"[Resend Password Email] Error for student {student_id}: {e}")
             print(f"Resend password setup error: {e}")
             flash('An error occurred. Please try again.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
@@ -826,36 +820,30 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_required
         # \*\ Added Logging
     def view_logs():
-        try: 
-            login_logs = (
-                db.session.query(LoginLog, User)
-                .outerjoin(User, LoginLog.UserId == User.UserId)
-                .order_by(LoginLog.Timestamp.desc())
-                .limit(50)
-                .all()
-            )
+        login_logs = (
+            db.session.query(LoginLog, User)
+            .outerjoin(User, LoginLog.UserId == User.UserId)
+            .order_by(LoginLog.Timestamp.desc())
+            .limit(50)
+            .all()
+        )
 
-            admin_logs = (
-                db.session.query(AdminLog, User)
-                .outerjoin(User, AdminLog.AdminUserId == User.UserId)
-                .order_by(AdminLog.Timestamp.desc())
-                .limit(50)
-                .all()
-            )
+        admin_logs = (
+            db.session.query(AdminLog, User)
+            .outerjoin(User, AdminLog.AdminUserId == User.UserId)
+            .order_by(AdminLog.Timestamp.desc())
+            .limit(50)
+            .all()
+        )
 
-            logs = sorted(
-                [('auth', log, user) for log, user in login_logs] +
-                [('admin', log, user) for log, user in admin_logs],
-                key=lambda x: x[1].Timestamp,
-                reverse=True
-            )
+        logs = sorted(
+            [('auth', log, user) for log, user in login_logs] +
+            [('admin', log, user) for log, user in admin_logs],
+            key=lambda x: x[1].Timestamp,
+            reverse=True
+        )
 
-            return render_template('admin_logs.html', user_name=session['name'],logs=logs)
-        except Exception as e:
-            logging.error(f"[View Logs] Failed to render logs page: {e}")
-            flash('Unable to load logs.', 'error')
-            return redirect(url_for('admin_routes.admin_dashboard'))
-        
+        return render_template('admin_logs.html', user_name=session['name'],logs=logs)
         # \*\ Ended added Logging
 
     # Register the blueprint with the app

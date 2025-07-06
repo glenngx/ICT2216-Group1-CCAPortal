@@ -24,20 +24,6 @@ from application.student_routes import register_student_routes
 from application.misc_routes import register_misc_routes
 from application.models import db
 
-
-# \*\ Added for logging
-import logging  # ✅ Logging import
-
-# ✅ Logging setup
-os.makedirs("logs", exist_ok=True)
-logging.basicConfig(
-    filename='logs/system_errors.log',
-    level=logging.ERROR,
-    format='%(asctime)s [%(levelname)s] %(message)s'
-)
-
-# \*\ Ended for logging
-
 app = Flask(__name__)
 # \*\ Added for Captcha
 # 2️⃣  NEW  — make the key available in every template on every render
