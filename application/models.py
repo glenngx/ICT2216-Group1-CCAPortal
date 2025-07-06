@@ -86,10 +86,9 @@ class PollVote(db.Model):
 
 class VoteToken(db.Model):
     __tablename__ = 'VoteTokens'
-    TokenId = db.Column(db.Integer, primary_key=True)
+    Token = db.Column(db.String(255), unique=True, nullable=False, primary_key=True)
     UserId = db.Column(db.Integer, db.ForeignKey('UserDetails.UserId'))
     PollId = db.Column(db.Integer, db.ForeignKey('Poll.PollId'))
-    Token = db.Column(db.String(255), unique=True, nullable=False)
     IsUsed = db.Column(db.Boolean, default=False)
     IssuedTime = db.Column(db.DateTime, nullable=False)
     ExpiryTime = db.Column(db.DateTime, nullable=False)
