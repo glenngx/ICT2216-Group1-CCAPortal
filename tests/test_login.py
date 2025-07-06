@@ -50,16 +50,17 @@ def setup_existing_student_and_cca():
                 'phone': '91234567'
             })
             db.session.commit()
-            student = Student.query.get(2301000)
 
-        # Ensure user
-        existing_user = User.query.filter(
-            (User.StudentId == student.StudentId) | (User.Username == "testuser")
-        ).first()
+        # Refresh student object
+        student = Student.query.get(2301000)
+
+        # Delete existing test user
+        existing_user = User.query.filter_by(Username="testuser").first()
         if existing_user:
             db.session.delete(existing_user)
             db.session.commit()
 
+        # Create new user
         user = User(
             StudentId=student.StudentId,
             Username="testuser",
@@ -68,16 +69,25 @@ def setup_existing_student_and_cca():
             PasswordLastSet=datetime.utcnow()
         )
         db.session.add(user)
-        db.session.flush()
+        db.session.flush()  # Critical to get UserId populated
 
-        # Ensure CCA
+        # Now user.UserId will be valid
+        user_id = user.UserId
+
+        # Ensure CCA exists
         cca = CCA.query.filter_by(Name="Test CCA").first()
         if not cca:
             cca = CCA(Name="Test CCA", Description="Created for test")
             db.session.add(cca)
-            db.session.commit()
+            db.session.flush()
 
-        return student.StudentId, user.UserId, cca.CCAId
+        cca_id = cca.CCAId
+
+        # Final commit
+        db.session.commit()
+
+        return student.StudentId, user_id, cca_id
+
 
 def test_student_assigned_to_cca_directly():
     student_id, user_id, cca_id = setup_existing_student_and_cca()
