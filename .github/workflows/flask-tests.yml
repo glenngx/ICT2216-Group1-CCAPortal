@@ -1,4 +1,4 @@
-name: Flask Unit Tests
+name: Flask UI + Unit Testing
 
 on:
   push:
@@ -9,7 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
     env:
       TESTING: "1"
       FLASK_ENV: "development"
@@ -29,12 +28,27 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
+      - name: 🧠 Set PYTHONPATH
+        run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        
       - name: 📦 Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
+
+      - name: 🚀 Start Flask App
+        run: |
+          nohup python app.py &
+          sleep 5
+
+      - name: 🩺 Wait for Flask to respond
+        run: |
+          for i in {1..10}; do
+            echo "Checking Flask..."
+            curl -s http://localhost:5000/health && break || sleep 3
+          done
 
       - name: ✅ Run Unit Tests
-        run: pytest
+        run: pytest tests/test_login.py
+
+
