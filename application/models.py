@@ -108,4 +108,13 @@ class LoginLog(db.Model):
     Success = db.Column(db.Boolean, nullable=False)
     Reason = db.Column(db.String(255))
 
+class AdminLog(db.Model):
+    __tablename__ = 'AdminLog'
+    LogId = db.Column(db.Integer, primary_key=True)
+    AdminUserId = db.Column(db.Integer, db.ForeignKey('UserDetails.UserId'))
+    Action = db.Column(db.String(255), nullable=False)
+    Timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    IPAddress = db.Column(db.String(45))
+
+
 # \*\ Ended for logging
