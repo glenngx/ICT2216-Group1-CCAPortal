@@ -25,6 +25,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: DNS check
+        run: nslookup ccap-sonar.domloh.com
+
       - name: Single SonarQube connectivity check
         run: |
           echo "Checking SonarQube once..."
