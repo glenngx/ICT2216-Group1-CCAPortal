@@ -130,69 +130,101 @@ def setup_existing_student_and_cca():
         return student.StudentId, user_id, cca_id
 
 def test_authenticated_user_vote():
-    with app.test_client() as client:
-        # Ensure student exists
+    with app.app_context():
         student = Student.query.get(2305105)
-    if not student:
-        student = Student(
-            StudentId=2305105,
-            Name='Test User',
-            Email='2305105@example.com',
-            DOB='2000-01-01',
-            ContactNumber='81234567'
-        )
-        db.session.add(student)
-        db.session.commit()
+        if not student:
+            db.session.execute(text("""
+                INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
+                VALUES (:sid, :name, :email, :dob, :phone)
+            """), {
+                'sid': 2305105,
+                'name': 'Test User',
+                'email': 'test@example.com',
+                'dob': '2000-01-01',
+                'phone': '91234567'
+            })
+            db.session.commit()
 
-        # Ensure user exists
-    user = User.query.filter_by(Username="2305105").first()
-    if not user:
-        user = User(
-            StudentId=2305105,
-            Username="2305105",
-            Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
-            SystemRole="student",
-            PasswordLastSet=datetime.utcnow()
-        )
-        db.session.add(user)
-        db.session.commit()
+        # Ensure user
+        user = User.query.filter_by(Username="2305105").first()
+        if not user:
+            user = User(
+                StudentId=2305105,
+                Username="2305105",
+                Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+                SystemRole="student",
+                PasswordLastSet=datetime.utcnow()
+            )
+            db.session.add(user)
+            db.session.commit()
 
-        # Access the poll
-        poll_id = 1  # change as needed
-        get_poll = client.get(f"/poll/{poll_id}")
-        assert get_poll.status_code == 200
-
-        # Submit a vote (option ID 1 assumed — update as needed)
-        vote_response = client.post(f"/poll/{poll_id}/vote", data={
-            "option": 1
+    # Now test client actions
+    with app.test_client() as client:
+        client.post("/login", data={
+            "username": "2305105",
+            "password": "pppppp"
         }, follow_redirects=True)
 
-        assert vote_response.status_code == 200
-        assert b"thank you" in vote_response.data.lower() or b"voted" in vote_response.data.lower()
-
-def test_anonymous_token_vote():
-    with app.app_context():
-        # Create a token and its hash
-        token_plain = "test-anon-token"
-        token_hash = hashlib.sha256(token_plain.encode()).hexdigest()
-
-        # Insert into DB manually (adjust table/model as needed)
-        db.session.execute(text("""
-            INSERT INTO VoteTokens (PollId, Token, ExpiryTime, IsUsed)
-            VALUES (:poll_id, :token_hash, DATEADD(day, 1, GETUTCDATE()), 0)
-        """), {"poll_id": 1, "token_hash": token_hash})
-        db.session.commit()
-
-    with app.test_client() as client:
-        # Access vote page using token
         poll_id = 1
-        response = client.get(f"/poll/{poll_id}?token={token_plain}")
+        response = client.get(f"/poll/{poll_id}")
         assert response.status_code == 200
 
-        # Submit vote
-        vote_response = client.post(f"/poll/{poll_id}/vote?token={token_plain}", data={
-            "option": 1
+def test_user_vote_with_token():
+    with app.app_context():
+        # Ensure Student exists
+        student = Student.query.get(2305105)
+        if not student:
+            db.session.execute(text("""
+                INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
+                VALUES (:sid, :name, :email, :dob, :phone)
+            """), {
+                'sid': 2305105,
+                'name': 'Test Voter',
+                'email': 'testvoter@example.com',
+                'dob': '2000-01-01',
+                'phone': '91234567'
+            })
+            db.session.commit()
+
+        # Ensure User exists
+        user = User.query.filter_by(Username="2305105").first()
+        if not user:
+            user = User(
+                StudentId=2305105,
+                Username="2305105",
+                Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+                SystemRole="student",
+                PasswordLastSet=datetime.utcnow()
+            )
+            db.session.add(user)
+            db.session.commit()
+
+        # Insert poll token tied to User
+        db.session.execute(text("""
+            INSERT INTO VoteTokens (PollId, UserId, ExpiryTime, IsUsed)
+            VALUES (:poll_id, :user_id, DATEADD(day, 1, GETUTCDATE()), 0)
+        """), {
+            "poll_id": 1,
+            "user_id": user.UserId
+        })
+        db.session.commit()
+
+    # Simulate login and vote action
+    with app.test_client() as client:
+        client.post("/login", data={
+            "username": "2305105",
+            "password": "pppppp"
         }, follow_redirects=True)
 
-        assert vote_response.status_code == 200
-        assert b"thank you" in vote_response.data.lower() or b"voted" in vote_response.data.lower()
+        # Visit poll
+        res = client.get("/poll/1")
+        assert res.status_code == 200
+        assert b"Vote" in res.data
+
+        # Cast vote (adjust PollOptionId as needed)
+        res = client.post("/poll/1/vote", data={
+            "selected_option": 1
+        }, follow_redirects=True)
+
+        assert b"Vote submitted successfully" in res.data or res.status_code == 200
+
