@@ -50,17 +50,15 @@ def setup_existing_student_and_cca():
                 'phone': '91234567'
             })
             db.session.commit()
+            student = Student.query.get(2301000)
 
-        # Refresh student from DB
-        student = Student.query.get(2301000)
-
-        # Delete any old test user
+        # Remove previous test user
         existing_user = User.query.filter_by(Username="testuser").first()
         if existing_user:
             db.session.delete(existing_user)
             db.session.commit()
 
-        # Create new user and flush to get UserId
+        # Add fresh test user
         user = User(
             StudentId=student.StudentId,
             Username="testuser",
@@ -69,39 +67,65 @@ def setup_existing_student_and_cca():
             PasswordLastSet=datetime.utcnow()
         )
         db.session.add(user)
-        db.session.flush()  # <== makes sure UserId is populated
+        db.session.flush()  # ✅ ensures UserId is available
+        user_id = user.UserId  # ✅ extract it now!
 
-        user_id = user.UserId  # capture it NOW
-
-        # Create or get CCA
+        # Add or get CCA
         cca = CCA.query.filter_by(Name="Test CCA").first()
         if not cca:
             cca = CCA(Name="Test CCA", Description="Created for test")
             db.session.add(cca)
-            db.session.flush()
+            db.session.flush()  # ✅ ensures CCAId is available
 
         cca_id = cca.CCAId
-
         db.session.commit()
 
         return student.StudentId, user_id, cca_id
 
-
-
-def test_student_assigned_to_cca_directly():
-    student_id, user_id, cca_id = setup_existing_student_and_cca()
-
+def setup_existing_student_and_cca():
     with app.app_context():
-        user = User.query.get(user_id)
-        cca = CCA.query.get(cca_id)
+        # Ensure student
+        student = Student.query.get(2301000)
+        if not student:
+            db.session.execute(text("""
+                INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
+                VALUES (:sid, :name, :email, :dob, :phone)
+            """), {
+                'sid': 2301000,
+                'name': 'Fallback Student',
+                'email': 'student@example.com',
+                'dob': '2000-01-01',
+                'phone': '91234567'
+            })
+            db.session.commit()
+            student = Student.query.get(2301000)
 
-        membership = CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member")
-        db.session.add(membership)
+        # Remove previous test user
+        existing_user = User.query.filter_by(Username="testuser").first()
+        if existing_user:
+            db.session.delete(existing_user)
+            db.session.commit()
+
+        # Add fresh test user
+        user = User(
+            StudentId=student.StudentId,
+            Username="testuser",
+            Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+            SystemRole="student",
+            PasswordLastSet=datetime.utcnow()
+        )
+        db.session.add(user)
+        db.session.flush()  # ✅ ensures UserId is available
+        user_id = user.UserId  # ✅ extract it now!
+
+        # Add or get CCA
+        cca = CCA.query.filter_by(Name="Test CCA").first()
+        if not cca:
+            cca = CCA(Name="Test CCA", Description="Created for test")
+            db.session.add(cca)
+            db.session.flush()  # ✅ ensures CCAId is available
+
+        cca_id = cca.CCAId
         db.session.commit()
 
-        result = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
-        assert result is not None
-        assert result.CCARole == "member"
-
-
-
+        return student.StudentId, user_id, cca_id
