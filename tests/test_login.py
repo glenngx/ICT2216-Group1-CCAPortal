@@ -31,6 +31,56 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
+def setup_student_user_and_cca_membership():
+    with app.app_context():
+        # Ensure student exists
+        student = Student.query.get(2301000)
+        if not student:
+            db.session.execute(text("""
+                INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
+                VALUES (:sid, :name, :email, :dob, :phone)
+            """), {
+                'sid': 2301000,
+                'name': 'Test Student',
+                'email': 'student@example.com',
+                'dob': '2000-01-01',
+                'phone': '91234567'
+            })
+            db.session.commit()
+            student = Student.query.get(2301000)
+
+        # Remove and recreate user
+        existing_user = User.query.filter_by(Username="testuser").first()
+        if existing_user:
+            db.session.delete(existing_user)
+            db.session.commit()
+
+        user = User(
+            StudentId=student.StudentId,
+            Username="testuser",
+            Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+            SystemRole="student",
+            PasswordLastSet=datetime.utcnow()
+        )
+        db.session.add(user)
+        db.session.flush()
+        user_id = user.UserId
+
+        # Create or retrieve a test CCA
+        cca = CCA.query.filter_by(Name="Test CCA").first()
+        if not cca:
+            cca = CCA(Name="Test CCA", Description="This is a test CCA")
+            db.session.add(cca)
+            db.session.flush()
+        cca_id = cca.CCAId
+
+        # Ensure user is added to CCA
+        membership = CCAMembers.query.filter_by(UserId=user_id, CCAId=cca_id).first()
+        if not membership:
+            db.session.add(CCAMembers(UserId=user_id, CCAId=cca_id, CCARole="member"))
+
+        db.session.commit()
+        return student.StudentId, user_id, cca_id
 
 
 # def test_authenticated_user_vote():
