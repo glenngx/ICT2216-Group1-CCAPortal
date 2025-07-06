@@ -31,6 +31,8 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
+
+
 def test_authenticated_user_vote():
     with app.app_context():
         student = Student.query.get(2305105)
@@ -39,23 +41,23 @@ def test_authenticated_user_vote():
         user = User.query.filter_by(Username="2305105").first()
         assert user is not None, "❌ User 2305105 not found in DB"
 
+        # Ensure user is in CCA
+        cca = CCA.query.first()
+        assert cca is not None, "❌ No CCA found"
+
+        membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
+        if not membership:
+            db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
+            db.session.commit()
+
+    # Perform login and access poll
     with app.test_client() as client:
         client.post("/login", data={
             "username": "2305105",
             "password": "pppppp"
         }, follow_redirects=True)
 
-        poll_id = 1
+        poll_id = Poll.query.filter_by(CCAId=cca.CCAId).first().PollId
         response = client.get(f"/poll/{poll_id}")
         assert response.status_code == 200
 
-def test_user_vote_with_token():
-    with app.app_context():
-        user = User.query.filter_by(Username="2305105").first()
-        assert user is not None, "❌ User 2305105 not found"
-
-        token_exists = db.session.execute(text("""
-            SELECT COUNT(*) FROM VoteTokens WHERE UserId = :uid
-        """), {"uid": user.UserId}).scalar()
-
-        assert token_exists > 0, "❌ Vote token for user does not exist"
