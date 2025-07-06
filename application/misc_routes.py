@@ -11,6 +11,7 @@ from application.captcha_utils import captcha_is_valid   # top of file
 import os 
 from application.models import User, Student, CCAMembers, db
 import bcrypt
+from application.auth_utils import log_login_attempt
 
 def validate_password_nist(password):
     """
@@ -136,6 +137,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         # Check if user was found
         if not user_details:
             print(f"No user found with identifier: {username}")
+            # \*\ Added for Logging
+            log_login_attempt(username, None, success=False, reason="User not found")
+           # \*\ Ended for Logging
             return None
 
         # SECURITY CHECK: Reject login if password is NULL (account not yet set up)
@@ -156,6 +160,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 db.session.commit()
             else:
                 print(f"User {username} is locked out due to too many failed login attempts.")
+                # \*\ Added for logging
+                log_login_attempt(username, user_details.UserId, success=False, reason="Account locked")
+                # \*\ Added for logging
                 return None
         # \*\ End for MFA
 
@@ -168,6 +175,10 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             # Verify password using bcrypt
             if bcrypt.checkpw(password.encode('utf-8'), password_to_check.encode('utf-8')):
                 
+                # \*\ Added for logging
+                log_login_attempt(username, user_details.UserId, success=True, reason="Login success")
+               # \*\ Ended for logging
+
                 # \*\ Edited for Password Expiration
                 if user_details.PasswordLastSet and (datetime.utcnow() - user_details.PasswordLastSet).days > 365:
                     flash("Your password has expired. Please reset it to continue.", "warning")
@@ -204,6 +215,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                     print(f"User {username} account locked after 5 failed attempts.")
                # \*\ End for Failed login attempt
                 db.session.commit()
+                # \*\ Added for logging
+                log_login_attempt(username, user_details.UserId, success=False, reason="Wrong password")
+                # \*\ Ended for logging
                 print("Password verification failed")
                 return None
         except Exception as bcrypt_error:

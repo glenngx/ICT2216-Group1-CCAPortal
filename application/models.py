@@ -96,3 +96,16 @@ class VoteToken(db.Model):
     user = db.relationship('User', backref='vote_tokens')
     poll = db.relationship('Poll', backref='vote_tokens')
 
+# \*\ Added for logging
+
+class LoginLog(db.Model):
+    __tablename__ = 'LoginLog'
+    LogId = db.Column(db.Integer, primary_key=True)
+    Username = db.Column(db.String(255))
+    UserId = db.Column(db.Integer, db.ForeignKey('UserDetails.UserId'), nullable=True)
+    IPAddress = db.Column(db.String(45))
+    Timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    Success = db.Column(db.Boolean, nullable=False)
+    Reason = db.Column(db.String(255))
+
+# \*\ Ended for logging

@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, session, flash, B
 from email_service import email_service
 import bcrypt
 from application.auth_utils import admin_required
-from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote
+from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote, LoginLog
 
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
@@ -797,8 +797,17 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_bp.route('/logs')
     @admin_required
     def view_logs():
+        # \*\ Added Logging
         """Admin view to see system logs"""
-        return render_template('admin_logs.html', user_name=session['name'])
+        logs = (
+            db.session.query(LoginLog, User)
+            .outerjoin(User, LoginLog.UserId == User.UserId)
+            .order_by(LoginLog.Timestamp.desc())
+            .limit(100)
+            .all()
+        )
+        return render_template('admin_logs.html', user_name=session['name'],logs=logs)
+        # \*\ Ended added Logging
 
     # Register the blueprint with the app
     app.register_blueprint(admin_bp)
