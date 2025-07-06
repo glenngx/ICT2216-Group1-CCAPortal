@@ -120,7 +120,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
                 if not student_record:
                     flash(f'Student ID {student_id} not found in student records. Please contact administration to add student to system first.', 'error')
-                    log_admin_action(f'Student ID {student_id} not found in student records. Please contact administration to add student to system first.')
+                    log_admin_action(f'Student ID  not found in student records. Please contact administration to add student to system first.')
                     return render_template('create_student.html')
                 
                 # Check if student already has a registered account
@@ -132,7 +132,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
                 if existing_account:
                     flash(f'Student {student_record.Name} (ID: {student_id}) already has a login account.', 'error')
-                    log_admin_action(f'Student {student_record.Name} (ID: {student_id}) already has a login account.')
+                    log_admin_action(f'Student already has a login account.')
                     return render_template('create_student.html')
                 
                 # Create account with NULL password, student will set via email link
@@ -168,17 +168,17 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                         
                         if email_sent:
                             flash(f'{base_message} Password setup email sent to {student_email}. Student must set their password before they can login.', 'success')
-                            log_admin_action(f'{base_message} Password setup email sent to {student_email}. Student must set their password before they can login.')
+                            log_admin_action(f'Password setup email sent to student. Student must set their password before they can login.')
                         else:
                             flash(f'{base_message} However, email notification failed. Please provide password setup link manually.', 'warning')
-                            log_admin_action(f'{base_message} However, email notification failed. Please provide password setup link manually.')
+                            log_admin_action(f'However, email notification failed. Please provide password setup link manually.')
                     except Exception as e:
                         log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
                         print(f"Email sending error: {e}")
                         flash(f'{base_message} However, email notification failed. Please provide password setup link manually.', 'warning')
                 else:
                     flash(f'{base_message} No email on file. Please provide password setup link manually.', 'warning')
-                    log_admin_action(f'{base_message} However, email notification failed. Please provide password setup link manually.')
+                    log_admin_action(f'However, email notification failed. Please provide password setup link manually.')
                 return redirect(url_for('admin_routes.admin_dashboard'))
                 
             except Exception as e:
@@ -239,7 +239,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 # Creates a new CCA.
                 
                 flash(f'CCA "{name}" created successfully!', 'success')
-                log_admin_action(f'CCA "{name}" created successfully!')
+                log_admin_action(f'CCA created successfully!')
                 return redirect(url_for('admin_routes.admin_dashboard'))
                 
             except Exception as e:
