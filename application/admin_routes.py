@@ -841,7 +841,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             key=lambda tup: tup[1].Timestamp,
             reverse=True
     )
-        return render_template('admin_logs.html', user_name=session['name'],logs=logs)
+        return render_template('admin_logs.html', user_name=session['name'],logs=combined_logs)
         # \*\ Ended added Logging
 
     # Register the blueprint with the app
