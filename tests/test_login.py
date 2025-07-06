@@ -1,5 +1,5 @@
 from app import app
-from application.models import db, User, Student, CCA, CCAMembers, Poll
+from application.models import db, User, Student, CCA, CCAMembers, Poll, Vote, Option
 import bcrypt
 
 def test_login_page_loads():
@@ -34,6 +34,8 @@ def setup_admin_and_user():
     with app.app_context():
         # Clean up existing test data
         db.session.query(CCAMembers).delete()
+        db.session.query(Vote).delete()
+        db.session.query(Option).delete()
         db.session.query(Poll).delete()
         db.session.query(CCA).delete()
         db.session.query(User).delete()
