@@ -473,11 +473,11 @@ def register_student_routes(app, get_db_connection, login_required):
                 #     WHERE PollId = ? AND UserId = ?
                 # """, (poll_id, session['user_id']))
                 # token_status_row = cursor.fetchone()
-                token_status_row = db.session.query(VoteToken).filter_by(PollId=poll_id, UserId=session['user_id']).first()
+                token_status_row = db.session.query(VoteToken.IsUsed).filter_by(PollId=poll_id, UserId=session['user_id']).first()
                 #The new line gets the user's vote token.
 
                 if token_status_row:
-                    is_used = token_status_row.IsUsed
+                    is_used = token_status_row[0]
                     if not is_used:
                         # Token exists but unused → safely delete and reissue
                         #SQL refactoring
@@ -486,7 +486,7 @@ def register_student_routes(app, get_db_connection, login_required):
                         #     WHERE PollId = ? AND UserId = ?
                         # """, (poll_id, session['user_id']))
                         # conn.commit()
-                        db.session.delete(token_status_row)
+                        db.session.query(VoteToken).filter_by(PollId=poll_id, UserId=session['user_id']).delete()
                         db.session.commit()
                         #The new line deletes the existing unused vote token.
 
