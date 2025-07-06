@@ -78,7 +78,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"Admin dashboard error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error loading admin dashboard.', 'error')
             return render_template('admin_dashboard.html', 
                                 ccas=[], students=[], memberships=[],
@@ -93,12 +93,12 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             if not student_id:
                 flash('Student ID is required.', 'error')
-                log_admin_action(f"[ERROR] Student ID is required.")
+                log_admin_action(session["user_id"],f"[ERROR] Student ID is required.")
                 return render_template('create_student.html')
             
             if not validate_student_id(student_id):
                 flash('Student ID must be 7 digits.', 'error')
-                log_admin_action(f"[ERROR] Student ID must be 7 digits")
+                log_admin_action(session["user_id"],f"[ERROR] Student ID must be 7 digits")
                 return render_template('create_student.html')
             
             try:
@@ -107,7 +107,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
                 if not is_admin:
                     flash('Access denied.', 'error')
-                    log_admin_action(f"[ERROR] Access denied.")
+                    log_admin_action(session["user_id"],f"[ERROR] Access denied.")
                     print(f'DEBUG: Not admin, unauthorised to view.')
                     return redirect(url_for('student_routes.dashboard'))
             
@@ -120,7 +120,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
                 if not student_record:
                     flash(f'Student ID {student_id} not found in student records. Please contact administration to add student to system first.', 'error')
-                    log_admin_action(f'Student ID  not found in student records. Please contact administration to add student to system first.')
+                    log_admin_action(session["user_id"],f'Student ID  not found in student records. Please contact administration to add student to system first.')
                     return render_template('create_student.html')
                 
                 # Check if student already has a registered account
@@ -168,23 +168,23 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                         
                         if email_sent:
                             flash(f'{base_message} Password setup email sent to {student_email}. Student must set their password before they can login.', 'success')
-                            log_admin_action(f'Password setup email sent to student. Student must set their password before they can login.')
+                            log_admin_action(session["user_id"],f'Password setup email sent to student. Student must set their password before they can login.')
                         else:
                             flash(f'{base_message} However, email notification failed. Please provide password setup link manually.', 'warning')
-                            log_admin_action(f'However, email notification failed. Please provide password setup link manually.')
+                            log_admin_action(session["user_id"],f'However, email notification failed. Please provide password setup link manually.')
                     except Exception as e:
-                        log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+                        log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
                         print(f"Email sending error: {e}")
                         flash(f'{base_message} However, email notification failed. Please provide password setup link manually.', 'warning')
                 else:
                     flash(f'{base_message} No email on file. Please provide password setup link manually.', 'warning')
-                    log_admin_action(f'However, email notification failed. Please provide password setup link manually.')
+                    log_admin_action(session["user_id"],f'However, email notification failed. Please provide password setup link manually.')
                 return redirect(url_for('admin_routes.admin_dashboard'))
                 
             except Exception as e:
                 db.session.rollback()
                 print(f"Create student account error: {e}")
-                log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+                log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
                 flash('Error creating student account. Please try again.', 'error')
                 return render_template('create_student.html')
         
@@ -199,7 +199,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             if not name:
                 flash('CCA name is required.', 'error')
-                log_admin_action('CCA name is required.')
+                log_admin_action(session["user_id"],'CCA name is required.')
                 return render_template('create_cca.html')
             
             try:
@@ -209,7 +209,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 if not is_admin:
                     flash('Access denied.', 'error')
                     print(f'DEBUG: Not admin, unauthorised to view.')
-                    log_admin_action('Access denied.')
+                    log_admin_action(session["user_id"],'Access denied.')
                     return redirect(url_for('student_routes.dashboard'))
             
                 # Check if CCA name already exists
@@ -220,7 +220,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 #     return render_template('create_cca.html')
                 if CCA.query.filter_by(Name=name).first():
                     flash('CCA name already exists.', 'error')
-                    log_admin_action('CCA name already exists.')
+                    log_admin_action(session["user_id"],'CCA name already exists.')
                     return render_template('create_cca.html')
                 # Checks if a CCA with the given name already exists.
                 
@@ -239,12 +239,12 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 # Creates a new CCA.
                 
                 flash(f'CCA "{name}" created successfully!', 'success')
-                log_admin_action(f'CCA created successfully!')
+                log_admin_action(session["user_id"],f'CCA created successfully!')
                 return redirect(url_for('admin_routes.admin_dashboard'))
                 
             except Exception as e:
                 db.session.rollback()
-                log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+                log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
                 print(f"Create CCA error: {e}")
                 flash('Error creating CCA. Please try again.', 'error')
                 return render_template('create_cca.html')
@@ -261,7 +261,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if not is_admin:
                 flash('Access denied.', 'error')
                 print(f'DEBUG: Not admin, unauthorised to view.')
-                log_admin_action('Access denied.')
+                log_admin_action(session["user_id"],'Access denied.')
                 return redirect(url_for('student_routes.dashboard'))
             
             # Get CCA details
@@ -273,7 +273,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             if not cca:
                 flash('CCA not found.', 'error')
-                log_admin_action('CCA not found.')
+                log_admin_action(session["user_id"],'CCA not found.')
                 return redirect(url_for('admin_routes.admin_dashboard'))
             
             # Get CCA members
@@ -317,7 +317,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"View CCA error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error loading CCA details.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
 
@@ -329,7 +329,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         if not name:
             flash('CCA name is required.', 'error')
-            log_admin_action('CCA name is required.')
+            log_admin_action(session["user_id"],'CCA name is required.')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
         
         try:
@@ -339,7 +339,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if not is_admin:
                 flash('Access denied.', 'error')
                 print(f'DEBUG: Not admin, unauthorised to view.')
-                log_admin_action(f'DEBUG: Not admin, unauthorised to view.')
+                log_admin_action(session["user_id"],f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
             # Check if new name conflicts with existing CCAs (excluding current one)
@@ -350,7 +350,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             #     return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             if CCA.query.filter(CCA.Name == name, CCA.CCAId != cca_id).first():
                 flash('CCA name already exists.', 'error')
-                log_admin_action('CCA name already exists.')
+                log_admin_action(session["user_id"],'CCA name already exists.')
                 return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             # Checks for CCA name conflicts, excluding the current CCA.
             
@@ -371,13 +371,13 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             # \*\ Ended for logging    
 
             flash('CCA updated successfully!', 'success')
-            log_admin_action('CCA updated successfully!')
+            log_admin_action(session["user_id"],'CCA updated successfully!')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             
         except Exception as e:
             db.session.rollback()
             print(f"Edit CCA error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error updating CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
 
@@ -389,7 +389,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         if not all([student_id, role]):
             flash('Please select both student and role.', 'error')
-            log_admin_action('Please select both student and role.')
+            log_admin_action(session["user_id"],'Please select both student and role.')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
         
         try:
@@ -398,7 +398,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
             if not is_admin:
                 flash('Access denied.', 'error')
-                log_admin_action('Access denied.')
+                log_admin_action(session["user_id"],'Access denied.')
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
@@ -410,7 +410,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
 
             if not user_result:
                 flash('Student not found.', 'error')
-                log_admin_action('Student not found.')
+                log_admin_action(session["user_id"],'Student not found.')
                 return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             
             user_id = user_result.UserId
@@ -432,7 +432,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             db.session.rollback()
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             print(f"Add student to CCA error: {e}")
             flash('Error adding student to CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
@@ -446,7 +446,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
             if not is_admin:
                 flash('Access denied.', 'error')
-                log_admin_action('Access denied.')
+                log_admin_action(session["user_id"],'Access denied.')
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
@@ -460,12 +460,12 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
 
             # Deletes a CCA membership entry by member and CCA ID.
             flash('Student removed from CCA successfully!', 'success')
-            log_admin_action('Student removed from CCA successfully!.')
+            log_admin_action(session["user_id"],'Student removed from CCA successfully!.')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             
         except Exception as e:
             db.session.rollback()
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             print(f"Remove student from CCA error: {e}")
             flash('Error removing student from CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
@@ -479,7 +479,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
             if not is_admin:
                 flash('Access denied.', 'error')
-                log_admin_action('Access denied.')
+                log_admin_action(session["user_id"],'Access denied.')
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
@@ -491,7 +491,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
 
             if not cca_result:
                 flash('CCA not found.', 'error')
-                log_admin_action('CCA not found.')
+                log_admin_action(session["user_id"],'CCA not found.')
                 return redirect(url_for('admin_routes.admin_dashboard'))
             
             cca_name = cca_result.Name
@@ -532,7 +532,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         except Exception as e:
             db.session.rollback()
             print(f"Delete CCA error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error deleting CCA.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
     
@@ -553,7 +553,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if not is_admin:
                 flash('Access denied.', 'error')
                 print(f'DEBUG: Not admin, unauthorised to view.')
-                log_admin_action(f'DEBUG: Not admin, unauthorised to view.')
+                log_admin_action(session["user_id"],f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
             #SQL refactoring
@@ -591,7 +591,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"Search students error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             return {'error': 'Search failed'}, 500
 
     @admin_bp.route('/cca/<int:cca_id>/add-multiple-students', methods=['POST'])
@@ -603,7 +603,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
         
         if not student_ids:
             flash('Please select at least one student.', 'error')
-            log_admin_action('Please select at least one student.')
+            log_admin_action(session["user_id"],'Please select at least one student.')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
         
         try:
@@ -613,7 +613,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if not is_admin:
                 flash('Access denied.', 'error')
                 print(f'DEBUG: Not admin, unauthorised to view.')
-                log_admin_action('Access denied.')
+                log_admin_action(session["user_id"],'Access denied.')
                 return redirect(url_for('student_routes.dashboard'))
             
             #SQL refactoring
@@ -654,14 +654,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 flash(f'{len(new_members)} students added successfully!', 'success')
             else:
                 flash('All selected students are already in this CCA.', 'info')
-                log_admin_action('All selected students are already in this CCA.')
+                log_admin_action(session["user_id"],'All selected students are already in this CCA.')
 
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             
         except Exception as e:
             db.session.rollback()
             print(f"Add multiple students error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             flash('An error occurred while adding students.', 'error')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
     
@@ -676,7 +676,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if not is_admin:
                 flash('Access denied.', 'error')
                 print(f'DEBUG: Not admin, unauthorised to view.')
-                log_admin_action("Access denied.")
+                log_admin_action(session["user_id"],"Access denied.")
                 return redirect(url_for('student_routes.dashboard'))
             
             # Check if student exists and get their details
@@ -695,13 +695,13 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             if not student_record:
                 flash('Student not found.', 'error')
-                log_admin_action("Student not found.")
+                log_admin_action(session["user_id"],"Student not found.")
                 return redirect(url_for('admin_routes.admin_dashboard'))
             
             # Check if password is not already set
             if student_record.Password is not None:
                 flash('Student has already set up their password.', 'info')
-                log_admin_action("Student has already set up their password.")
+                log_admin_action(session["user_id"],"Student has already set up their password.")
                 return redirect(url_for('admin_routes.admin_dashboard'))
 
             student_name = student_record.Name
@@ -720,23 +720,23 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                     
                     if email_sent:
                         flash(f'Password setup email resent to {student_email}.', 'success')
-                        log_admin_action(f'Password setup email resent to {student_email}.')
+                        log_admin_action(session["user_id"],f'Password setup email resent to {student_email}.')
                     else:
                         flash('Email notification failed. Please try again.', 'error')
-                        log_admin_action("Email notification failed. Please try again.")
+                        log_admin_action(session["user_id"],"Email notification failed. Please try again.")
                 except Exception as e:
                     print(f"Email sending error: {e}")
-                    log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+                    log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
                     flash('Email notification failed. Please try again.', 'error')
             else:
                 flash('No email on file for this student. Cannot send email.', 'warning')
-                log_admin_action("No email on file for this student. Cannot send email")
+                log_admin_action(session["user_id"],"No email on file for this student. Cannot send email")
             
             return redirect(url_for('admin_routes.admin_dashboard'))
             
         except Exception as e:
             print(f"Resend password setup error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             flash('An error occurred. Please try again.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
     
@@ -751,7 +751,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if not is_admin:
                 flash('Access denied.', 'error')
                 print(f'DEBUG: Not admin, unauthorised to view.')
-                log_admin_action(f'DEBUG: Not admin, unauthorised to view.')
+                log_admin_action(session["user_id"],f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
             # Get all CCAs with member counts
@@ -779,7 +779,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"View all CCAs error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error loading CCA list.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
 
@@ -794,7 +794,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if not is_admin:
                 flash('Access denied.', 'error')
                 print(f'DEBUG: Not admin, unauthorised to view.')
-                log_admin_action('Access denied.')
+                log_admin_action(session["user_id"],'Access denied.')
                 return redirect(url_for('student_routes.dashboard'))
             
             #SQL refactoring
@@ -863,7 +863,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
         except Exception as e:
             print(f"View all polls error: {e}")
-            log_admin_action(f"[ERROR] Failed to render logs page: {str(e)}")
+            log_admin_action(session["user_id"],f"[ERROR] Failed to render logs page: {str(e)}")
             flash('Error loading polls.', 'error')
             return redirect(url_for('admin_routes.admin_dashboard'))
 
