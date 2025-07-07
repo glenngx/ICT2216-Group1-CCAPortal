@@ -13,6 +13,7 @@ from application.models import User, Student, CCAMembers, db
 import bcrypt
 from application.auth_utils import log_login_attempt
 from flask_session.sqlalchemy import SqlAlchemySessionInterface
+from flask_session import Session
 
 def validate_password_nist(password):
     """
@@ -299,7 +300,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session_id = request.cookies.get(session_cookie_name)                
                 
                 # Disabling other sessions of this user_id
-                session_interface = SqlAlchemySessionInterface(current_app, db, "sessions", "sess_")
+                session_interface = current_app.session_interface
                 SessionModel = session_interface.session_class
 
                 all_sessions = db.session.query(SessionModel).all()
