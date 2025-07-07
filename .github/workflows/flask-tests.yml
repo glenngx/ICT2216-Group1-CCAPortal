@@ -34,7 +34,7 @@ jobs:
 
       - name: Create config.py
         env:
-          SQLALCHEMY_DATABASE_URI: ${{ secrets.DB_URI }}
+          DB_URI: ${{ secrets.DB_URI }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           cat <<EOF > config.py
