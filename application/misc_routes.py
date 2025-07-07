@@ -11,7 +11,8 @@ from application.captcha_utils import captcha_is_valid   # top of file
 import os 
 from application.models import User, Student, CCAMembers, db
 import bcrypt
-from application.auth_utils import log_login_attempt, disabling_concurrent_login
+from application.auth_utils import log_login_attempt
+from flask_session.sqlalchemy import SqlAlchemySessionInterface
 
 def validate_password_nist(password):
     """
@@ -296,7 +297,26 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 # Disable concurrent login
                 session_cookie_name = current_app.config.get("SESSION_COOKIE_NAME", "session")
                 session_id = request.cookies.get(session_cookie_name)                
-                disabling_concurrent_login(user['user_id'], session_id)
+                
+                # Disabling other sessions of this user_id
+                session_interface = SqlAlchemySessionInterface(current_app, db, "sessions", "sess_")
+                SessionModel = session_interface.session_class
+
+                all_sessions = db.session.query(SessionModel).all()
+                sessions_deleted = 0
+
+                for s in all_sessions:
+                    try:
+                        session_data = session_interface.serializer.loads(s.data)
+                        if session_data.get("user_id") == user['user_id'] and s.session_id != session_id:
+                            print(f"Removing session: {s.session_id} for user_id: {user['user_id']}")
+                            db.session.delete(s)
+                            sessions_deleted += 1
+                    except Exception as e:
+                        print(f"Skipping session due to error: {e}")
+
+                db.session.commit()
+                print(f"Successfully removed {sessions_deleted} concurrent sessions for user_id: {user['user_id']}")
 
                 # \*\ Added for Password Expiration
                 # 🔒 Enforce password reset if expired
