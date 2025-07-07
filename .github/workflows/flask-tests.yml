@@ -39,10 +39,11 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_SERVER: ${{ secrets.DB_SERVER }}
           DB_NAME: ${{ secrets.DB_NAME }}
+          PROT: ${{ secrets.DB_PORT }}
           DB_DRIVER: ${{ secrets.DB_DRIVER }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          URI="mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}/${DB_NAME}?driver=${DB_DRIVER// /+}"
+          echo "    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}:${DB_PORT}/${DB_NAME}?driver=${DB_DRIVER// /+}&Encrypt=yes&TrustServerCertificate=yes'" >> config.py
           echo "class Config:" > config.py
           echo "    SQLALCHEMY_DATABASE_URI = \"${URI}\"" >> config.py
           echo "    SECRET_KEY = \"${SECRET_KEY}\"" >> config.py
