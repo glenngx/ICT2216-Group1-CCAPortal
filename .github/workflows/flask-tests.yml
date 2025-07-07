@@ -38,13 +38,31 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Show DB Secrets (sanitized)
+      - name: Generate config.py from GitHub Secrets
         run: |
-          echo "DB_SERVER: $DB_SERVER"
-          echo "DB_DRIVER: $DB_DRIVER"
+          echo "import os" > config.py
+          echo "" >> config.py
+          echo "class Config:" >> config.py
+          echo "    DB_USER = os.getenv(\"DB_USER\")" >> config.py
+          echo "    DB_PASSWORD = os.getenv(\"DB_PASSWORD\")" >> config.py
+          echo "    DB_SERVER = os.getenv(\"DB_SERVER\")" >> config.py
+          echo "    DB_NAME = os.getenv(\"DB_NAME\")" >> config.py
+          echo "    DB_DRIVER = os.getenv(\"DB_DRIVER\")" >> config.py
+          echo "" >> config.py
+          echo "    if not all([DB_USER, DB_PASSWORD, DB_SERVER, DB_NAME, DB_DRIVER]):" >> config.py
+          echo "        raise ValueError(\"❌ One or more required DB secrets are missing!\")" >> config.py
+          echo "" >> config.py
+          echo "    SQLALCHEMY_DATABASE_URI = (" >> config.py
+          echo "        f\"mssql+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_SERVER}/{DB_NAME}\"" >> config.py
+          echo "        f\"?driver={DB_DRIVER.replace(' ', '+')}&Encrypt=yes&TrustServerCertificate=yes\"" >> config.py
+          echo "    )" >> config.py
+          echo "" >> config.py
+          echo "    SECRET_KEY = \"test-secret\"" >> config.py
+          echo "    SESSION_TYPE = \"filesystem\"" >> config.py
+          echo "    SQLALCHEMY_TRACK_MODIFICATIONS = False" >> config.py
 
-      - name: Create config.py (already present if committed, skip if not needed)
-        run: echo "Skipping config.py generation, using committed version"
+      - name: Confirm config.py was created
+        run: cat config.py
 
       - name: Install Python Dependencies
         run: |
