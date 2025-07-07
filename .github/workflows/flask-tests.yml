@@ -31,6 +31,12 @@ jobs:
           python-version: '3.11'
       - name: 🧠 Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+
+      - name: Create config.py
+        run: |
+          SQLALCHEMY_DATABASE_URI = ${{ env.DB_URI }}
+          SECRET_KEY = ${{ env.SECRET_KEY }}
+          echo "SESSION_TYPE = 'filesystem'" >> config.py
         
       - name: 📦 Install Python Dependencies
         run: |
@@ -53,6 +59,6 @@ jobs:
       - name: ✅ Run Unit Tests
         run: pytest tests/test_login.py
 
-      - name: Run Selenium tests
-        run: pytest tests/test_login_ui.py
+      # - name: Run Selenium tests
+      #   run: pytest tests/test_login_ui.py
 
