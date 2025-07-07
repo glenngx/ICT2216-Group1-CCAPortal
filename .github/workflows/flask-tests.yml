@@ -34,15 +34,15 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Debug: Print DB server and driver
-        env:
-          DB_SERVER: ${{ secrets.DB_SERVER }}
-          DB_DRIVER: ${{ secrets.DB_DRIVER }}
+      - name: Print DB server and driver
         run: |
           echo "DB_SERVER: $DB_SERVER"
           echo "DB_DRIVER: $DB_DRIVER"
-        
+        env:
+          DB_SERVER: ${{ secrets.DB_SERVER }}
+          DB_DRIVER: ${{ secrets.DB_DRIVER }}
 
+  
       - name: Test DB Port Accessibility (MSSQL default port 1433)
         env:
           DB_SERVER: ${{ secrets.DB_SERVER }}
