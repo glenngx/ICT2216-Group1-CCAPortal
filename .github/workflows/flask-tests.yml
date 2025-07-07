@@ -44,26 +44,21 @@ jobs:
           import os
 
           class Config:
-              SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # fallback or test
-              SQLALCHEMY_TRACK_MODIFICATIONS = False
-
               DB_SERVER = os.getenv("DB_SERVER")
               DB_NAME = os.getenv("DB_NAME")
               DB_USERNAME = os.getenv("DB_USERNAME")
               DB_PASSWORD = os.getenv("DB_PASSWORD")
               SECRET_KEY = os.getenv("SECRET_KEY")
 
-              if SECRET_KEY is None:
-                  raise ValueError("❌ SECRET_KEY not set!")
+              if not all([DB_SERVER, DB_NAME, DB_USERNAME, DB_PASSWORD, SECRET_KEY]):
+                  raise ValueError("❌ Missing required environment variables!")
 
-              DB_CONNECTION_STRING = (
-                  f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-                  f"SERVER={DB_SERVER};"
-                  f"DATABASE={DB_NAME};"
-                  f"UID={DB_USERNAME};"
-                  f"PWD={DB_PASSWORD};"
-                  f"Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
+              SQLALCHEMY_DATABASE_URI = (
+                  f"mssql+pyodbc://{DB_USERNAME}:{DB_PASSWORD}@{DB_SERVER}/{DB_NAME}"
+                  f"?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=yes"
               )
+
+              SQLALCHEMY_TRACK_MODIFICATIONS = False
           EOF
 
       - name: Install Python Dependencies
