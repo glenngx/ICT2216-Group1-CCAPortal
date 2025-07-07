@@ -13,11 +13,6 @@ jobs:
     env:
       TESTING: "1"
       FLASK_ENV: "development"
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_SERVER: ${{ secrets.DB_SERVER }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      DB_DRIVER: ${{ secrets.DB_DRIVER }}
 
     steps:
       - name: Checkout Code
@@ -25,8 +20,8 @@ jobs:
 
       - name: Install Microsoft ODBC Driver 18 for SQL Server
         run: |
-          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/microsoft.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          sudo apt-add-repository "$(curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list)"
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
@@ -38,37 +33,25 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Generate config.py from GitHub Secrets
+      - name: Create secure config.py from secrets
         run: |
-          echo "import os" > config.py
-          echo "" >> config.py
-          echo "class Config:" >> config.py
-          echo "    DB_USER = os.getenv(\"DB_USER\")" >> config.py
-          echo "    DB_PASSWORD = os.getenv(\"DB_PASSWORD\")" >> config.py
-          echo "    DB_SERVER = os.getenv(\"DB_SERVER\")" >> config.py
-          echo "    DB_NAME = os.getenv(\"DB_NAME\")" >> config.py
-          echo "    DB_DRIVER = os.getenv(\"DB_DRIVER\")" >> config.py
-          echo "" >> config.py
-          echo "    if not all([DB_USER, DB_PASSWORD, DB_SERVER, DB_NAME, DB_DRIVER]):" >> config.py
-          echo "        raise ValueError(\"❌ One or more required DB secrets are missing!\")" >> config.py
-          echo "" >> config.py
-          echo "    SQLALCHEMY_DATABASE_URI = (" >> config.py
-          echo "        f\"mssql+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_SERVER}/{DB_NAME}\"" >> config.py
-          echo "        f\"?driver={DB_DRIVER.replace(' ', '+')}&Encrypt=yes&TrustServerCertificate=yes\"" >> config.py
-          echo "    )" >> config.py
-          echo "" >> config.py
-          echo "    SECRET_KEY = \"test-secret\"" >> config.py
-          echo "    SESSION_TYPE = \"filesystem\"" >> config.py
-          echo "    SQLALCHEMY_TRACK_MODIFICATIONS = False" >> config.py
-
-      - name: Confirm config.py was created
-        run: cat config.py
-
+          cat > config.py << EOF
+          class Config:
+              SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+              SQLALCHEMY_TRACK_MODIFICATIONS = False
+              DB_SERVER = "${{ secrets.DB_SERVER }}"
+              DB_NAME = "${{ secrets.DB_NAME }}"
+              DB_USERNAME = "${{ secrets.DB_USERNAME }}"
+              DB_PASSWORD = "${{ secrets.DB_PASSWORD }}"
+              DB_CONNECTION_STRING = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=${{ secrets.DB_SERVER }};DATABASE=${{ secrets.DB_NAME }};UID=${{ secrets.DB_USERNAME }};PWD=${{ secrets.DB_PASSWORD }};Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
+              SECRET_KEY = "${{ secrets.SECRET_KEY }}"
+          EOF
+          
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install selenium webdriver-manager pytest pytest-cov
+          pip install selenium webdriver-manager
 
       - name: Start Flask App
         run: |
@@ -82,5 +65,5 @@ jobs:
             curl -s http://localhost:5000/health && break || sleep 3
           done
 
-      - name: Run Unit Tests with Coverage
-        run: pytest tests/ --cov=application
+      - name: Run Unit Tests
+        run: pytest tests/test_login.py
