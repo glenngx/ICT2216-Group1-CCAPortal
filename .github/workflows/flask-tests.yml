@@ -36,6 +36,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install selenium webdriver-manager
 
       - name: 🚀 Start Flask App
         run: |
@@ -52,4 +53,6 @@ jobs:
       - name: ✅ Run Unit Tests
         run: pytest tests/test_login.py
 
+      - name: Run Selenium tests
+        run: pytest tests/test_login_ui.py
 

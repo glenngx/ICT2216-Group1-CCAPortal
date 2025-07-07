@@ -82,35 +82,6 @@ def test_add_student_to_cca():
         assert inserted is not None
         assert inserted.CCARole == "member"
 
-# def setup_test_user_userdetails():
-#     with app.app_context():
-#         student_id = 2305999
-#         username = "2305999"
-#         password_plain = "pppppp"
-
-#         # # Remove existing user if present
-#         # existing = User.query.filter_by(Username=username).first()
-#         # if existing:
-#         #     db.session.delete(existing)
-#         #     db.session.commit()
-#         #     print(f"🗑️ Removed existing user '{username}'")
-
-#         # Hash password
-#         hashed_pw = bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode()
-
-#         # Add new test user
-#         user = User(
-#             StudentId=student_id,
-#             Username=username,
-#             Password=hashed_pw,
-#             SystemRole="student",
-#             PasswordLastSet=datetime.utcnow()
-#         )
-#         db.session.add(user)
-#         db.session.commit()
-#         print(f"✅ Created fresh test user '{username}' with StudentId {student_id}")
-#         return user.UserId
-
 
 # def test_authenticated_user_vote():
 #     with app.app_context():

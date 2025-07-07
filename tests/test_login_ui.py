@@ -1,37 +1,26 @@
+# tests/test_selenium.py
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 import time
 
-def test_student_login():
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')  # Remove this line if you want to see the browser window
-    driver = webdriver.Remote(
-        command_executor='http://localhost:4444/wd/hub',
-        options=options
-    )
+def setup_browser():
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
+def test_login_valid_credentials():
+    driver = setup_browser()
     try:
-        print("▶ Opening login page...")
-        driver.get("http://http://localhost:5000/login")
-
-        print("▶ Entering student credentials...")
+        driver.get("http://localhost:5000/login")
         driver.find_element(By.NAME, "username").send_keys("2305105")
         driver.find_element(By.NAME, "password").send_keys("pppppp")
-
-        login_button = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-        driver.execute_script("arguments[0].scrollIntoView(true);", login_button)
-        time.sleep(0.5)
-        login_button.click()
-
-        time.sleep(2)
-
-        current_url = driver.current_url
-        page_text = driver.find_element(By.TAG_NAME, "body").text.lower()
-
-        print("▶ URL after login:", current_url)
-        print("▶ Page snippet:", page_text[:300])
-
-        assert "dashboard" in current_url or "welcome" in page_text
-
+        driver.find_element(By.XPATH, "//button[contains(text(),'Login')]").click()
+        time.sleep(1)
+        assert "dashboard" in driver.current_url or "welcome" in driver.page_source.lower()
     finally:
         driver.quit()
