@@ -38,12 +38,12 @@ jobs:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           cat <<EOF > config.py
-          class config
+          class config:
               SQLALCHEMY_DATABASE_URI = '${DB_URI}'
               SECRET_KEY = '${SECRET_KEY}'
               SESSION_TYPE = 'filesystem'
           EOF
-          
+
       - name: 🐛 Debug config.py
         run: cat config.py
         
