@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from datetime import datetime, timedelta
 from email_service import email_service
 import bcrypt
@@ -292,7 +292,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session['name'] = user['name']
                 session['email'] = user['email']
                 session['login_time'] = datetime.now().isoformat()
-                
+
                 # \*\ Added for Password Expiration
                 # 🔒 Enforce password reset if expired
                 if session.pop('force_password_change', False):
