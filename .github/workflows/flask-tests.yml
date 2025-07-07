@@ -33,16 +33,19 @@ jobs:
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
       - name: Create config.py
+      
         env:
           DB_URI: ${{ secrets.DB_URI }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+
+          class Config:
+            SQLALCHEMY_DATABASE_URI = '${DB_URI}'
+            SECRET_KEY = '${SECRET_KEY}'
+            SESSION_TYPE = 'filesystem'
+            EOF
+            
         run: |
           cat <<EOF > config.py
-          class Config:
-              SQLALCHEMY_DATABASE_URI = '${DB_URI}'
-              SECRET_KEY = '${SECRET_KEY}'
-              SESSION_TYPE = 'filesystem'
-          EOF
 
       - name: 🐛 Debug config.py
         run: cat config.py
