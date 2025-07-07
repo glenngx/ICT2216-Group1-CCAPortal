@@ -1,11 +1,11 @@
 # application/auth_utils.py
 from functools import wraps
 from flask import session, redirect, url_for, flash, request
+from flask_session.sqlalchemy import SqlAlchemySessionInterface
 from application.models import db, User, CCAMembers
 from application.models import LoginLog, db
 from application.models import AdminLog, db
-
-
+from flask import current_app
 
 # ───────────────────────────────────────────────────────────
 def _mfa_guard():
@@ -61,8 +61,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-
-
 # ───────────────────────────────────────────────────────────
 def moderator_required(f):
     @wraps(f)
@@ -98,8 +96,7 @@ def moderator_required(f):
         return f(*args, **kwargs)
     return decorated
 
-
-
+# ───────────────────────────────────────────────────────────
 def log_login_attempt(username, user_id, success, reason=None):
     log = LoginLog(
         Username=username,
@@ -111,8 +108,7 @@ def log_login_attempt(username, user_id, success, reason=None):
     db.session.add(log)
     db.session.commit()
 
-
-
+# ───────────────────────────────────────────────────────────
 def log_admin_action(admin_user_id, action_desc):
     log = AdminLog(
         AdminUserId=admin_user_id,
@@ -120,4 +116,22 @@ def log_admin_action(admin_user_id, action_desc):
         IPAddress=request.remote_addr
     )
     db.session.add(log)
+    db.session.commit()
+
+# ───────────────────────────────────────────────────────────
+def disabling_concurrent_login(user_id, current_session_id=None):
+    session_interface = SqlAlchemySessionInterface(current_app, db, "sessions", "sess_")
+    SessionModel = session_interface.session_class
+
+    all_sessions = SessionModel.query.all()
+    
+    for s in all_sessions:
+        try:
+            session_data = session_interface.serializer.loads(s.data)
+            if session_data.get("user_id") == user_id and s.session_id != current_session_id:
+                print(f"Removing session: {s.session_id} for user_id: {user_id}")
+                db.session.delete(s)
+        except Exception as e:
+            print(f"Skipping session due to error: {e}")
+
     db.session.commit()
