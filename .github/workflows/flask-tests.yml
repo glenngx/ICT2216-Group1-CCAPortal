@@ -13,7 +13,11 @@ jobs:
     env:
       TESTING: "1"
       FLASK_ENV: "development"
-      SQLALCHEMY_DATABASE_URI: "sqlite:///test.db"  # fallback for CI
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_SERVER: ${{ secrets.DB_SERVER }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_DRIVER: ${{ secrets.DB_DRIVER }}
 
     steps:
       - name: Checkout Code
@@ -34,35 +38,13 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Print DB server and driver
+      - name: Show DB Secrets (sanitized)
         run: |
           echo "DB_SERVER: $DB_SERVER"
           echo "DB_DRIVER: $DB_DRIVER"
-        env:
-          DB_SERVER: ${{ secrets.DB_SERVER }}
-          DB_DRIVER: ${{ secrets.DB_DRIVER }}
 
-  
-      - name: Test DB Port Accessibility (MSSQL default port 1433)
-        env:
-          DB_SERVER: ${{ secrets.DB_SERVER }}
-        run: |
-          nc -zv $DB_SERVER 1433 || echo "Port 1433 not reachable (this may fail if your DB is not public)"
-          
-      - name: Create config.py
-        env:
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_SERVER: ${{ secrets.DB_SERVER }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_DRIVER: ${{ secrets.DB_DRIVER }}
-        run: |
-          echo "import os" > config.py
-          echo "class Config:" >> config.py
-          echo "    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}/${DB_NAME}?driver=${DB_DRIVER// /+}&Encrypt=yes&TrustServerCertificate=yes')" >> config.py
-          echo "    SECRET_KEY = 'test-secret'" >> config.py
-          echo "    SESSION_TYPE = 'filesystem'" >> config.py
-          echo "    SQLALCHEMY_TRACK_MODIFICATIONS = False" >> config.py
+      - name: Create config.py (already present if committed, skip if not needed)
+        run: echo "Skipping config.py generation, using committed version"
 
       - name: Install Python Dependencies
         run: |
@@ -82,5 +64,5 @@ jobs:
             curl -s http://localhost:5000/health && break || sleep 3
           done
 
-      - name: Run Unit Tests
-        run: pytest tests/test_login.py --cov=application
+      - name: Run Unit Tests with Coverage
+        run: pytest tests/ --cov=application
