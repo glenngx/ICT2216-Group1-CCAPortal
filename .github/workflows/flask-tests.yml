@@ -35,10 +35,10 @@ jobs:
 
       - name: Create secure config.py from secrets
         run: |
-          import os
-
           cat > config.py << EOF
           
+          import os
+         
           class Config:
               SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # fallback or test
               SQLALCHEMY_TRACK_MODIFICATIONS = False
