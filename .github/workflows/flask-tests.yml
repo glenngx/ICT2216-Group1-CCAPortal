@@ -56,7 +56,7 @@ jobs:
                   missing_vars.append("DB_SERVER")
               if not DB_NAME:
                   missing_vars.append("DB_NAME")
-              if not DB_USERNAME:
+              if not DB_USER:
                   missing_vars.append("DB_USER")
               if not DB_PASSWORD:
                   missing_vars.append("DB_PASSWORD")
