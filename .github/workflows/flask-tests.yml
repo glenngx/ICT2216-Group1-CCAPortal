@@ -13,6 +13,7 @@ jobs:
     env:
       TESTING: "1"
       FLASK_ENV: "development"
+      SQLALCHEMY_DATABASE_URI: "sqlite:///test.db"  # fallback for CI
 
     steps:
       - name: Checkout Code
@@ -20,8 +21,8 @@ jobs:
 
       - name: Install Microsoft ODBC Driver 18 for SQL Server
         run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-          sudo apt-add-repository "$(curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list)"
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/microsoft.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
@@ -33,6 +34,20 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
+      - name: Debug: Print DB server and driver
+        run: |
+          echo "DB_SERVER: $DB_SERVER"
+          echo "DB_DRIVER: $DB_DRIVER"
+        env:
+          DB_SERVER: ${{ secrets.DB_SERVER }}
+          DB_DRIVER: ${{ secrets.DB_DRIVER }}
+
+      - name: Test DB Port Accessibility (MSSQL default port 1433)
+        run: |
+          nc -zv $DB_SERVER 1433 || echo "Port 1433 not reachable (this may fail if your DB is not public)"
+        env:
+          DB_SERVER: ${{ secrets.DB_SERVER }}
+
       - name: Create config.py
         env:
           DB_USER: ${{ secrets.DB_USER }}
@@ -41,19 +56,18 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_DRIVER: ${{ secrets.DB_DRIVER }}
         run: |
-          echo "class Config:" > config.py
-          echo "    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}/${DB_NAME}?driver=${DB_DRIVER// /+}&Encrypt=yes&TrustServerCertificate=yes'" >> config.py
+          echo "import os" > config.py
+          echo "class Config:" >> config.py
+          echo "    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}/${DB_NAME}?driver=${DB_DRIVER// /+}&Encrypt=yes&TrustServerCertificate=yes')" >> config.py
           echo "    SECRET_KEY = 'test-secret'" >> config.py
           echo "    SESSION_TYPE = 'filesystem'" >> config.py
           echo "    SQLALCHEMY_TRACK_MODIFICATIONS = False" >> config.py
-
-
 
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install selenium webdriver-manager
+          pip install selenium webdriver-manager pytest pytest-cov
 
       - name: Start Flask App
         run: |
@@ -68,4 +82,4 @@ jobs:
           done
 
       - name: Run Unit Tests
-        run: pytest tests/test_login.py
+        run: pytest tests/test_login.py --cov=application
