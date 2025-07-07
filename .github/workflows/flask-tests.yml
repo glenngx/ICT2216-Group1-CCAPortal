@@ -38,17 +38,16 @@ jobs:
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_SERVER: ${{ secrets.DB_SERVER }}
-          DB_PORT: ${{ secrets.DB_PORT }}
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_DRIVER: ${{ secrets.DB_DRIVER }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+
         run: |
-          DRIVER_ENCODED=${DB_DRIVER// /+}
           echo "class Config:" > config.py
-          echo "    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}:${DB_PORT}/${DB_NAME}?driver=${DRIVER_ENCODED}&Encrypt=yes&TrustServerCertificate=yes'" >> config.py
-          echo "    SECRET_KEY = '${SECRET_KEY}'" >> config.py
+          echo "    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}/${DB_NAME}?driver=${DB_DRIVER// /+}&Encrypt=yes&TrustServerCertificate=yes'" >> config.py
+          echo "    SECRET_KEY = 'temporary'" >> config.py
           echo "    SESSION_TYPE = 'filesystem'" >> config.py
           echo "    SQLALCHEMY_TRACK_MODIFICATIONS = False" >> config.py
+
 
       - name: Install Python Dependencies
         run: |
