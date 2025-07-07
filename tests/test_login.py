@@ -31,27 +31,56 @@ def test_login_with_valid_credentials():
         assert response.status_code == 200
         assert b"login" in response.data.lower() or b"welcome" in response.data.lower()
 
-
-from sqlalchemy import text
-
-def insert_test_student():
+def test_add_student_to_cca():
     with app.app_context():
-        student = Student.query.get(2399999)
+        # Setup test student
+        student = Student.query.get(2309999)
         if not student:
             db.session.execute(text("""
                 INSERT INTO Student (StudentId, Name, Email, DOB, ContactNumber)
                 VALUES (:sid, :name, :email, :dob, :phone)
             """), {
-                'sid': 2399999,
-                'name': 'Fallback Student',
-                'email': 'student@example.com',
+                'sid': 2309999,
+                'name': 'Integration Test Student',
+                'email': 'test@student.com',
                 'dob': '2000-01-01',
-                'phone': '91234567'
+                'phone': '81234567'
             })
             db.session.commit()
-            print("✅ Student added.")
-        else:
-            print("ℹ️ Student already exists.")
+
+        # Setup test user
+        user = User.query.filter_by(Username="inttestuser").first()
+        if not user:
+            user = User(
+                StudentId=2309999,
+                Username="inttestuser",
+                Password=bcrypt.hashpw("pppppp".encode(), bcrypt.gensalt()).decode(),
+                SystemRole="student",
+                PasswordLastSet=datetime.utcnow()
+            )
+            db.session.add(user)
+            db.session.flush()
+            db.session.commit()
+
+        # Setup test CCA
+        cca = CCA.query.filter_by(Name="Integration Test CCA").first()
+        if not cca:
+            cca = CCA(Name="Integration Test CCA", Description="For testing student join")
+            db.session.add(cca)
+            db.session.flush()
+            db.session.commit()
+
+        # Add student to CCA
+        membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
+        if not membership:
+            membership = CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member")
+            db.session.add(membership)
+            db.session.commit()
+
+        # Verify the student is part of the CCA
+        inserted = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
+        assert inserted is not None
+        assert inserted.CCARole == "member"
 
 # def setup_test_user_userdetails():
 #     with app.app_context():
