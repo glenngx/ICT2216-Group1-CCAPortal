@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from datetime import datetime, timedelta
 from email_service import email_service
 import bcrypt
@@ -12,8 +12,6 @@ import os
 from application.models import User, Student, CCAMembers, db
 import bcrypt
 from application.auth_utils import log_login_attempt
-from flask_session.sqlalchemy import SqlAlchemySessionInterface
-from flask_session import Session
 
 def validate_password_nist(password):
     """
@@ -294,40 +292,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session['name'] = user['name']
                 session['email'] = user['email']
                 session['login_time'] = datetime.now().isoformat()
-                
-                # Disable concurrent login
-                session_cookie_name = current_app.config.get("SESSION_COOKIE_NAME", "session")
-                session_id = request.cookies.get(session_cookie_name)                
-                
-                # Disabling other sessions of this user_id
-                session_interface = current_app.session_interface
-                SessionModel = session_interface.sql_session_model
-
-                # Get all sessions from the table
-                all_sessions = db.session.query(SessionModel).all()
-                
-                sessions_deleted = 0
-                
-                for s in all_sessions:
-                    try:
-                        # Deserialize session data
-                        session_data = session_interface.serializer.loads(s.data)
-                        
-                        # Skip the current session
-                        if s.session_id == session_id:
-                            continue
-                        
-                        # If the session belongs to the current user, delete it
-                        if session_data.get("user_id") == user['user_id']:
-                            print(f"Removing session: {s.session_id} for user_id: {user['user_id']}")
-                            db.session.delete(s)
-                            sessions_deleted += 1
-                            
-                    except Exception as e:
-                        print(f"Skipping session {s.session_id} due to error: {e}")
-
-                db.session.commit()
-                print(f"Successfully removed {sessions_deleted} concurrent sessions for user_id: {user['user_id']}")
 
                 # \*\ Added for Password Expiration
                 # 🔒 Enforce password reset if expired
