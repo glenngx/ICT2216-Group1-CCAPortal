@@ -301,7 +301,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 
                 # Disabling other sessions of this user_id
                 session_interface = current_app.session_interface
-                SessionModel = session_interface.session_class
+                SessionModel = session_interface.sql_session_model
 
                 all_sessions = db.session.query(SessionModel).all()
                 sessions_deleted = 0
