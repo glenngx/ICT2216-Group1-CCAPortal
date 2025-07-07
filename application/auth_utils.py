@@ -117,21 +117,3 @@ def log_admin_action(admin_user_id, action_desc):
     )
     db.session.add(log)
     db.session.commit()
-
-# ───────────────────────────────────────────────────────────
-def disabling_concurrent_login(user_id, current_session_id=None):
-    session_interface = SqlAlchemySessionInterface(current_app, db, "sessions", "sess_")
-    SessionModel = session_interface.session_class
-
-    all_sessions = SessionModel.query.all()
-    
-    for s in all_sessions:
-        try:
-            session_data = session_interface.serializer.loads(s.data)
-            if session_data.get("user_id") == user_id and s.session_id != current_session_id:
-                print(f"Removing session: {s.session_id} for user_id: {user_id}")
-                db.session.delete(s)
-        except Exception as e:
-            print(f"Skipping session due to error: {e}")
-
-    db.session.commit()

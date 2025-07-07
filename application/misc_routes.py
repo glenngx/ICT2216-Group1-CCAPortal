@@ -293,10 +293,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session['email'] = user['email']
                 session['login_time'] = datetime.now().isoformat()
                 
-                # Disable concurrent login
-                session_id = request.cookies.get(current_app.session_cookie_name)
-                disabling_concurrent_login(user['user_id'], session_id)
-
                 # \*\ Added for Password Expiration
                 # 🔒 Enforce password reset if expired
                 if session.pop('force_password_change', False):
