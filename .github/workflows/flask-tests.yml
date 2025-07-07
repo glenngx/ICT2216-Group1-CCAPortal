@@ -29,27 +29,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: 🧠 Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Create config.py
-      
+      - name: 📝 Create config.py
         env:
           DB_URI: ${{ secrets.DB_URI }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
-
-          class Config:
-            SQLALCHEMY_DATABASE_URI = '${DB_URI}'
-            SECRET_KEY = '${SECRET_KEY}'
-            SESSION_TYPE = 'filesystem'
-            EOF
-            
         run: |
           cat <<EOF > config.py
+class Config:
+    SQLALCHEMY_DATABASE_URI = '${DB_URI}'
+    SECRET_KEY = '${SECRET_KEY}'
+    SESSION_TYPE = 'filesystem'
+EOF
 
       - name: 🐛 Debug config.py
         run: cat config.py
-        
+
       - name: 📦 Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -70,7 +68,3 @@ jobs:
 
       - name: ✅ Run Unit Tests
         run: pytest tests/test_login.py
-
-      # - name: Run Selenium tests
-      #   run: pytest tests/test_login_ui.py
-
