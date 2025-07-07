@@ -38,10 +38,17 @@ jobs:
           DB_URI: ${{ secrets.DB_URI }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          echo "class Config:" > config.py
-          echo "    SQLALCHEMY_DATABASE_URI = '${DB_URI}'" >> config.py
-          echo "    SECRET_KEY = '${SECRET_KEY}'" >> config.py
-          echo "    SESSION_TYPE = 'filesystem'" >> config.py
+          python -c "
+          from pathlib import Path
+          import os
+
+          content = '''class Config:
+              SQLALCHEMY_DATABASE_URI = '{db_uri}'
+              SECRET_KEY = '{secret_key}'
+              SESSION_TYPE = 'filesystem'
+          '''.format(
+              db_uri=os.getenv('DB_URI'),
+              secret_key=os.getenv('SECRET_KEY'))
 
       - name: Debug config.py
         run: cat config.py
