@@ -38,25 +38,10 @@ jobs:
           DB_URI: ${{ secrets.DB_URI }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          cat > create_config.py <<'EOF'
-          from pathlib import Path
-          import os
-          import json
-
-          # Safely escape values using json.dumps()
-          db_uri = json.dumps(os.getenv('DB_URI', ''))
-          secret_key = json.dumps(os.getenv('SECRET_KEY', ''))
-
-          content = f'''class Config:
-              SQLALCHEMY_DATABASE_URI = {db_uri}
-              SECRET_KEY = {secret_key}
-              SESSION_TYPE = 'filesystem'
-          '''
-
-          Path('config.py').write_text(content)
-          EOF
-
-          python create_config.py
+          echo "class Config:" > config.py
+          echo "    SQLALCHEMY_DATABASE_URI = '${DB_URI}'" >> config.py
+          echo "    SECRET_KEY = '${SECRET_KEY}'" >> config.py
+          echo "    SESSION_TYPE = 'filesystem'" >> config.py
 
       - name: Debug config.py
         run: cat config.py
