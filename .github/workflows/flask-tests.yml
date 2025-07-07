@@ -35,19 +35,20 @@ jobs:
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
       - name: Debug: Print DB server and driver
-        run: |
-          echo "DB_SERVER: $DB_SERVER"
-          echo "DB_DRIVER: $DB_DRIVER"
         env:
           DB_SERVER: ${{ secrets.DB_SERVER }}
           DB_DRIVER: ${{ secrets.DB_DRIVER }}
+        run: |
+          echo "DB_SERVER: $DB_SERVER"
+          echo "DB_DRIVER: $DB_DRIVER"
+        
 
       - name: Test DB Port Accessibility (MSSQL default port 1433)
-        run: |
-          nc -zv $DB_SERVER 1433 || echo "Port 1433 not reachable (this may fail if your DB is not public)"
         env:
           DB_SERVER: ${{ secrets.DB_SERVER }}
-
+        run: |
+          nc -zv $DB_SERVER 1433 || echo "Port 1433 not reachable (this may fail if your DB is not public)"
+          
       - name: Create config.py
         env:
           DB_USER: ${{ secrets.DB_USER }}
