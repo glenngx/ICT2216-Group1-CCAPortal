@@ -15,56 +15,52 @@ jobs:
       FLASK_ENV: "development"
 
     steps:
-      - name: 📥 Checkout Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Install Microsoft ODBC Driver 18 for SQL Server
+      - name: Install Microsoft ODBC Driver 18 for SQL Server
         run: |
           curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
           sudo apt-add-repository "$(curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list)"
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
-      - name: 🐍 Set up Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 🧠 Set PYTHONPATH
+      - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: 📝 Create config.py
+      - name: Create config.py
         env:
           DB_URI: ${{ secrets.DB_URI }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          cat <<EOF > config.py
-class Config:
-    SQLALCHEMY_DATABASE_URI = '${DB_URI}'
-    SECRET_KEY = '${SECRET_KEY}'
-    SESSION_TYPE = 'filesystem'
-EOF
-
-      - name: 🐛 Debug config.py
+          printf "class Config:\n    SQLALCHEMY_DATABASE_URI = '%s'\n    SECRET_KEY = '%s'\n    SESSION_TYPE = 'filesystem'\n" \
+            "${DB_URI}" "${SECRET_KEY}" > config.py
+            
+      - name: Debug config.py
         run: cat config.py
 
-      - name: 📦 Install Python Dependencies
+      - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install selenium webdriver-manager
 
-      - name: 🚀 Start Flask App
+      - name: Start Flask App
         run: |
           nohup python app.py &
           sleep 5
 
-      - name: 🩺 Wait for Flask to respond
+      - name: Wait for Flask to respond
         run: |
           for i in {1..10}; do
             echo "Checking Flask..."
             curl -s http://localhost:5000/health && break || sleep 3
           done
 
-      - name: ✅ Run Unit Tests
+      - name: Run Unit Tests
         run: pytest tests/test_login.py
