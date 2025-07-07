@@ -11,7 +11,7 @@ from application.captcha_utils import captcha_is_valid   # top of file
 import os 
 from application.models import User, Student, CCAMembers, db
 import bcrypt
-from application.auth_utils import log_login_attempt, disabling_concurrent_login
+from application.auth_utils import log_login_attempt
 
 def validate_password_nist(password):
     """
