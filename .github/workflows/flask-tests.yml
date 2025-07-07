@@ -13,6 +13,11 @@ jobs:
     env:
       TESTING: "1"
       FLASK_ENV: "development"
+      DB_SERVER: ${{ secrets.DB_SERVER }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
     steps:
       - name: Checkout Code
@@ -35,10 +40,9 @@ jobs:
 
       - name: Create secure config.py from secrets
         run: |
-          cat > config.py << EOF
-          
+          cat <<'EOF' > config.py
           import os
-         
+
           class Config:
               SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # fallback or test
               SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -48,6 +52,9 @@ jobs:
               DB_USERNAME = os.getenv("DB_USERNAME")
               DB_PASSWORD = os.getenv("DB_PASSWORD")
               SECRET_KEY = os.getenv("SECRET_KEY")
+
+              if SECRET_KEY is None:
+                  raise ValueError("❌ SECRET_KEY not set!")
 
               DB_CONNECTION_STRING = (
                   f"DRIVER={{ODBC Driver 18 for SQL Server}};"
