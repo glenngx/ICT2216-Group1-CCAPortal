@@ -33,23 +33,22 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Create config.py from secrets
+      - name: Create config.py
         env:
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_SERVER: ${{ secrets.DB_SERVER }}
+          DB_PORT: ${{ secrets.DB_PORT }}
           DB_NAME: ${{ secrets.DB_NAME }}
-          PROT: ${{ secrets.DB_PORT }}
           DB_DRIVER: ${{ secrets.DB_DRIVER }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          echo "    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}:${DB_PORT}/${DB_NAME}?driver=${DB_DRIVER// /+}&Encrypt=yes&TrustServerCertificate=yes'" >> config.py
+          DRIVER_ENCODED=${DB_DRIVER// /+}
           echo "class Config:" > config.py
-          echo "    SQLALCHEMY_DATABASE_URI = \"${URI}\"" >> config.py
-          echo "    SECRET_KEY = \"${SECRET_KEY}\"" >> config.py
+          echo "    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_SERVER}:${DB_PORT}/${DB_NAME}?driver=${DRIVER_ENCODED}&Encrypt=yes&TrustServerCertificate=yes'" >> config.py
+          echo "    SECRET_KEY = '${SECRET_KEY}'" >> config.py
           echo "    SESSION_TYPE = 'filesystem'" >> config.py
           echo "    SQLALCHEMY_TRACK_MODIFICATIONS = False" >> config.py
-
 
       - name: Install Python Dependencies
         run: |
