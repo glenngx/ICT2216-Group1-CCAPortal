@@ -120,18 +120,40 @@ def log_admin_action(admin_user_id, action_desc):
 
 # ───────────────────────────────────────────────────────────
 def disabling_concurrent_login(user_id, current_session_id=None):
-    session_interface = SqlAlchemySessionInterface(current_app, db, "sessions", "sess_")
-    SessionModel = session_interface.session_class
-
-    all_sessions = SessionModel.query.all()
-    
-    for s in all_sessions:
-        try:
-            session_data = session_interface.serializer.loads(s.data)
-            if session_data.get("user_id") == user_id and s.session_id != current_session_id:
-                print(f"Removing session: {s.session_id} for user_id: {user_id}")
-                db.session.delete(s)
-        except Exception as e:
-            print(f"Skipping session due to error: {e}")
-
-    db.session.commit()
+    try:
+        session_interface = current_app.session_interface
+        
+        # Check if it's a SqlAlchemySessionInterface
+        if not hasattr(session_interface, 'session_class'):
+            print("Session interface is not SqlAlchemySessionInterface")
+            return
+        
+        SessionModel = session_interface.session_class
+        
+        # Get all sessions from the database
+        all_sessions = SessionModel.query.all()
+        
+        sessions_deleted = 0
+        
+        for s in all_sessions:
+            try:
+                session_data = session_interface.serializer.loads(s.data)
+                
+                # Check if this session belongs to the user and is not the current session
+                if session_data.get("user_id") == user_id and s.session_id != current_session_id:
+                    print(f"Removing session: {s.session_id} for user_id: {user_id}")
+                    db.session.delete(s)
+                    sessions_deleted += 1
+                    
+            except Exception as e:
+                print(f"Skipping session {s.session_id} due to error: {e}")
+                continue
+        
+        # Commit the changes
+        db.session.commit()
+        print(f"Successfully removed {sessions_deleted} concurrent sessions for user_id: {user_id}")
+        
+    except Exception as e:
+        print(f"Error in disabling_concurrent_login: {e}")
+        db.session.rollback()
+        raise
