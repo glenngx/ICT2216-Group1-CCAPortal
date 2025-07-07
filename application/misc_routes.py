@@ -303,26 +303,28 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session_interface = current_app.session_interface
                 SessionModel = session_interface.sql_session_model
 
-                # Get all sessions for this user
-                user_sessions = SessionModel.query.filter(
-                    SessionModel.data.like(f'%\"user_id\": {user["user_id"]}%')
-                ).all()
+                # Get all sessions from the table
+                all_sessions = db.session.query(SessionModel).all()
                 
                 sessions_deleted = 0
                 
-                for s in user_sessions:
+                for s in all_sessions:
                     try:
+                        # Deserialize session data
+                        session_data = session_interface.serializer.loads(s.data)
+                        
                         # Skip the current session
                         if s.session_id == session_id:
                             continue
-                            
-                        # Delete the session
-                        db.session.delete(s)
-                        sessions_deleted += 1
-                        print(f"Removing session: {s.session_id} for user_id: {user['user_id']}")
                         
+                        # If the session belongs to the current user, delete it
+                        if session_data.get("user_id") == user['user_id']:
+                            print(f"Removing session: {s.session_id} for user_id: {user['user_id']}")
+                            db.session.delete(s)
+                            sessions_deleted += 1
+                            
                     except Exception as e:
-                        print(f"Skipping session due to error: {e}")
+                        print(f"Skipping session {s.session_id} due to error: {e}")
 
                 db.session.commit()
                 print(f"Successfully removed {sessions_deleted} concurrent sessions for user_id: {user['user_id']}")
