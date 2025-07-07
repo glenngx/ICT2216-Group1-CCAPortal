@@ -33,19 +33,13 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Create config.py
-        env:
-          DB_URI: ${{ secrets.DB_URI }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      - name: Create config.py from secrets
         run: |
-          cat > config.py <<EOF
-          class Config:
-              SQLALCHEMY_DATABASE_URI = '${DB_URI}'
-              SECRET_KEY = '${SECRET_KEY}'
-              SESSION_TYPE = 'filesystem'
-              SQLALCHEMY_TRACK_MODIFICATIONS = False
-          EOF
-          echo "Test configuration created"
+          echo "class Config:" > config.py
+          echo "    SQLALCHEMY_DATABASE_URI = 'mssql+pyodbc://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_SERVER }}/${{ secrets.DB_NAME }}?driver=${{ secrets.DB_DRIVER // /+ }}'" >> config.py
+          echo "    SECRET_KEY = '${{ secrets.SECRET_KEY }}'" >> config.py
+          echo "    SESSION_TYPE = 'filesystem'" >> config.py
+          echo "    SQLALCHEMY_TRACK_MODIFICATIONS = False" >> config.py
 
       - name: Debug config.py
         run: cat config.py
