@@ -294,7 +294,8 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session['login_time'] = datetime.now().isoformat()
                 
                 # Disable concurrent login
-                session_id = request.cookies.get(current_app.session_cookie_name)
+                session_cookie_name = current_app.config.get("SESSION_COOKIE_NAME", "session")
+                session_id = request.cookies.get(session_cookie_name)                
                 disabling_concurrent_login(user['user_id'], session_id)
 
                 # \*\ Added for Password Expiration
