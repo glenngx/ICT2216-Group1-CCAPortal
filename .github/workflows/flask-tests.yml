@@ -36,17 +36,27 @@ jobs:
       - name: Create secure config.py from secrets
         run: |
           cat > config.py << EOF
-          class Config:
-              SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-              SQLALCHEMY_TRACK_MODIFICATIONS = False
-              DB_SERVER = "${{ secrets.DB_SERVER }}"
-              DB_NAME = "${{ secrets.DB_NAME }}"
-              DB_USERNAME = "${{ secrets.DB_USERNAME }}"
-              DB_PASSWORD = "${{ secrets.DB_PASSWORD }}"
-              DB_CONNECTION_STRING = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=${{ secrets.DB_SERVER }};DATABASE=${{ secrets.DB_NAME }};UID=${{ secrets.DB_USERNAME }};PWD=${{ secrets.DB_PASSWORD }};Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
-              SECRET_KEY = "${{ secrets.SECRET_KEY }}"
-          EOF
           
+          class Config:
+              SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # fallback or test
+              SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+              DB_SERVER = os.getenv("DB_SERVER")
+              DB_NAME = os.getenv("DB_NAME")
+              DB_USERNAME = os.getenv("DB_USERNAME")
+              DB_PASSWORD = os.getenv("DB_PASSWORD")
+              SECRET_KEY = os.getenv("SECRET_KEY")
+
+              DB_CONNECTION_STRING = (
+                  f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+                  f"SERVER={DB_SERVER};"
+                  f"DATABASE={DB_NAME};"
+                  f"UID={DB_USERNAME};"
+                  f"PWD={DB_PASSWORD};"
+                  f"Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
+              )
+          EOF
+
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
