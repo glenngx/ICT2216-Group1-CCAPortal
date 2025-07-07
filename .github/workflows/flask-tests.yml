@@ -40,9 +40,9 @@ jobs:
         run: |
           cat > config.py <<EOF
           class Config:
-              SQLALCHEMY_DATABASE_URI = "${DB_URI}"
-              SECRET_KEY = "${SECRET_KEY}"
-              SESSION_TYPE = "filesystem"
+              SQLALCHEMY_DATABASE_URI = '${DB_URI}'
+              SECRET_KEY = '${SECRET_KEY}'
+              SESSION_TYPE = 'filesystem'
               SQLALCHEMY_TRACK_MODIFICATIONS = False
           EOF
           echo "Test configuration created"
