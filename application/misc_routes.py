@@ -303,16 +303,24 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session_interface = current_app.session_interface
                 SessionModel = session_interface.sql_session_model
 
-                all_sessions = db.session.query(SessionModel).all()
+                # Get all sessions for this user
+                user_sessions = SessionModel.query.filter(
+                    SessionModel.data.like(f'%\"user_id\": {user["user_id"]}%')
+                ).all()
+                
                 sessions_deleted = 0
-
-                for s in all_sessions:
+                
+                for s in user_sessions:
                     try:
-                        session_data = session_interface.serializer.loads(s.data)
-                        if session_data.get("user_id") == user['user_id'] and s.session_id != session_id:
-                            print(f"Removing session: {s.session_id} for user_id: {user['user_id']}")
-                            db.session.delete(s)
-                            sessions_deleted += 1
+                        # Skip the current session
+                        if s.session_id == session_id:
+                            continue
+                            
+                        # Delete the session
+                        db.session.delete(s)
+                        sessions_deleted += 1
+                        print(f"Removing session: {s.session_id} for user_id: {user['user_id']}")
+                        
                     except Exception as e:
                         print(f"Skipping session due to error: {e}")
 
