@@ -38,7 +38,7 @@ jobs:
           DB_URI: ${{ secrets.DB_URI }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          python -c "
+          cat > create_config.py <<'EOF'
           from pathlib import Path
           import os
 
@@ -48,7 +48,12 @@ jobs:
               SESSION_TYPE = 'filesystem'
           '''.format(
               db_uri=os.getenv('DB_URI'),
-              secret_key=os.getenv('SECRET_KEY'))
+              secret_key=os.getenv('SECRET_KEY')
+          )
+          Path('config.py').write_text(content)
+          EOF
+
+                    python create_config.py
 
       - name: Debug config.py
         run: cat config.py
