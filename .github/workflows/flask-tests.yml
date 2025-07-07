@@ -38,9 +38,11 @@ jobs:
           DB_URI: ${{ secrets.DB_URI }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          printf "class Config:\n    SQLALCHEMY_DATABASE_URI = '%s'\n    SECRET_KEY = '%s'\n    SESSION_TYPE = 'filesystem'\n" \
-            "${DB_URI}" "${SECRET_KEY}" > config.py
-            
+          printf "class Config:\n" > config.py
+          printf "    SQLALCHEMY_DATABASE_URI = '%s'\n" "$DB_URI" >> config.py
+          printf "    SECRET_KEY = '%s'\n" "$SECRET_KEY" >> config.py
+          printf "    SESSION_TYPE = 'filesystem'\n" >> config.py
+
       - name: Debug config.py
         run: cat config.py
 
