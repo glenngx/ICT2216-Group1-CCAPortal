@@ -46,7 +46,7 @@ jobs:
           class Config:
               DB_SERVER = os.getenv("DB_SERVER")
               DB_NAME = os.getenv("DB_NAME")
-              DB_USERNAME = os.getenv("DB_USERNAME")
+              DB_USER = os.getenv("DB_USER")
               DB_PASSWORD = os.getenv("DB_PASSWORD")
               SECRET_KEY = os.getenv("SECRET_KEY")
 
@@ -57,7 +57,7 @@ jobs:
               if not DB_NAME:
                   missing_vars.append("DB_NAME")
               if not DB_USERNAME:
-                  missing_vars.append("DB_USERNAME")
+                  missing_vars.append("DB_USER")
               if not DB_PASSWORD:
                   missing_vars.append("DB_PASSWORD")
               if not SECRET_KEY:
@@ -67,13 +67,13 @@ jobs:
                   raise ValueError(f"❌ Missing environment variables: {', '.join(missing_vars)}")
 
               SQLALCHEMY_DATABASE_URI = (
-                  f"mssql+pyodbc://{DB_USERNAME}:{DB_PASSWORD}@{DB_SERVER}/{DB_NAME}"
+                  f"mssql+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_SERVER}/{DB_NAME}"
                   f"?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=yes"
               )
 
               SQLALCHEMY_TRACK_MODIFICATIONS = False
           EOF
-          
+
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
