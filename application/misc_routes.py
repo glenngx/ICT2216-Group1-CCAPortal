@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from datetime import datetime, timedelta
 from email_service import email_service
 import bcrypt
@@ -11,7 +11,7 @@ from application.captcha_utils import captcha_is_valid   # top of file
 import os 
 from application.models import User, Student, CCAMembers, db
 import bcrypt
-from application.auth_utils import log_login_attempt
+from application.auth_utils import log_login_attempt, disabling_concurrent_login
 
 def validate_password_nist(password):
     """
@@ -292,6 +292,10 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 session['name'] = user['name']
                 session['email'] = user['email']
                 session['login_time'] = datetime.now().isoformat()
+                
+                # Disable concurrent login
+                session_id = request.cookies.get(current_app.session_cookie_name)
+                disabling_concurrent_login(user['user_id'], session_id)
 
                 # \*\ Added for Password Expiration
                 # 🔒 Enforce password reset if expired
