@@ -144,3 +144,4 @@ def test_authenticated_user_vote():
         assert inserted_vote.OptionId == option.OptionId, "Incorrect OptionId recorded"
 
 
+#
