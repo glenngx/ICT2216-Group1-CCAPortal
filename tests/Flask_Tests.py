@@ -110,6 +110,7 @@ def test_authenticated_user_vote():
 
         # Ensure user exists
         user = User.query.filter_by(Username=username).first()
+        user_id = user.UserId
         if not user:
             user = User(
                 StudentId=student_id,
