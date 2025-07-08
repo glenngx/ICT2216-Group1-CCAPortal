@@ -109,7 +109,7 @@ def test_authenticated_user_vote():
             db.session.commit()
 
         # Delete existing vote for PollId 9 if any
-        existing_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
+        existing_vote = PollVote.query.filter_by(UserId=2305106, PollId=9).first()
         if existing_vote:
             db.session.delete(existing_vote)
             db.session.commit()
