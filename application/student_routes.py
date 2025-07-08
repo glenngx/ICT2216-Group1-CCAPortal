@@ -403,7 +403,11 @@ def register_student_routes(app, get_db_connection, login_required):
             end_date_obj = poll_data_row[4]
             start_date_str = start_date_obj.strftime('%Y-%m-%d %H:%M') if isinstance(start_date_obj, datetime) else str(start_date_obj) if start_date_obj else 'N/A'
             end_date_str = end_date_obj.strftime('%Y-%m-%d %H:%M') if isinstance(end_date_obj, datetime) else str(end_date_obj) if end_date_obj else 'N/A'
-            is_ended_status = datetime.now() > end_date_obj if isinstance(end_date_obj, datetime) else False
+            if isinstance(end_date_obj, datetime):
+                end_date_local = end_date_obj + timedelta(hours=8)  # Convert UTC to GMT+8
+                is_ended_status = datetime.now() > end_date_local   # Compare with local time
+            else:
+                is_ended_status = False
             
             poll = {
                 'PollId': poll_data_row[0], 
@@ -645,9 +649,11 @@ def register_student_routes(app, get_db_connection, login_required):
                 if is_used:
                     flash('This vote token has already been used.', 'error')
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-                if expiry_time and datetime.utcnow() > expiry_time:
-                    flash('Your vote token has expired. Please refresh and try again.', 'error')
-                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+                if expiry_time:
+                    expiry_time_local = expiry_time + timedelta(hours=8)  # Convert UTC to GMT+8
+                    if datetime.now() > expiry_time_local:
+                        flash('Your vote token has expired. Please refresh and try again.', 'error')
+                        return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
                 
                 token_row.IsUsed = True
                 #The new line marks the token as used.
