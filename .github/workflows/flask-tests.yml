@@ -11,12 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TESTING: "1"
-      FLASK_ENV: "development"
-      DB_SERVER: ${{ secrets.DB_SERVER }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_CONN_STRING: ${{ secrets.DB_CONN_STRING }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
     steps:
@@ -38,14 +33,20 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Create secure config.py from secret
+      - name: Create config.py with encoded connection string
         run: |
           cat <<EOF > config.py
           import os
+          import urllib.parse
+
           class Config:
-              SQLALCHEMY_DATABASE_URI = "mssql+pyodbc://${{ secrets.DB_CONN_STRING }}"
+              raw_odbc = os.getenv("DB_CONN_STRING")
+              if not raw_odbc:
+                  raise ValueError("❌ Missing DB_CONN_STRING")
+
+              SQLALCHEMY_DATABASE_URI = "mssql+pyodbc:///?odbc_connect=" + urllib.parse.quote_plus(raw_odbc)
               SQLALCHEMY_TRACK_MODIFICATIONS = False
-              SECRET_KEY = os.getenv("SECRET_KEY", "default-test-key")
+              SECRET_KEY = os.getenv("SECRET_KEY", "fallback")
           EOF
 
       - name: Install Python Dependencies
