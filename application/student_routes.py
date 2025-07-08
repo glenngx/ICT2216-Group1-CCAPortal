@@ -3,7 +3,7 @@ import pyotp, qrcode
 from io import BytesIO
 from base64 import b64encode
 import pyodbc
-from datetime import datetime, timedelta 
+from datetime import datetime, timedelta, timezone
 import secrets
 import hashlib
 import bcrypt
@@ -126,7 +126,7 @@ def register_student_routes(app, get_db_connection, login_required):
             user = User.query.filter_by(UserId=session['user_id']).first()
             days_left = None
             if user and user.PasswordLastSet:
-                days_since = (datetime.utcnow() - user.PasswordLastSet).days
+                days_since = (datetime.now(timezone.utc) - user.PasswordLastSet).days
                 days_left = 365 - days_since
 
             # \*\ Ended for password expiration
@@ -500,7 +500,7 @@ def register_student_routes(app, get_db_connection, login_required):
                         #     VALUES (?, ?, ?, GETUTCDATE(), DATEADD(MINUTE, 10, GETUTCDATE()))
                         # """, (hashed_token, poll_id, session['user_id']))
                         # conn.commit()
-                        new_token = VoteToken(Token=hashed_token, PollId=poll_id, UserId=session['user_id'], IssuedTime=datetime.utcnow(), ExpiryTime=datetime.utcnow() + timedelta(minutes=10))
+                        new_token = VoteToken(Token=hashed_token, PollId=poll_id, UserId=session['user_id'], IssuedTime=datetime.now(timezone.utc), ExpiryTime=datetime.now(timezone.utc) + timedelta(minutes=10))
                         db.session.add(new_token)
                         db.session.commit()
                         #The new code inserts a new vote token for the user.
@@ -517,7 +517,7 @@ def register_student_routes(app, get_db_connection, login_required):
                     #     INSERT INTO VoteTokens (Token, PollId, UserId, IssuedTime, ExpiryTime)
                     #     VALUES (?, ?, ?, GETUTCDATE(), DATEADD(MINUTE, 10, GETUTCDATE()))
                     # """, (hashed_token, poll_id, session['user_id']))
-                    new_token = VoteToken(Token=hashed_token, PollId=poll_id, UserId=session['user_id'], IssuedTime=datetime.utcnow(), ExpiryTime=datetime.utcnow() + timedelta(minutes=10))
+                    new_token = VoteToken(Token=hashed_token, PollId=poll_id, UserId=session['user_id'], IssuedTime=datetime.now(timezone.utc), ExpiryTime=datetime.now(timezone.utc) + timedelta(minutes=10))
                     db.session.add(new_token)
                     db.session.commit()
                     #The new code inserts a new vote token for the user.
@@ -645,7 +645,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 if is_used:
                     flash('This vote token has already been used.', 'error')
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-                if expiry_time and datetime.utcnow() > expiry_time:
+                if expiry_time and datetime.now(timezone.utc) > expiry_time:
                     flash('Your vote token has expired. Please refresh and try again.', 'error')
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
                 
@@ -655,7 +655,7 @@ def register_student_routes(app, get_db_connection, login_required):
             # ✅ Insert vote only if not already voted
             if not has_voted:
                 for option_id in selected_option_ids:
-                    new_vote = PollVote(PollId=poll_id, OptionId=option_id, UserId=session['user_id'], VotedTime=datetime.utcnow())
+                    new_vote = PollVote(PollId=poll_id, OptionId=option_id, UserId=session['user_id'], VotedTime=datetime.now(timezone.utc))
                     db.session.add(new_vote)
                 db.session.commit()
                 flash('Your vote has been submitted successfully.', 'success')
@@ -973,9 +973,8 @@ def register_student_routes(app, get_db_connection, login_required):
                     # Update password
                     # cursor.execute("UPDATE UserDetails SET Password = ? WHERE UserId = ?", (hashed_new_password.decode('utf-8'), session['user_id']))
                     # conn.commit()
-                    user.Password = hashed_new_password.decode('utf-8')
-                    # \*\ Added for Password expiration
-                    user.PasswordLastSet = datetime.utcnow()
+                    user.Password = hashed_new_password.decode('utf-8')                    # \*\ Added for Password expiration
+                    user.PasswordLastSet = datetime.now(timezone.utc)
                     # \*\ Ended for Password expiration
                     db.session.commit()
                     #The new line updates the user's password.
