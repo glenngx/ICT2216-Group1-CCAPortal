@@ -4,6 +4,9 @@ import bcrypt
 from application.auth_utils import admin_required
 from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote, LoginLog, AdminLog
 from application.auth_utils import log_admin_action
+from application.moderator_routes import sanitize_input
+
+
 
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
@@ -194,9 +197,13 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_required
     def create_cca():
         if request.method == 'POST':
-            name = request.form.get('name', '').strip()
-            description = request.form.get('description', '').strip()
-            
+
+            #name = request.form.get('name', '').strip()
+            #description = request.form.get('description', '').strip()
+            # \*\ Sanitization
+            name = sanitize_input(request.form.get('name', ''), max_length=100)
+            description = sanitize_input(request.form.get('description', ''), max_length=1000)
+            # \*\ End Sanitization
             if not name:
                 flash('CCA name is required.', 'error')
                 log_admin_action(session["user_id"],'CCA name is required.')
@@ -324,9 +331,13 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_bp.route('/cca/<int:cca_id>/edit', methods=['POST'])
     @admin_required
     def edit_cca(cca_id):
-        name = request.form.get('name', '').strip()
-        description = request.form.get('description', '').strip()
-        
+        #name = request.form.get('name', '').strip()
+        #description = request.form.get('description', '').strip()
+        # \*\ Sanitization
+        name = sanitize_input(request.form.get('name', ''), max_length=100)
+        description = sanitize_input(request.form.get('description', ''), max_length=1000)
+        # \*\ End Sanitization
+
         if not name:
             flash('CCA name is required.', 'error')
             log_admin_action(session["user_id"],'CCA name is required.')
@@ -386,7 +397,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     def add_student_to_cca(cca_id):
         student_id = request.form.get('student_id')
         role = request.form.get('role')
-        
+
         if not all([student_id, role]):
             flash('Please select both student and role.', 'error')
             log_admin_action(session["user_id"],'Please select both student and role.')
@@ -540,7 +551,11 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_required
     def search_students():
         """API endpoint to search for students by name or student ID"""
-        search_query = request.args.get('q', '').strip()
+        #search_query = request.args.get('q', '').strip()
+        # \*\ Sanitization
+        search_query = sanitize_input(request.args.get('q', ''), max_length=100)
+        # \*\ End Sanitization
+
         cca_id = request.args.get('cca_id', '')
         
         if not search_query or len(search_query) < 2:
