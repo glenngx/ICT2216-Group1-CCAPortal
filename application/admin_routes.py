@@ -870,7 +870,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
 
     @admin_bp.route('/logs')
     @admin_required
-        # \*\ Added Logging
+    # \*\ Added Logging
     def view_logs():
         # Get the total number of logs, categorized by type
         total_logs = db.session.query(AdminLog).count() + db.session.query(LoginLog).count()
@@ -904,6 +904,10 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             reverse=True
         )
 
+        # Convert all log timestamps to GMT+8
+        for log_type, log, user in logs:
+            log.Timestamp = convert_utc_to_gmt8_display(log.Timestamp)  # Apply the conversion
+
         # Pass the counts and logs to the template
         return render_template('admin_logs.html', 
                             user_name=session['name'],
@@ -914,7 +918,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                             data_changes_logs=data_changes_logs,
                             security_issues_logs=security_issues_logs,
                             system_events_logs=system_events_logs)
-            # \*\ Ended added Logging
+                # \*\ Ended added Logging
 
     # Register the blueprint with the app
     app.register_blueprint(admin_bp)
