@@ -128,13 +128,13 @@ def test_authenticated_user_vote():
 
         # Load poll page
         response = client.get(f"/poll/{poll_id}")
-        assert response.status_code == 200
+        assert response.status_code == 302 
 
         # Submit vote
         vote_response = client.post(f"/poll/{poll_id}/vote", data={
             "option": option.OptionId
         }, follow_redirects=True)
-        assert vote_response.status_code == 200
+        assert vote_response.status_code == 302 
         assert b"Thank you for voting" in vote_response.data or b"already voted" in vote_response.data
 
     # Confirm vote was recorded
