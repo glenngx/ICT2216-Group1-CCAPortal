@@ -74,9 +74,3 @@ jobs:
 
       - name: Run Unit Tests
         run: pytest -v --capture=tee-sys tests/Flask_Tests.py
-
-      - name: Check Flask Logs After Tests
-        if: always()
-        run: |
-          echo "==== Flask Log (nohup.out) ===="
-          cat nohup.out || echo "No nohup.out file found"
