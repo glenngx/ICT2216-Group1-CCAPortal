@@ -1,9 +1,8 @@
-name: ZAP Full Scan Pre-Deployment (Local Flask)
+name: ZAP login Full Scan Pre-Deployment (Local Flask)
 
 on:
   push:
-      branches:
-        - main
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -12,7 +11,7 @@ env:
 jobs:
   zap_fullscan:
     runs-on: ubuntu-latest
-    environment: staging 
+    environment: staging
 
     steps:
       - name: Checkout source code
@@ -21,33 +20,54 @@ jobs:
       - name: Install Docker Compose
         run: |
           sudo apt-get update
-          sudo apt-get install -y docker-compose
+          sudo apt-get install -y docker-compose curl
 
-      - name: Restore config.py and .env from secrets
+      - name: Restore config.py, .env, and bypass files from secrets
         run: |
           echo "${{ secrets.CONFIG_PY_BASE64 }}" | base64 -d > config.py
           echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 -d > docker/.env
+
+          echo "${{ secrets.CI_CAPTCHA_UTILS_BASE64 }}" | base64 -d > application/captcha_utils.py
+          echo "${{ secrets.CI_AUTH_UTILS_BASE64 }}" | base64 -d > application/auth_utils.py
+          echo "${{ secrets.CI_M_ROUTE_BASE64 }}" | base64 -d > application/misc_routes.py
 
       - name: Start Docker app (nginx-compose)
         run: |
           docker compose -f docker/nginx-compose.yml up -d
         timeout-minutes: 3
 
-      - name: Wait for Flask app to respond on port $FLASK_PORT
+      - name: Wait for Flask app to be ready
         run: |
-          echo "Waiting for Flask app to respond on port $FLASK_PORT..."
-          for i in {1..15}; do
+          for i in {1..20}; do
             sleep 5
-            if curl -sI http://localhost:$FLASK_PORT; then
-              echo "Flask is ready!"
+            if curl -sI http://localhost:$FLASK_PORT/health | grep "200 OK"; then
+              echo "Flask app is ready!"
               exit 0
             fi
-            echo "Flask not ready yet... retrying ($i/15)"
+            echo "Waiting for app... ($i/20)"
           done
-          echo "Flask failed to start"
           docker ps
           docker logs ccap-flask-app || true
           exit 1
+
+      - name: Log in with test accounts (admin, moderator, student)
+        run: |
+          echo "Logging in as admin..."
+          curl -X POST http://localhost:$FLASK_PORT/login -c admin_cookie.txt \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "username=${{ secrets.A_USERNAME }}&password=${{ secrets.A_PWD }}"
+
+          echo "Logging in as moderator..."
+          curl -X POST http://localhost:$FLASK_PORT/login -c mod_cookie.txt \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "username=${{ secrets.M_USERNAME }}&password=${{ secrets.M_PWD }}"
+
+          echo "Logging in as student..."
+          curl -X POST http://localhost:$FLASK_PORT/login -c student_cookie.txt \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "username=${{ secrets.S_USERNAME }}&password=${{ secrets.S_PWD }}"
+
+          echo "All logins completed."
 
       - name: Run ZAP Full Scan (localhost)
         uses: zaproxy/action-full-scan@v0.12.0

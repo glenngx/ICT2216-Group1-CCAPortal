@@ -16,6 +16,8 @@ services:
       - ../logs:/app/logs
     expose:
       - "5000"
+    ports:
+      - "5000:5000" 
 
   nginx:
     image: nginx:alpine
