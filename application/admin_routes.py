@@ -871,6 +871,15 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_required
         # \*\ Added Logging
     def view_logs():
+        # Get the total number of logs, categorized by type
+        total_logs = db.session.query(AdminLog).count() + db.session.query(LoginLog).count()
+        authentication_logs = db.session.query(LoginLog).count()
+        authorization_logs = db.session.query(AdminLog).filter(AdminLog.Action == 'Authorization').count()
+        data_changes_logs = db.session.query(AdminLog).filter(AdminLog.Action == 'Data Change').count()
+        security_issues_logs = db.session.query(AdminLog).filter(AdminLog.Action == 'Security Issue').count()
+        system_events_logs = db.session.query(AdminLog).filter(AdminLog.Action == 'System Event').count()
+
+        # Get recent logs
         login_logs = (
             db.session.query(LoginLog, User)
             .outerjoin(User, LoginLog.UserId == User.UserId)
@@ -894,8 +903,17 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             reverse=True
         )
 
-        return render_template('admin_logs.html', user_name=session['name'],logs=logs)
-        # \*\ Ended added Logging
+        # Pass the counts and logs to the template
+        return render_template('admin_logs.html', 
+                            user_name=session['name'],
+                            logs=logs,
+                            total_logs=total_logs,
+                            authentication_logs=authentication_logs,
+                            authorization_logs=authorization_logs,
+                            data_changes_logs=data_changes_logs,
+                            security_issues_logs=security_issues_logs,
+                            system_events_logs=system_events_logs)
+            # \*\ Ended added Logging
 
     # Register the blueprint with the app
     app.register_blueprint(admin_bp)
