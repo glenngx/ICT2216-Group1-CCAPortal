@@ -88,7 +88,7 @@ def test_add_student_to_cca():
 
 #--------------------- TESTING USER VOTING ----------------------------#
 
-def test_authenticated_user_vote(mock_captcha):
+def test_authenticated_user_vote():
     poll_id = 9  # Ensure this poll exists in your DB
 
     with app.app_context():
@@ -169,4 +169,3 @@ def test_authenticated_user_vote(mock_captcha):
 
 
 
-        
