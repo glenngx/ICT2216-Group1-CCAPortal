@@ -12,7 +12,7 @@ env:
 jobs:
   zap_fullscan:
     runs-on: ubuntu-latest
-    environment: staging
+    environment: staging  # where CONFIG_PY_BASE64 and ENV_FILE_BASE64 are stored
 
     steps:
       - name: Checkout source code
@@ -38,7 +38,7 @@ jobs:
           echo "Waiting for Flask app to respond on port $FLASK_PORT..."
           for i in {1..20}; do
             sleep 5
-            if curl -sI http://localhost:$FLASK_PORT || curl -sI http://127.0.0.1:$FLASK_PORT; then
+            if curl -sI http://localhost:$FLASK_PORT/health | grep "200 OK"; then
               echo "Flask is ready!"
               exit 0
             fi
