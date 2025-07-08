@@ -122,3 +122,4 @@ def test_authenticated_user_vote():
         response = client.get(f"/poll/{poll_id}")
         assert response.status_code == 200
 
+
