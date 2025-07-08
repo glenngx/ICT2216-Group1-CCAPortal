@@ -4,7 +4,6 @@ import bcrypt
 from sqlalchemy import text
 from datetime import datetime
 import hashlib
-from flask_session import Session
 
 #--------------------- TESTING USER LOGIN WITH VALID AND INVALID CREDENTIALS ----------------------------#
 
@@ -89,80 +88,74 @@ def test_add_student_to_cca():
 
 #--------------------- TESTING USER VOTING ----------------------------#
 
-# def test_authenticated_user_vote():
-#     poll_id = 9
+def test_authenticated_user_vote():
+    poll_id = 9
 
-#     # Enable test mode and ensure sessions are stored in a way test client can access
-#     app.config["TESTING"] = True
-#     app.config["SESSION_TYPE"] = "filesystem"
-#     Session(app)
+    with app.app_context():
+        # Ensure test student exists
+        student = Student.query.get(2305106)
+        if not student:
+            student = Student(
+                StudentId=2305106,
+                Name="Test Voter",
+                Email="voter@example.com",
+                DOB="2000-01-01",
+                ContactNumber="90000000"
+            )
+            db.session.add(student)
+            db.session.commit()
 
-#     with app.app_context():
-#         # Ensure test student exists
-#         student = Student.query.get(2305106)
-#         if not student:
-#             student = Student(
-#                 StudentId=2305106,
-#                 Name="Test Voter",
-#                 Email="voter@example.com",
-#                 DOB="2000-01-01",
-#                 ContactNumber="90000000"
-#             )
-#             db.session.add(student)
-#             db.session.commit()
+        # Ensure test user exists
+        user = User.query.filter_by(Username="2305106").first()
+        if not user:
+            from datetime import datetime
+            import bcrypt
+            user = User(
+                StudentId=2305106,
+                Username="2305106",
+                Password=bcrypt.hashpw("ffffff".encode(), bcrypt.gensalt()).decode(),
+                SystemRole="student",
+                PasswordLastSet=datetime.utcnow()
+            )
+            db.session.add(user)
+            db.session.commit()
 
-#         # Ensure test user exists
-#         user = User.query.filter_by(Username="2305106").first()
-#         if not user:
-#             from datetime import datetime
-#             import bcrypt
-#             user = User(
-#                 StudentId=2305106,
-#                 Username="2305106",
-#                 Password=bcrypt.hashpw("ffffff".encode(), bcrypt.gensalt()).decode(),
-#                 SystemRole="student",
-#                 PasswordLastSet=datetime.utcnow()
-#             )
-#             db.session.add(user)
-#             db.session.commit()
+        # Ensure user is in a CCA
+        cca = CCA.query.first()
+        if cca:
+            membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
+            if not membership:
+                db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
+                db.session.commit()
 
-#         # Ensure user is in a CCA
-#         cca = CCA.query.first()
-#         if cca:
-#             membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
-#             if not membership:
-#                 db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
-#                 db.session.commit()
+        # Remove existing vote if any
+        existing_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
+        if existing_vote:
+            db.session.delete(existing_vote)
+            db.session.commit()
 
-#         # Remove existing vote if any
-#         existing_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
-#         if existing_vote:
-#             db.session.delete(existing_vote)
-#             db.session.commit()
+        # Ensure poll has at least one option
+        option = PollOption.query.filter_by(PollId=poll_id).first()
+        assert option is not None, f"No options found for poll ID {poll_id}"
 
-#         # Ensure poll has at least one option
-#         option = PollOption.query.filter_by(PollId=poll_id).first()
-#         assert option is not None, f"No options found for poll ID {poll_id}"
+    # Now perform test using client
+    with app.test_client() as client:
+        login_response = client.post("/login", data={
+            "username": "2305106",
+            "password": "ffffff"
+        }, follow_redirects=True)
+        assert login_response.status_code == 200
+        assert b"dashboard" in login_response.data.lower() or b"poll" in login_response.data.lower()
 
-#     # Now perform test using client
-#     with app.test_client() as client:
-#         login_response = client.post("/login", data={
-#             "username": "2305106",
-#             "password": "ffffff"
-#         }, follow_redirects=True)
-#         assert login_response.status_code == 200
-#         assert b"dashboard" in login_response.data.lower() or b"poll" in login_response.data.lower()
+        # Load poll page
+        response = client.get(f"/poll/{poll_id}", follow_redirects=True)
+        assert response.status_code == 200
 
-#         # Load poll page
-#         response = client.get(f"/poll/{poll_id}", follow_redirects=True)
-#         assert response.status_code == 200
+        # Submit vote
+        vote_response = client.post(f"/poll/{poll_id}/vote", data={
+            "option": option.OptionId
+        }, follow_redirects=True)
+        assert vote_response.status_code == 200
 
-#         # Submit vote
-#         vote_response = client.post(f"/poll/{poll_id}/vote", data={
-#             "option": option.OptionId
-#         }, follow_redirects=True)
-#         assert vote_response.status_code == 200
-
-#         # Check for confirmation message
-#         assert b"thank you for voting" in vote_response.data.lower() or b"already voted" in vote_response.data.lower()
-#         #
+        # Check for confirmation message
+        assert b"thank you for voting" in vote_response.data.lower() or b"already voted" in vote_response.data.lower()
