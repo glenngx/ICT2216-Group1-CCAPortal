@@ -73,7 +73,7 @@ jobs:
           done
 
       - name: Run Unit Tests
-        run: pytest -v --capture=tee-sys tests/test_login.py
+        run: pytest -v --capture=tee-sys tests/Flask_Tests.py
 
       - name: Check Flask Logs After Tests
         if: always()
