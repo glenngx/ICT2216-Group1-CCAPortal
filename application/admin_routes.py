@@ -21,7 +21,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             # all_ccas = cursor.fetchall()
             all_ccas = CCA.query.order_by(CCA.Name).all()
             # Retrieves all CCAs, ordered by name.
-
+            log_admin_action(session["user_id"], "Admin login successful")
             # Get all students
             #SQL refactoring
             # cursor.execute("SELECT StudentId, Name, Email FROM v_ActiveStudents ORDER BY Name")
