@@ -4,7 +4,7 @@ from flask import session, redirect, url_for, flash, request
 from application.models import db, User, CCAMembers
 from application.models import LoginLog, db
 from application.models import AdminLog, db
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 # ───────────────────────────────────────────────────────────
 def _mfa_guard():
