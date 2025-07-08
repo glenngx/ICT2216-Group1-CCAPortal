@@ -66,11 +66,13 @@
         </div>
 
         <!-- Log Statistics -->
+        here
+        <!-- Log Statistics -->
         <div class="row mb-4">
             <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                 <div class="card text-center">
                     <div class="card-body">
-                        <h4 class="text-primary">0</h4>
+                        <h4 class="text-primary">{{ total_logs }}</h4>
                         <small class="text-muted">Total Logs</small>
                     </div>
                 </div>
@@ -78,7 +80,7 @@
             <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                 <div class="card text-center">
                     <div class="card-body">
-                        <h6 class="text-info">0</h6>
+                        <h6 class="text-info">{{ authentication_logs }}</h6>
                         <small class="text-muted">Authentication</small>
                     </div>
                 </div>
@@ -86,7 +88,7 @@
             <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                 <div class="card text-center">
                     <div class="card-body">
-                        <h6 class="text-warning">0</h6>
+                        <h6 class="text-warning">{{ authorization_logs }}</h6>
                         <small class="text-muted">Authorization</small>
                     </div>
                 </div>
@@ -94,7 +96,7 @@
             <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                 <div class="card text-center">
                     <div class="card-body">
-                        <h6 class="text-success">0</h6>
+                        <h6 class="text-success">{{ data_changes_logs }}</h6>
                         <small class="text-muted">Data Changes</small>
                     </div>
                 </div>
@@ -102,7 +104,7 @@
             <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                 <div class="card text-center">
                     <div class="card-body">
-                        <h6 class="text-danger">0</h6>
+                        <h6 class="text-danger">{{ security_issues_logs }}</h6>
                         <small class="text-muted">Security Issues</small>
                     </div>
                 </div>
@@ -110,7 +112,7 @@
             <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                 <div class="card text-center">
                     <div class="card-body">
-                        <h6 class="text-secondary">0</h6>
+                        <h6 class="text-secondary">{{ system_events_logs }}</h6>
                         <small class="text-muted">System Events</small>
                     </div>
                 </div>

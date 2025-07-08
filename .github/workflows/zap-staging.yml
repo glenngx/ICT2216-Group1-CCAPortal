@@ -1,0 +1,65 @@
+name: ZAP Full Scan Pre-Deployment (Local Flask)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  FLASK_PORT: 5000
+
+jobs:
+  zap_fullscan:
+    runs-on: ubuntu-latest
+    environment: staging  # where CONFIG_PY_BASE64 and ENV_FILE_BASE64 are stored
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Restore config.py and .env from secrets
+        run: |
+          echo "${{ secrets.CONFIG_PY_BASE64 }}" | base64 -d > config.py
+          echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 -d > docker/.env
+
+      - name: Start Docker app (nginx-compose)
+        run: |
+          docker compose -f docker/nginx-compose.yml up -d
+        timeout-minutes: 3
+
+      - name: Wait for Flask app to respond on port $FLASK_PORT
+        run: |
+          echo "Waiting for Flask app to respond on port $FLASK_PORT..."
+          for i in {1..20}; do
+            sleep 5
+            if curl -sI http://localhost:$FLASK_PORT/health | grep "200 OK"; then
+              echo "Flask is ready!"
+              exit 0
+            fi
+            echo "Flask not ready yet... retrying ($i/20)"
+          done
+          echo "Flask failed to start in time"
+          docker ps
+          docker logs ccap-flask-app || true
+          exit 1
+
+      - name: Run ZAP Full Scan (localhost)
+        uses: zaproxy/action-full-scan@v0.12.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          docker_name: 'ghcr.io/zaproxy/zaproxy:stable'
+          target: 'http://localhost:5000'
+          cmd_options: '-a'
+          artifact_name: zap-fullscan-flask-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload ZAP Full Scan HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-fullscan-flask-${{ github.run_id }}-${{ github.run_attempt }}
+          path: report_html.html

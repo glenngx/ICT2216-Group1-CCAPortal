@@ -4,6 +4,9 @@ import bcrypt
 from application.auth_utils import admin_required
 from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote, LoginLog, AdminLog
 from application.auth_utils import log_admin_action
+from application.moderator_routes import sanitize_input
+
+
 
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
@@ -21,7 +24,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             # all_ccas = cursor.fetchall()
             all_ccas = CCA.query.order_by(CCA.Name).all()
             # Retrieves all CCAs, ordered by name.
-
+            log_admin_action(session["user_id"], "Admin login successful")
             # Get all students
             #SQL refactoring
             # cursor.execute("SELECT StudentId, Name, Email FROM v_ActiveStudents ORDER BY Name")
@@ -194,9 +197,13 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_required
     def create_cca():
         if request.method == 'POST':
-            name = request.form.get('name', '').strip()
-            description = request.form.get('description', '').strip()
-            
+
+            #name = request.form.get('name', '').strip()
+            #description = request.form.get('description', '').strip()
+            # \*\ Sanitization
+            name = sanitize_input(request.form.get('name', ''), max_length=100)
+            description = sanitize_input(request.form.get('description', ''), max_length=1000)
+            # \*\ End Sanitization
             if not name:
                 flash('CCA name is required.', 'error')
                 log_admin_action(session["user_id"],'CCA name is required.')
@@ -324,9 +331,13 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_bp.route('/cca/<int:cca_id>/edit', methods=['POST'])
     @admin_required
     def edit_cca(cca_id):
-        name = request.form.get('name', '').strip()
-        description = request.form.get('description', '').strip()
-        
+        #name = request.form.get('name', '').strip()
+        #description = request.form.get('description', '').strip()
+        # \*\ Sanitization
+        name = sanitize_input(request.form.get('name', ''), max_length=100)
+        description = sanitize_input(request.form.get('description', ''), max_length=1000)
+        # \*\ End Sanitization
+
         if not name:
             flash('CCA name is required.', 'error')
             log_admin_action(session["user_id"],'CCA name is required.')
@@ -386,7 +397,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     def add_student_to_cca(cca_id):
         student_id = request.form.get('student_id')
         role = request.form.get('role')
-        
+
         if not all([student_id, role]):
             flash('Please select both student and role.', 'error')
             log_admin_action(session["user_id"],'Please select both student and role.')
@@ -540,7 +551,11 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_required
     def search_students():
         """API endpoint to search for students by name or student ID"""
-        search_query = request.args.get('q', '').strip()
+        #search_query = request.args.get('q', '').strip()
+        # \*\ Sanitization
+        search_query = sanitize_input(request.args.get('q', ''), max_length=100)
+        # \*\ End Sanitization
+
         cca_id = request.args.get('cca_id', '')
         
         if not search_query or len(search_query) < 2:
@@ -871,6 +886,15 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_required
         # \*\ Added Logging
     def view_logs():
+        # Get the total number of logs, categorized by type
+        total_logs = db.session.query(AdminLog).count() + db.session.query(LoginLog).count()
+        authentication_logs = db.session.query(LoginLog).count()
+        authorization_logs = db.session.query(AdminLog).filter(AdminLog.Action == 'Authorization').count()
+        data_changes_logs = db.session.query(AdminLog).filter(AdminLog.Action == 'Data Change').count()
+        security_issues_logs = db.session.query(AdminLog).filter(AdminLog.Action == 'Security Issue').count()
+        system_events_logs = db.session.query(AdminLog).filter(AdminLog.Action == 'System Event').count()
+
+        # Get recent logs
         login_logs = (
             db.session.query(LoginLog, User)
             .outerjoin(User, LoginLog.UserId == User.UserId)
@@ -894,8 +918,17 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             reverse=True
         )
 
-        return render_template('admin_logs.html', user_name=session['name'],logs=logs)
-        # \*\ Ended added Logging
+        # Pass the counts and logs to the template
+        return render_template('admin_logs.html', 
+                            user_name=session['name'],
+                            logs=logs,
+                            total_logs=total_logs,
+                            authentication_logs=authentication_logs,
+                            authorization_logs=authorization_logs,
+                            data_changes_logs=data_changes_logs,
+                            security_issues_logs=security_issues_logs,
+                            system_events_logs=system_events_logs)
+            # \*\ Ended added Logging
 
     # Register the blueprint with the app
     app.register_blueprint(admin_bp)
