@@ -89,15 +89,15 @@ def test_add_student_to_cca():
 #--------------------- TESTING USER VOTING ----------------------------#
 
 def test_authenticated_user_vote():
-    poll_id = 9  # Ensure this exists
+    poll_id = 9  # Ensure this exists in the DB
 
     with app.app_context():
-        # Ensure student exists
+        # ✅ Create student
         student = Student.query.get(2305106)
         if not student:
             student = Student(
                 StudentId=2305106,
-                Name="Test Student",
+                Name="Test Voter",
                 Email="test2305106@example.com",
                 DOB="2000-01-01",
                 ContactNumber="81234567"
@@ -105,7 +105,7 @@ def test_authenticated_user_vote():
             db.session.add(student)
             db.session.commit()
 
-        # Ensure user exists
+        # ✅ Create user
         user = User.query.filter_by(Username="2305106").first()
         if not user:
             user = User(
@@ -118,40 +118,38 @@ def test_authenticated_user_vote():
             db.session.add(user)
             db.session.commit()
 
-        # Ensure CCA exists
-        cca = CCA.query.first()
+        # ✅ Ensure CCA exists and user is a member
+        cca = CCA.query.get(7)
         if not cca:
-            cca = CCA(Name="Test CCA", Description="Test CCA for voting")
+            cca = CCA(CCAId=7, Name="Voting CCA", Description="CCA for Poll 9")
             db.session.add(cca)
             db.session.commit()
 
-        # Add user to CCA
         if not CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first():
             db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
             db.session.commit()
 
-        # Ensure a poll option exists
+        # ✅ Ensure option exists
         option = PollOption.query.filter_by(PollId=poll_id).first()
-        assert option is not None, f"No options found for poll ID {poll_id}"
+        assert option is not None, f"No PollOption found for PollId {poll_id}"
 
-        # Delete any previous vote for clean testing
-        prev_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
-        if prev_vote:
-            db.session.delete(prev_vote)
+        # ❌ Delete any previous vote
+        existing_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
+        if existing_vote:
+            db.session.delete(existing_vote)
             db.session.commit()
 
-    # Flask test client
+    # ✅ Login and vote
     with app.test_client() as client:
-        # Login
+        # Login first
         client.post("/login", data={"username": "2305106", "password": "ffffff"}, follow_redirects=True)
 
-        # Re-fetch fresh user inside the session context
+        # Set session for user
         with client.session_transaction() as sess:
-            fresh_user = User.query.filter_by(Username="2305106").first()
-            sess["user_id"] = fresh_user.UserId
+            sess["user_id"] = user.UserId
             sess["role"] = "student"
 
-        # Cast vote
+        # Cast the vote
         vote_response = client.post(f"/poll/{poll_id}/vote", data={
             "option": str(option.OptionId)
         }, follow_redirects=True)
@@ -159,13 +157,14 @@ def test_authenticated_user_vote():
         assert vote_response.status_code == 200
         assert b"thank you for voting" in vote_response.data.lower() or b"already voted" in vote_response.data.lower()
 
-    # Confirm vote saved
+    # ✅ Verify the vote was saved
     with app.app_context():
-        vote_record = PollVote.query.filter_by(UserId=fresh_user.UserId, PollId=poll_id).first()
-        assert vote_record is not None, "Vote was not saved"
-        assert vote_record.OptionId == option.OptionId
+        recorded_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
+        assert recorded_vote is not None, "❌ Vote was not saved to DB"
+        assert recorded_vote.OptionId == option.OptionId
+        assert recorded_vote.VotedTime is not None
 
-        print(f"✅ Saved Vote: PollId={poll_id}, OptionId={option.OptionId}, UserId={fresh_user.UserId}")
+        print(f"🗳️ Vote committed: PollId={recorded_vote.PollId}, OptionId={recorded_vote.OptionId}, UserId={recorded_vote.UserId}")
 
 
 # def test_authenticated_user_vote():
