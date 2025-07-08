@@ -165,3 +165,4 @@ def test_authenticated_user_vote():
 
         # Check for confirmation message
         assert b"thank you for voting" in vote_response.data.lower() or b"already voted" in vote_response.data.lower()
+        #
