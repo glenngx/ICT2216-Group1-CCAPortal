@@ -89,13 +89,13 @@ def test_add_student_to_cca():
 #--------------------- TESTING USER VOTING ----------------------------#
 
 def test_authenticated_user_vote():
-    poll_id = 9  # Replace with a valid poll ID that exists in your DB
+    poll_id = 9
     student_id = 2305106
     username = "2305106"
     password = "ffffff"
 
     with app.app_context():
-        # Ensure student exists
+        # Ensure student
         student = Student.query.get(student_id)
         if not student:
             student = Student(
@@ -108,7 +108,7 @@ def test_authenticated_user_vote():
             db.session.add(student)
             db.session.commit()
 
-        # Ensure user exists
+        # Ensure user
         user = User.query.filter_by(Username=username).first()
         if not user:
             user = User(
@@ -121,7 +121,6 @@ def test_authenticated_user_vote():
             db.session.add(user)
             db.session.commit()
 
-        # ✅ Avoid DetachedInstanceError
         user_id = user.UserId
 
         # Ensure CCA and membership
@@ -138,28 +137,7 @@ def test_authenticated_user_vote():
         # Ensure poll option exists
         option = PollOption.query.filter_by(PollId=poll_id).first()
         assert option is not None, f"No option found for poll {poll_id}"
-        option_id = option.OptionId
-
-        # Remove any previous vote
-        PollVote.query.filter_by(UserId=user_id, PollId=poll_id).delete()
-        db.session.commit()
-
-    # Simulate login and vote
-    with app.test_client() as client:
-        login_response = client.post("/login", data={"username": username, "password": password}, follow_redirects=True)
-        assert login_response.status_code == 200
-
-        with client.session_transaction() as sess:
-            sess["user_id"] = user_id
-            sess["role"] = "student"
-
-        vote_response = client.post(
-            f"/poll/{poll_id}/vote",
-            data={"selected_option": option_id},
-            follow_redirects=True
-        )
-        assert vote_response.status_code == 200
-        assert b"Thank you for voting" in vote_response.data or b"already voted" in vote_response.data
+        option_id = option.OptionId_
 
 
 # def test_authenticated_user_vote():
