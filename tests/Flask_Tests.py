@@ -121,5 +121,5 @@ def test_authenticated_user_vote():
         poll_id = 9  # target poll ID
         response = client.get(f"/poll/{poll_id}")
         assert response.status_code == 200
-
+#
 
