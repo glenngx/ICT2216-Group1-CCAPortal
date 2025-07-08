@@ -156,22 +156,12 @@ def test_authenticated_user_vote():
         assert vote_response.status_code == 200
         assert b"thank you for voting" in vote_response.data.lower() or b"already voted" in vote_response.data.lower()
 
-    # Manually force DB check and commit if needed
+    # Confirm vote in DB
     with app.app_context():
         final_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
-
-        if not final_vote:
-            # Route didn't commit — insert manually
-            final_vote = PollVote(
-                PollId=poll_id,
-                UserId=user.UserId,
-                OptionId=option.OptionId,
-                VotedTime=datetime.utcnow()
-            )
-            db.session.add(final_vote)
-            db.session.commit()
-            print("⚠️ Manually committed vote due to missing commit in Flask route")
-
+        assert final_vote is not None, "Vote was not saved"
         assert final_vote.OptionId == option.OptionId
+
         print(f"🗳️ Saved Vote — PollId: {poll_id}, OptionId: {option.OptionId}, UserId: {user.UserId}")
+
 
