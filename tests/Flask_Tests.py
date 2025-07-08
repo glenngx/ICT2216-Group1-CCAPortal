@@ -93,6 +93,7 @@ def test_authenticated_user_vote():
 
     with app.app_context():
         # Ensure student exists
+        print("🔗 DB URI:", db.engine.url)
         student = Student.query.get(2305106)
         if not student:
             student = Student(
