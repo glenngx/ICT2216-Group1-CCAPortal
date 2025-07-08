@@ -95,7 +95,7 @@ def test_authenticated_user_vote():
     password = "ffffff"
 
     with app.app_context():
-        # Ensure student
+        # Setup Student
         student = Student.query.get(student_id)
         if not student:
             student = Student(
@@ -108,7 +108,7 @@ def test_authenticated_user_vote():
             db.session.add(student)
             db.session.commit()
 
-        # Ensure user
+        # Setup User
         user = User.query.filter_by(Username=username).first()
         if not user:
             user = User(
@@ -123,43 +123,45 @@ def test_authenticated_user_vote():
 
         user_id = user.UserId
 
-        # Ensure CCA and membership
+        # Setup CCA
         cca = CCA.query.get(7)
         if not cca:
             cca = CCA(CCAId=7, Name="Test CCA", Description="For Poll")
             db.session.add(cca)
             db.session.commit()
 
+        # Ensure CCA membership
         if not CCAMembers.query.filter_by(UserId=user_id, CCAId=cca.CCAId).first():
             db.session.add(CCAMembers(UserId=user_id, CCAId=cca.CCAId, CCARole="member"))
             db.session.commit()
 
-        # Ensure poll option exists
+        # Get a valid option
         option = PollOption.query.filter_by(PollId=poll_id).first()
         assert option is not None, f"No option found for poll {poll_id}"
-        option_id = option.OptionId  # ✅ Corrected here
+        option_id = option.OptionId
 
-        # Remove any previous vote
+        # Clear previous votes
         PollVote.query.filter_by(UserId=user_id, PollId=poll_id).delete()
         db.session.commit()
 
-    # Simulate login and MFA and vote
+    # Login and vote via POST
     with app.test_client() as client:
         login_response = client.post("/login", data={"username": username, "password": password}, follow_redirects=True)
-        assert login_response.status_code == 200
+        assert b"dashboard" in login_response.data.lower()
 
         with client.session_transaction() as sess:
             sess["user_id"] = user_id
             sess["role"] = "student"
-            sess["mfa_authenticated"] = True  # ✅ Bypass MFA in test
+            sess["mfa_authenticated"] = True
 
-        vote_response = client.post(
-            f"/poll/{poll_id}/vote",
-            data={"selected_option": option_id},
-            follow_redirects=True
-        )
-        assert vote_response.status_code == 200
-        assert b"thank you for voting" in vote_response.data.lower() or b"already voted" in vote_response.data.lower()
+        vote_response = client.post(f"/poll/{poll_id}/vote", data={"option": str(option_id)}, follow_redirects=True)
+        assert b"thank you" in vote_response.data.lower() or vote_response.status_code == 200
+
+    # Verify vote was saved
+    with app.app_context():
+        vote = PollVote.query.filter_by(UserId=user_id, PollId=poll_id).first()
+        assert vote is not None, "Vote not found in database"
+        assert vote.OptionId == option_id, "Voted for the wrong option"
 
 
 
