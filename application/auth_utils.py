@@ -4,7 +4,6 @@ from flask import session, redirect, url_for, flash, request
 from application.models import db, User, CCAMembers
 from application.models import LoginLog, db
 from application.models import AdminLog, db
-from datetime import datetime, timedelta
 
 # ───────────────────────────────────────────────────────────
 def _mfa_guard():
@@ -116,24 +115,3 @@ def log_admin_action(admin_user_id, action_desc):
     )
     db.session.add(log)
     db.session.commit()
-
-
-    from datetime import datetime, timedelta
-
-from datetime import datetime, timedelta
-
-def convert_utc_to_gmt8_display(utc_datetime):
-    """Convert UTC datetime (string or datetime) to GMT+8 for display purposes"""
-    if isinstance(utc_datetime, str):
-        try:
-            # Try to parse the string to a datetime object (assuming UTC format)
-            utc_datetime = datetime.strptime(utc_datetime, '%Y-%m-%d %H:%M:%S')  # Adjust the format as needed
-        except ValueError:
-            return 'Invalid Date Format'
-    
-    if isinstance(utc_datetime, datetime):
-        # Add 8 hours to convert UTC to GMT+8
-        gmt8_datetime = utc_datetime + timedelta(hours=8)
-        return gmt8_datetime.strftime('%Y-%m-%d %H:%M')
-    
-    return str(utc_datetime) if utc_datetime else 'N/A'
