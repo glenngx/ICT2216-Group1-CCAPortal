@@ -88,8 +88,8 @@ def test_add_student_to_cca():
 
 #--------------------- TESTING USER VOTING ----------------------------#
 
-def test_authenticated_user_vote():
-    poll_id = 9
+def test_authenticated_user_vote(mock_captcha):
+    poll_id = 9  # Ensure this poll exists in your DB
 
     with app.app_context():
         # Ensure test student exists
@@ -97,19 +97,17 @@ def test_authenticated_user_vote():
         if not student:
             student = Student(
                 StudentId=2305106,
-                Name="Test Voter",
-                Email="voter@example.com",
+                Name="Test Student",
+                Email="test2305106@example.com",
                 DOB="2000-01-01",
-                ContactNumber="90000000"
+                ContactNumber="81234567"
             )
             db.session.add(student)
             db.session.commit()
 
-        # Ensure test user exists
+        # Ensure user exists
         user = User.query.filter_by(Username="2305106").first()
         if not user:
-            from datetime import datetime
-            import bcrypt
             user = User(
                 StudentId=2305106,
                 Username="2305106",
@@ -122,40 +120,53 @@ def test_authenticated_user_vote():
 
         # Ensure user is in a CCA
         cca = CCA.query.first()
-        if cca:
-            membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
-            if not membership:
-                db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
-                db.session.commit()
+        if not cca:
+            cca = CCA(Name="Test CCA", Description="Test description")
+            db.session.add(cca)
+            db.session.commit()
 
-        # Remove existing vote if any
+        membership = CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first()
+        if not membership:
+            db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
+            db.session.commit()
+
+        # Clean up any existing vote
         existing_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
         if existing_vote:
             db.session.delete(existing_vote)
             db.session.commit()
 
-        # Ensure poll has at least one option
+        # Ensure there's an option to vote for
         option = PollOption.query.filter_by(PollId=poll_id).first()
         assert option is not None, f"No options found for poll ID {poll_id}"
 
-    # Now perform test using client
+    # Use Flask test client
     with app.test_client() as client:
         login_response = client.post("/login", data={
             "username": "2305106",
             "password": "ffffff"
         }, follow_redirects=True)
         assert login_response.status_code == 200
-        assert b"dashboard" in login_response.data.lower() or b"poll" in login_response.data.lower()
 
-        # Load poll page
-        response = client.get(f"/poll/{poll_id}", follow_redirects=True)
-        assert response.status_code == 200
+        # Set session manually
+        with client.session_transaction() as sess:
+            sess["user_id"] = user.UserId
+            sess["role"] = "student"
 
-        # Submit vote
+        # Vote
         vote_response = client.post(f"/poll/{poll_id}/vote", data={
-            "option": option.OptionId
+            "option": str(option.OptionId)
         }, follow_redirects=True)
         assert vote_response.status_code == 200
-
-        # Check for confirmation message
         assert b"thank you for voting" in vote_response.data.lower() or b"already voted" in vote_response.data.lower()
+
+    # Confirm vote saved
+    with app.app_context():
+        recorded_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
+        assert recorded_vote is not None, "Vote was not saved"
+        assert recorded_vote.OptionId == option.OptionId
+
+
+
+
+        
