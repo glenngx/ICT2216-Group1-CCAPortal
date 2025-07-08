@@ -8,8 +8,6 @@ from application.auth_utils import log_admin_action
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
 
-from application.auth_utils import log_admin_action, convert_utc_to_gmt8_display  # Import the function
-
 
 # registration function for admin routes
 def register_admin_routes(app, get_db_connection, validate_student_id):
@@ -905,11 +903,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             key=lambda x: x[1].Timestamp,
             reverse=True
         )
-
-        # Convert all log timestamps to GMT+8
-        for log_type, log, user in logs:
-            log.Timestamp = convert_utc_to_gmt8_display(log.Timestamp)  # Convert to GMT+8
-
 
         # Pass the counts and logs to the template
         return render_template('admin_logs.html', 
