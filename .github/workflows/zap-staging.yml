@@ -2,8 +2,8 @@ name: ZAP Full Scan Pre-Deployment (Local Flask)
 
 on:
   push:
-      branches:
-        - main
+    branches:
+      - main
   workflow_dispatch:
 
 env:
@@ -12,7 +12,7 @@ env:
 jobs:
   zap_fullscan:
     runs-on: ubuntu-latest
-    environment: staging 
+    environment: staging
 
     steps:
       - name: Checkout source code
@@ -36,15 +36,15 @@ jobs:
       - name: Wait for Flask app to respond on port $FLASK_PORT
         run: |
           echo "Waiting for Flask app to respond on port $FLASK_PORT..."
-          for i in {1..15}; do
+          for i in {1..20}; do
             sleep 5
-            if curl -sI http://localhost:$FLASK_PORT; then
+            if curl -sI http://localhost:$FLASK_PORT || curl -sI http://127.0.0.1:$FLASK_PORT; then
               echo "Flask is ready!"
               exit 0
             fi
-            echo "Flask not ready yet... retrying ($i/15)"
+            echo "Flask not ready yet... retrying ($i/20)"
           done
-          echo "Flask failed to start"
+          echo "Flask failed to start in time"
           docker ps
           docker logs ccap-flask-app || true
           exit 1
@@ -57,3 +57,9 @@ jobs:
           target: 'http://localhost:5000'
           cmd_options: '-a'
           artifact_name: zap-fullscan-flask-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload ZAP Full Scan HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-fullscan-flask-${{ github.run_id }}-${{ github.run_attempt }}
+          path: report_html.html
