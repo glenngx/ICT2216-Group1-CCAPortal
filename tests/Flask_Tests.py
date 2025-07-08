@@ -159,7 +159,7 @@ def test_authenticated_user_vote():
 
         # Vote submission
         vote_response = client.post(f"/poll/{poll_id}/vote", data={"option": str(option_id)}, follow_redirects=True)
-        print("▶ VOTE RESPONSE:", vote_response.data.deco_
+        print("▶ VOTE RESPONSE:", vote_response.data.decode()[:1000])  # debug
 
 
 # def test_authenticated_user_vote():
