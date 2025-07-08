@@ -118,7 +118,7 @@ def test_authenticated_user_vote():
             db.session.add(user)
             db.session.commit()
 
-        # Ensure CCA
+        # Ensure CCA exists
         cca = CCA.query.first()
         if not cca:
             cca = CCA(Name="Test CCA", Description="Test CCA for voting")
@@ -130,23 +130,25 @@ def test_authenticated_user_vote():
             db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
             db.session.commit()
 
-        # Ensure vote option exists
+        # Ensure a poll option exists
         option = PollOption.query.filter_by(PollId=poll_id).first()
         assert option is not None, f"No options found for poll ID {poll_id}"
 
-        # Clean previous vote
+        # Delete any previous vote for clean testing
         prev_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
         if prev_vote:
             db.session.delete(prev_vote)
             db.session.commit()
 
-    # Vote using client
+    # Flask test client
     with app.test_client() as client:
+        # Login
         client.post("/login", data={"username": "2305106", "password": "ffffff"}, follow_redirects=True)
 
+        # Re-fetch fresh user inside the session context
         with client.session_transaction() as sess:
             fresh_user = User.query.filter_by(Username="2305106").first()
-            sess["user_id"] = user.UserId
+            sess["user_id"] = fresh_user.UserId
             sess["role"] = "student"
 
         # Cast vote
@@ -157,24 +159,13 @@ def test_authenticated_user_vote():
         assert vote_response.status_code == 200
         assert b"thank you for voting" in vote_response.data.lower() or b"already voted" in vote_response.data.lower()
 
-    # Manually force DB check and commit if needed
+    # Confirm vote saved
     with app.app_context():
-        final_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
+        vote_record = PollVote.query.filter_by(UserId=fresh_user.UserId, PollId=poll_id).first()
+        assert vote_record is not None, "Vote was not saved"
+        assert vote_record.OptionId == option.OptionId
 
-        if not final_vote:
-            # Route didn't commit — insert manually
-            final_vote = PollVote(
-                PollId=poll_id,
-                UserId=user.UserId,
-                OptionId=option.OptionId,
-                VotedTime=datetime.utcnow()
-            )
-            db.session.add(final_vote)
-            db.session.commit()
-            print("⚠️ Manually committed vote due to missing commit in Flask route")
-
-        assert final_vote.OptionId == option.OptionId
-        print(f"🗳️ Saved Vote — PollId: {poll_id}, OptionId: {option.OptionId}, UserId: {user.UserId}")
+        print(f"✅ Saved Vote: PollId={poll_id}, OptionId={option.OptionId}, UserId={fresh_user.UserId}")
 
 
 # def test_authenticated_user_vote():
