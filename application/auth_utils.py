@@ -115,3 +115,14 @@ def log_admin_action(admin_user_id, action_desc):
     )
     db.session.add(log)
     db.session.commit()
+
+
+    from datetime import datetime, timedelta
+
+def convert_utc_to_gmt8_display(utc_datetime):
+    """Convert UTC datetime to GMT+8 for display purposes"""
+    if utc_datetime and isinstance(utc_datetime, datetime):
+        # Add 8 hours to convert UTC to GMT+8
+        gmt8_datetime = utc_datetime + timedelta(hours=8)
+        return gmt8_datetime.strftime('%Y-%m-%d %H:%M')
+    return str(utc_datetime) if utc_datetime else 'N/A'
