@@ -33,21 +33,21 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
+      - name: Debug - Show Current Directory
+        run: ls -lah
+
       - name: Create config.py with encoded connection string
         run: |
-          cat <<EOF > config.py
-          import os
-          import urllib.parse
-
-          class Config:
-              raw_odbc = os.getenv("DB_CONN_STRING")
-              if not raw_odbc:
-                  raise ValueError("❌ Missing DB_CONN_STRING")
-
-              SQLALCHEMY_DATABASE_URI = "mssql+pyodbc:///?odbc_connect=" + urllib.parse.quote_plus(raw_odbc)
-              SQLALCHEMY_TRACK_MODIFICATIONS = False
-              SECRET_KEY = os.getenv("SECRET_KEY", "fallback")
-          EOF
+          echo 'import os' > config.py
+          echo 'import urllib.parse' >> config.py
+          echo '' >> config.py
+          echo 'class Config:' >> config.py
+          echo '    raw_odbc = os.getenv("DB_CONN_STRING")' >> config.py
+          echo '    if not raw_odbc:' >> config.py
+          echo '        raise ValueError("❌ Missing DB_CONN_STRING")' >> config.py
+          echo '    SQLALCHEMY_DATABASE_URI = "mssql+pyodbc:///?odbc_connect=" + urllib.parse.quote_plus(raw_odbc)' >> config.py
+          echo '    SQLALCHEMY_TRACK_MODIFICATIONS = False' >> config.py
+          echo '    SECRET_KEY = os.getenv("SECRET_KEY", "fallback")' >> config.py
 
       - name: Install Python Dependencies
         run: |
@@ -57,8 +57,13 @@ jobs:
 
       - name: Start Flask App
         run: |
-          nohup python app.py &
+          nohup python app.py > nohup.out 2>&1 &
           sleep 5
+
+      - name: Check Flask Logs After Start
+        run: |
+          echo "==== Flask Log (nohup.out) ===="
+          cat nohup.out || echo "No nohup.out file found"
 
       - name: Wait for Flask to respond
         run: |
@@ -68,9 +73,9 @@ jobs:
           done
 
       - name: Run Unit Tests
-        run: pytest tests/test_login.py
+        run: pytest -v --capture=tee-sys tests/test_login.py
 
-      - name: Check Flask Logs
+      - name: Check Flask Logs After Tests
         if: always()
         run: |
           echo "==== Flask Log (nohup.out) ===="
