@@ -38,40 +38,14 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
-      - name: Create secure config.py from secrets
+      - name: Create secure config.py from secret
         run: |
-          cat <<'EOF' > config.py
+          cat <<EOF > config.py
           import os
-
           class Config:
-              DB_SERVER = os.getenv("DB_SERVER")
-              DB_NAME = os.getenv("DB_NAME")
-              DB_USER = os.getenv("DB_USER")
-              DB_PASSWORD = os.getenv("DB_PASSWORD")
-              SECRET_KEY = os.getenv("SECRET_KEY")
-
-              # Identify missing environment variables
-              missing_vars = []
-              if not DB_SERVER:
-                  missing_vars.append("DB_SERVER")
-              if not DB_NAME:
-                  missing_vars.append("DB_NAME")
-              if not DB_USER:
-                  missing_vars.append("DB_USER")
-              if not DB_PASSWORD:
-                  missing_vars.append("DB_PASSWORD")
-              if not SECRET_KEY:
-                  missing_vars.append("SECRET_KEY")
-
-              if missing_vars:
-                  raise ValueError(f"❌ Missing environment variables: {', '.join(missing_vars)}")
-
-              SQLALCHEMY_DATABASE_URI = (
-                  f"mssql+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_SERVER}/{DB_NAME}"
-                  f"?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=yes"
-              )
-
+              SQLALCHEMY_DATABASE_URI = "mssql+pyodbc://${{ secrets.DB_CONN_STRING }}"
               SQLALCHEMY_TRACK_MODIFICATIONS = False
+              SECRET_KEY = os.getenv("SECRET_KEY", "default-test-key")
           EOF
 
       - name: Install Python Dependencies
