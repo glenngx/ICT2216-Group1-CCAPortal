@@ -89,7 +89,7 @@ def test_add_student_to_cca():
 #--------------------- TESTING USER VOTING ----------------------------#
 
 def test_authenticated_user_vote():
-    poll_id = 9  # Your known valid poll
+    poll_id = 9  # Replace with a valid poll ID that exists in your DB
     student_id = 2305106
     username = "2305106"
     password = "ffffff"
@@ -110,7 +110,6 @@ def test_authenticated_user_vote():
 
         # Ensure user exists
         user = User.query.filter_by(Username=username).first()
-        user_id = user.UserId
         if not user:
             user = User(
                 StudentId=student_id,
@@ -122,6 +121,9 @@ def test_authenticated_user_vote():
             db.session.add(user)
             db.session.commit()
 
+        # ✅ Avoid DetachedInstanceError
+        user_id = user.UserId
+
         # Ensure CCA and membership
         cca = CCA.query.get(7)
         if not cca:
@@ -129,45 +131,35 @@ def test_authenticated_user_vote():
             db.session.add(cca)
             db.session.commit()
 
-        if not CCAMembers.query.filter_by(UserId=user.UserId, CCAId=cca.CCAId).first():
-            db.session.add(CCAMembers(UserId=user.UserId, CCAId=cca.CCAId, CCARole="member"))
+        if not CCAMembers.query.filter_by(UserId=user_id, CCAId=cca.CCAId).first():
+            db.session.add(CCAMembers(UserId=user_id, CCAId=cca.CCAId, CCARole="member"))
             db.session.commit()
 
-        # Ensure poll option
+        # Ensure poll option exists
         option = PollOption.query.filter_by(PollId=poll_id).first()
         assert option is not None, f"No option found for poll {poll_id}"
+        option_id = option.OptionId
 
         # Remove any previous vote
-        PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).delete()
+        PollVote.query.filter_by(UserId=user_id, PollId=poll_id).delete()
         db.session.commit()
 
     # Simulate login and vote
     with app.test_client() as client:
-        client.post("/login", data={"username": username, "password": password}, follow_redirects=True)
+        login_response = client.post("/login", data={"username": username, "password": password}, follow_redirects=True)
+        assert login_response.status_code == 200
+
         with client.session_transaction() as sess:
-            sess["user_id"] = user.UserId
+            sess["user_id"] = user_id
             sess["role"] = "student"
 
-        # Cast vote
-        client.post(f"/poll/{poll_id}/vote", data={"option": str(option.OptionId)}, follow_redirects=True)
-
-    # Manually override vote if needed
-    with app.app_context():
-        recorded_vote = PollVote.query.filter_by(UserId=user.UserId, PollId=poll_id).first()
-
-        if not recorded_vote:
-            print("⚠️ Vote not saved by Flask route. Inserting manually...")
-            recorded_vote = PollVote(
-                PollId=poll_id,
-                UserId=user.UserId,
-                OptionId=option.OptionId,
-                VotedTime=datetime.utcnow()
-            )
-            db.session.add(recorded_vote)
-            db.session.commit()
-
-        assert recorded_vote.UserId == user.UserId
-        print(f"✅ Vote saved for correct user: UserId={user.UserId}, OptionId={option.OptionId}, PollId={poll_id}")
+        vote_response = client.post(
+            f"/poll/{poll_id}/vote",
+            data={"selected_option": option_id},
+            follow_redirects=True
+        )
+        assert vote_response.status_code == 200
+        assert b"Thank you for voting" in vote_response.data or b"already voted" in vote_response.data
 
 
 # def test_authenticated_user_vote():
