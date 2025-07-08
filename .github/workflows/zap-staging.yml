@@ -57,9 +57,3 @@ jobs:
           target: 'http://localhost:5000'
           cmd_options: '-a'
           artifact_name: zap-fullscan-flask-${{ github.run_id }}-${{ github.run_attempt }}
-
-      - name: Upload ZAP Full Scan HTML Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-fullscan-flask-${{ github.run_id }}-${{ github.run_attempt }}
-          path: report_html.html
