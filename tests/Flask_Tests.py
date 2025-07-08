@@ -4,6 +4,7 @@ import bcrypt
 from sqlalchemy import text
 from datetime import datetime
 import hashlib
+from flask_session import Session
 
 #--------------------- TESTING USER LOGIN WITH VALID AND INVALID CREDENTIALS ----------------------------#
 
