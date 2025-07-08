@@ -5,8 +5,6 @@ from application.models import db, User, CCAMembers
 from application.models import LoginLog, db
 from application.models import AdminLog, db
 
-
-
 # ───────────────────────────────────────────────────────────
 def _mfa_guard():
     """Redirect to /mfa-verify if this session skipped MFA."""
@@ -61,8 +59,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-
-
 # ───────────────────────────────────────────────────────────
 def moderator_required(f):
     @wraps(f)
@@ -98,8 +94,7 @@ def moderator_required(f):
         return f(*args, **kwargs)
     return decorated
 
-
-
+# ───────────────────────────────────────────────────────────
 def log_login_attempt(username, user_id, success, reason=None):
     log = LoginLog(
         Username=username,
@@ -111,8 +106,7 @@ def log_login_attempt(username, user_id, success, reason=None):
     db.session.add(log)
     db.session.commit()
 
-
-
+# ───────────────────────────────────────────────────────────
 def log_admin_action(admin_user_id, action_desc):
     log = AdminLog(
         AdminUserId=admin_user_id,
