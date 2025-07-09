@@ -316,6 +316,10 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 if os.getenv("TESTING") == "1":
                     session['mfa_authenticated'] = True
                     return redirect(url_for('student_routes.dashboard'))
+
+                # Check MFA requirement
+                mfa_user = User.query.filter_by(UserId=user['user_id']).first()
+                session.pop('mfa_authenticated', None)
                 
                 # MFA enforcement
                 if mfa_user and mfa_user.MFATOTPSecret:
