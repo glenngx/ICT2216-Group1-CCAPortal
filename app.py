@@ -26,8 +26,9 @@ from application.models import db
 
 app = Flask(__name__)
 
-app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "fallback-secret")
-app.config['SECRET_KEY'] = app.secret_key
+fallback_secret = os.environ.get("SECRET_KEY", "fallback-secret")
+app.secret_key = fallback_secret
+app.config['SECRET_KEY'] = fallback_secret
 
 # ✅ Try loading config and overwriting with config.Config if available
 try:
@@ -44,7 +45,8 @@ try:
 except Exception as e:
     print(f"⚠️ Config loading failed: {e}")
     # app.secret_key already has a fallback
-    
+Session(app)
+
 # \*\ Added for Captcha
 # 2️⃣  NEW  — make the key available in every template on every render
 @app.context_processor
