@@ -101,8 +101,10 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/dashboard')
     @login_required_with_mfa
     def dashboard():
-        if not session.get("mfa_authenticated") and os.getenv("TESTING") != "1":
-            return redirect(url_for("misc_routes.mfa_verify"))
+        if os.getenv("TESTING") == "1":
+            session['mfa_authenticated'] = True
+        elif not session.get("mfa_authenticated"):
+            return redirect(url_for("misc_routes.mfa_verify")
     
         if session.get('role') == 'admin':
             return redirect(url_for('admin_routes.admin_dashboard'))
