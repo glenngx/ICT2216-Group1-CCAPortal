@@ -126,7 +126,13 @@ def register_student_routes(app, get_db_connection, login_required):
             user = User.query.filter_by(UserId=session['user_id']).first()
             days_left = None
             if user and user.PasswordLastSet:
-                days_since = (datetime.now(timezone.utc) - user.PasswordLastSet).days
+                # Make sure both datetimes are timezone-aware for comparison
+                password_last_set = user.PasswordLastSet
+                if password_last_set.tzinfo is None:
+                    # If database datetime is naive, assume it's UTC
+                    password_last_set = password_last_set.replace(tzinfo=timezone.utc)
+                
+                days_since = (datetime.now(timezone.utc) - password_last_set).days
                 days_left = 365 - days_since
 
             # \*\ Ended for password expiration
