@@ -4,6 +4,12 @@ import bcrypt
 from sqlalchemy import text
 from datetime import datetime
 import hashlib
+import os
+from config import Config
+
+# Ensure SECRET_KEY fallback
+if not app.config.get("SECRET_KEY"):
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "fallback-secret")
 
 #--------------------- TESTING USER LOGIN WITH VALID AND INVALID CREDENTIALS ----------------------------#
 

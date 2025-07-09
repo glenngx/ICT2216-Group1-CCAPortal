@@ -343,9 +343,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             else:
                 flash('Invalid username or password.', 'error')
                 
-                return render_template('login.html')
+                return render_template('login.html', testing=(os.getenv("TESTING") == "1"))
         
-        return render_template('login.html')
+        return render_template('login.html', testing=(os.getenv("TESTING") == "1"))
     
     @misc_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
     def reset_password(token):
