@@ -30,21 +30,20 @@ fallback_secret = os.environ.get("SECRET_KEY", "fallback-secret")
 app.secret_key = fallback_secret
 app.config['SECRET_KEY'] = fallback_secret
 
-# ✅ Try loading config and overwriting with config.Config if available
-try:
-    from config import Config
-    app.config.from_object(Config)
+# ✅ Load full config before initializing Session
+from config import Config
+app.config.from_object(Config)
 
-    # If config overrides SECRET_KEY, update it
-    if getattr(Config, "SECRET_KEY", None):
-        app.secret_key = Config.SECRET_KEY
-        app.config['SECRET_KEY'] = Config.SECRET_KEY
+# If Config had a better SECRET_KEY, override
+if getattr(Config, "SECRET_KEY", None):
+    app.secret_key = Config.SECRET_KEY
+    app.config["SECRET_KEY"] = Config.SECRET_KEY
 
-    print("✅ Configuration loaded from config.Config object")
-    email_service.init_app(app)  # Initialize email service
-except Exception as e:
-    print(f"⚠️ Config loading failed: {e}")
-    # app.secret_key already has a fallback
+# ✅ Session config must be present here
+print("✅ Configuration loaded from config.Config object")
+email_service.init_app(app)
+
+# ✅ Only now is it safe to call Session(app)
 Session(app)
 
 # \*\ Added for Captcha
