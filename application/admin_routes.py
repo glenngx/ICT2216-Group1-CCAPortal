@@ -20,33 +20,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     def admin_dashboard():
         try:
             # Get all CCAs
-            #SQL refactoring
-            # cursor.execute("SELECT CCAId, Name, Description FROM CCA ORDER BY Name")
-            # all_ccas = cursor.fetchall()
             all_ccas = CCA.query.order_by(CCA.Name).all()
             # Retrieves all CCAs, ordered by name.
             log_admin_action(session["user_id"], "Admin login successful")
             # Get all students
-            #SQL refactoring
-            # cursor.execute("SELECT StudentId, Name, Email FROM v_ActiveStudents ORDER BY Name")
-            # all_students = cursor.fetchall()
             all_students = Student.query.order_by(Student.Name).all()
             # Retrieves all students, ordered by name.
             
             # Get CCA memberships with details
-            #SQL refactoring
-            # membership_query = """
-            # SELECT s.Name as StudentName, c.Name as CCAName, cm.CCARole, 
-            #     s.StudentId, c.CCAId, cm.MemberId
-            # FROM CCAMembers cm
-            # INNER JOIN Student s ON cm.UserId IN (
-            #     SELECT UserId FROM UserDetails WHERE StudentId = s.StudentId
-            # )
-            # INNER JOIN CCA c ON cm.CCAId = c.CCAId
-            # ORDER BY c.Name, s.Name
-            # """
-            # cursor.execute(membership_query)
-            # memberships = cursor.fetchall()
             memberships = db.session.query(
                 Student.Name.label('StudentName'),
                 CCA.Name.label('CCAName'),
@@ -58,16 +39,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             # Joins CCA, CCAMembers, User, and Student to retrieve membership details.
 
             # Get students who need password setup (Password is NULL)
-            #SQL refactoring
-            # password_setup_query = """
-            # SELECT s.StudentId, s.Name, s.Email
-            # FROM Student s
-            # INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
-            # WHERE ud.Password IS NULL
-            # ORDER BY s.Name
-            # """
-            # cursor.execute(password_setup_query)
-            # students_needing_password_setup = cursor.fetchall()
             students_needing_password_setup = db.session.query(
                 Student.StudentId, Student.Name, Student.Email
             ).join(User).filter(User.Password == None).order_by(Student.Name).all()
@@ -116,9 +87,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                     return redirect(url_for('student_routes.dashboard'))
             
                 # Check if student exists
-                #SQL refactoring
-                # cursor.execute("SELECT StudentId, Name, Email FROM Student WHERE StudentId = ?", (int(student_id),))
-                # student_record = cursor.fetchone()
                 student_record = Student.query.filter_by(StudentId=int(student_id)).first()
                 # Finds a student by their student ID.
                 
@@ -128,9 +96,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                     return render_template('create_student.html')
                 
                 # Check if student already has a registered account
-                #SQL refactoring
-                # cursor.execute("SELECT UserId FROM UserDetails WHERE StudentId = ?", (int(student_id),))
-                # existing_account = cursor.fetchone()
                 existing_account = User.query.filter_by(StudentId=int(student_id)).first()
                 # Checks if a user account already exists for the given student ID.
                 
@@ -140,11 +105,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                     return render_template('create_student.html')
                 
                 # Create account with NULL password, student will set via email link
-                #SQL refactoring
-                # cursor.execute("""
-                #     INSERT INTO UserDetails (Username, StudentId, Password, SystemRole)
-                #     VALUES (?, ?, NULL, 'student')
-                # """, (int(student_id), int(student_id)))
                 new_user = User(Username=student_id, StudentId=int(student_id), Password=None, SystemRole='student')
                 db.session.add(new_user)
                 db.session.commit()
@@ -221,11 +181,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                     return redirect(url_for('student_routes.dashboard'))
             
                 # Check if CCA name already exists
-                #SQL refactoring
-                # cursor.execute("SELECT CCAId FROM CCA WHERE Name = ?", (name,))
-                # if cursor.fetchone():
-                #     flash('CCA name already exists.', 'error')
-                #     return render_template('create_cca.html')
                 if CCA.query.filter_by(Name=name).first():
                     flash('CCA name already exists.', 'error')
                     log_admin_action(session["user_id"],'CCA name already exists.')
@@ -233,11 +188,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 # Checks if a CCA with the given name already exists.
                 
                 # Insert new CCA
-                #SQL refactoring
-                # cursor.execute("""
-                #     INSERT INTO CCA (Name, Description)
-                #     VALUES (?, ?)
-                # """, (name, description or ''))
                 new_cca = CCA(Name=name, Description=description or '')
                 db.session.add(new_cca)
                 db.session.commit()
@@ -273,9 +223,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 return redirect(url_for('student_routes.dashboard'))
             
             # Get CCA details
-            #SQL refactoring
-            # cursor.execute("SELECT CCAId, Name, Description FROM CCA WHERE CCAId = ?", (cca_id,))
-            # cca = cursor.fetchone()
             cca = CCA.query.get(cca_id)
             # Retrieves a CCA by its primary key.
             
@@ -285,35 +232,12 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 return redirect(url_for('admin_routes.admin_dashboard'))
             
             # Get CCA members
-            #SQL refactoring
-            # members_query = """
-            # SELECT s.StudentId, s.Name, s.Email, cm.CCARole, cm.MemberId, ud.UserId
-            # FROM CCAMembers cm
-            # INNER JOIN v_ActiveUserDetails ud ON cm.UserId = ud.UserId
-            # INNER JOIN v_ActiveStudents s ON ud.StudentId = s.StudentId
-            # WHERE cm.CCAId = ?
-            # ORDER BY s.Name
-            # """
-            # cursor.execute(members_query, (cca_id,))
-            # members = cursor.fetchall()
             members = db.session.query(
                 Student.StudentId, Student.Name, Student.Email, CCAMembers.CCARole, CCAMembers.MemberId, User.UserId
             ).join(User, CCAMembers.UserId == User.UserId).join(Student).filter(CCAMembers.CCAId == cca_id).order_by(Student.Name).all()
             # Retrieves all members of a specific CCA.
             
             # Get all students not in this CCA (for assignment)
-            #SQL refactoring
-            # not_in_cca_query = """
-            # SELECT s.StudentId, s.Name
-            # FROM v_ActiveStudents s
-            # INNER JOIN v_ActiveUserDetails ud ON s.StudentId = ud.StudentId
-            # WHERE ud.UserId NOT IN (
-            #     SELECT UserId FROM CCAMembers WHERE CCAId = ?
-            # )
-            # ORDER BY s.Name
-            # """
-            # cursor.execute(not_in_cca_query, (cca_id,))
-            # available_students = cursor.fetchall()
             subquery = db.session.query(CCAMembers.UserId).filter(CCAMembers.CCAId == cca_id)
             available_students = db.session.query(Student.StudentId, Student.Name).join(User).filter(User.UserId.notin_(subquery)).order_by(Student.Name).all()
             # Finds students who are not members of the current CCA.
@@ -355,11 +279,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 return redirect(url_for('student_routes.dashboard'))
             
             # Check if new name conflicts with existing CCAs (excluding current one)
-            #SQL refactoring
-            # cursor.execute("SELECT CCAId FROM CCA WHERE Name = ? AND CCAId != ?", (name, cca_id))
-            # if cursor.fetchone():
-            #     flash('CCA name already exists.', 'error')
-            #     return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             if CCA.query.filter(CCA.Name == name, CCA.CCAId != cca_id).first():
                 flash('CCA name already exists.', 'error')
                 log_admin_action(session["user_id"],'CCA name already exists.')
@@ -367,12 +286,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             # Checks for CCA name conflicts, excluding the current CCA.
             
             # Update CCA
-            #SQL refactoring
-            # cursor.execute("""
-            #     UPDATE CCA 
-            #     SET Name = ?, Description = ?
-            #     WHERE CCAId = ?
-            # """, (name, description, cca_id))
             cca_to_update = CCA.query.get(cca_id)
             cca_to_update.Name = name
             cca_to_update.Description = description
@@ -414,9 +327,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            #SQL refactoring
-            # cursor.execute("SELECT UserId FROM v_ActiveUserDetails WHERE StudentId = ?", (int(student_id),))
-            # user_result = cursor.fetchone()
             user_result = User.query.filter_by(StudentId=int(student_id)).first()
             # Finds a user by their student ID.
 
@@ -427,11 +337,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             user_id = user_result.UserId
             
-            #SQL refactoring
-            # cursor.execute("""
-            #     INSERT INTO CCAMembers (UserId, CCAId, CCARole)
-            #     VALUES (?, ?, ?)
-            # """, (user_id, cca_id, role))
             new_member = CCAMembers(UserId=user_id, CCAId=cca_id, CCARole=role)
             db.session.add(new_member)
             db.session.commit()
@@ -462,8 +367,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            #SQL refactoring
-            # cursor.execute("DELETE FROM CCAMembers WHERE MemberId = ? AND CCAId = ?", (member_id, cca_id))
             CCAMembers.query.filter_by(MemberId=member_id, CCAId=cca_id).delete()
             db.session.commit()
             # \*\ Added for logging
@@ -495,9 +398,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            #SQL refactoring
-            # cursor.execute("SELECT Name FROM CCA WHERE CCAId = ?", (cca_id,))
-            # cca_result = cursor.fetchone()
             cca_result = CCA.query.get(cca_id)
             # Retrieves a CCA by its primary key.
 
@@ -508,29 +408,19 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             cca_name = cca_result.Name
             
-            #SQL refactoring
-            # cursor.execute("DELETE FROM CCAMembers WHERE CCAId = ?", (cca_id,))
             CCAMembers.query.filter_by(CCAId=cca_id).delete()
             # Deletes all memberships for a given CCA.
 
-            #SQL refactoring
-            # cursor.execute("DELETE FROM Votes WHERE PollId IN (SELECT PollId FROM Poll WHERE CCAId = ?)", (cca_id,))
             poll_ids = [p.PollId for p in Poll.query.filter_by(CCAId=cca_id).all()]
             PollVote.query.filter(PollVote.PollId.in_(poll_ids)).delete(synchronize_session=False)
             # Deletes all votes for polls associated with the CCA.
 
-            #SQL refactoring
-            # cursor.execute("DELETE FROM Options WHERE PollId IN (SELECT PollId FROM Poll WHERE CCAId = ?)", (cca_id,))
             PollOption.query.filter(PollOption.PollId.in_(poll_ids)).delete(synchronize_session=False)
             # Deletes all options for polls associated with the CCA.
 
-            #SQL refactoring
-            # cursor.execute("DELETE FROM Poll WHERE CCAId = ?", (cca_id,))
             Poll.query.filter_by(CCAId=cca_id).delete()
             # Deletes all polls for a given CCA.
 
-            #SQL refactoring
-            # cursor.execute("DELETE FROM CCA WHERE CCAId = ?", (cca_id,))
             CCA.query.filter_by(CCAId=cca_id).delete()
             # Deletes the CCA itself.
             
@@ -572,21 +462,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 log_admin_action(session["user_id"],f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            #SQL refactoring
-            # search_sql = """
-            # SELECT s.StudentId, s.Name, s.Email
-            # FROM v_ActiveStudents s
-            # INNER JOIN v_ActiveUserDetails ud ON s.StudentId = ud.StudentId
-            # WHERE (s.Name LIKE ? OR CAST(s.StudentId AS VARCHAR) LIKE ?)
-            # AND ud.UserId NOT IN (
-            #     SELECT UserId FROM CCAMembers WHERE CCAId = ?
-            # )
-            # ORDER BY s.Name
-            # """
-            
-            # search_pattern = f'%{search_query}%'
-            # cursor.execute(search_sql, (search_pattern, search_pattern, cca_id))
-            # students = cursor.fetchall()
             search_pattern = f'%{search_query}%'
             subquery = db.session.query(CCAMembers.UserId).filter(CCAMembers.CCAId == cca_id)
             students = db.session.query(Student.StudentId, Student.Name, Student.Email).join(User).filter(
@@ -632,16 +507,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 log_admin_action(session["user_id"],'Access denied.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            #SQL refactoring
-            # placeholders = ','.join(['?' for _ in student_ids])
-            # cursor.execute(f"""
-            #     SELECT ud.UserId, s.StudentId, s.Name 
-            #     FROM v_ActiveUserDetails ud
-            #     INNER JOIN v_ActiveStudents s ON ud.StudentId = s.StudentId
-            #     WHERE s.StudentId IN ({placeholders})
-            # """, student_ids)
-            
-            # user_data = cursor.fetchall()
             user_data = db.session.query(User.UserId, Student.StudentId, Student.Name).join(Student).filter(Student.StudentId.in_(student_ids)).all()
             # Retrieves user and student data for a list of student IDs.
             
@@ -695,15 +560,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 log_admin_action(session["user_id"],"Access denied.")
                 return redirect(url_for('student_routes.dashboard'))
             
-            # Check if student exists and get their details
-            #SQL refactoring
-            # cursor.execute("""
-            #     SELECT s.StudentId, s.Name, s.Email, ud.Password 
-            #     FROM Student s
-            #     INNER JOIN UserDetails ud ON s.StudentId = ud.StudentId
-            #     WHERE s.StudentId = ?
-            # """, (student_id,))
-            # student_record = cursor.fetchone()
             student_record = db.session.query(
                 Student.StudentId, Student.Name, Student.Email, User.Password
             ).join(User).filter(Student.StudentId == student_id).first()
@@ -771,17 +627,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 return redirect(url_for('student_routes.dashboard'))
             
             # Get all CCAs with member counts
-            #SQL refactoring
-            # cursor.execute("""
-            #     SELECT c.CCAId, c.Name, c.Description,
-            #         COUNT(cm.MemberId) as MemberCount,
-            #         COUNT(CASE WHEN cm.CCARole = 'moderator' THEN 1 END) as ModeratorCount
-            #     FROM CCA c
-            #     LEFT JOIN CCAMembers cm ON c.CCAId = cm.CCAId
-            #     GROUP BY c.CCAId, c.Name, c.Description
-            #     ORDER BY c.Name
-            # """)
-            # ccas = cursor.fetchall()
             ccas = db.session.query(
                 CCA.CCAId, CCA.Name, CCA.Description,
                 db.func.count(CCAMembers.MemberId).label('MemberCount'),
@@ -813,36 +658,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 log_admin_action(session["user_id"],'Access denied.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            #SQL refactoring
-            # cursor = conn.cursor()
-            
-            # # Get all polls with CCA info and vote counts
-            # cursor.execute("""
-            #     SELECT p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, 
-            #         p.IsAnonymous, p.LiveIsActive, c.Name as CCAName,
-            #         COUNT(v.VoteId) as VoteCount
-            #     FROM v_Poll_With_LiveStatus p
-            #     INNER JOIN CCA c ON p.CCAId = c.CCAId
-            #     LEFT JOIN Votes v ON p.PollId = v.PollId
-            #     GROUP BY p.PollId, p.Question, p.QuestionType, p.StartDate, p.EndDate, 
-            #             p.IsAnonymous, p.LiveIsActive, c.Name
-            #     ORDER BY p.EndDate DESC, p.StartDate DESC
-            # """)
-            # polls_data = cursor.fetchall()
-            
-            # processed_polls = []
-            # for row in polls_data:
-            #     processed_polls.append({
-            #         'PollId': row[0],
-            #         'Question': row[1],
-            #         'QuestionType': row[2],
-            #         'StartDate': row[3].strftime('%Y-%m-%d %H:%M') if row[3] else 'N/A',
-            #         'EndDate': row[4].strftime('%Y-%m-%d %H:%M') if row[4] else 'N/A',
-            #         'IsAnonymous': row[5],
-            #         'LiveIsActive': row[6],
-            #         'CCAName': row[7],
-            #         'VoteCount': row[8]
-            #     })
             
             polls_data = db.session.query(
                 Poll.PollId,
