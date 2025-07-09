@@ -49,6 +49,7 @@ jobs:
           echo '    SQLALCHEMY_DATABASE_URI = "mssql+pyodbc:///?odbc_connect=" + urllib.parse.quote_plus(raw_odbc)' >> config.py
           echo '    SQLALCHEMY_TRACK_MODIFICATIONS = False' >> config.py
           echo '    SECRET_KEY = os.getenv("SECRET_KEY", "fallback")' >> config.py
+          echo '    SESSION_TYPE = os.getenv("SESSION_TYPE", "sqlalchemy")' >> config.py
 
       - name: Install Python Dependencies
         run: |
