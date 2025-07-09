@@ -431,7 +431,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 'LiveIsActive': poll_data_row[7],
                 'is_ended': is_ended_status
             }
-
+            #test
             #SQL refactoring
             # cursor.execute("""
             #     SELECT o.OptionId, o.OptionText, COUNT(v.VoteId) AS VoteCount
