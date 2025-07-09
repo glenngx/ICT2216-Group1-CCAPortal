@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import secrets
 import hashlib
 import bcrypt
+import os
 from application.misc_routes import validate_password_nist
 from application.auth_utils import login_required_with_mfa
 from application.models import db, User, CCAMembers, Poll, PollOption, PollVote, VoteToken, Student, CCA
@@ -100,6 +101,9 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/dashboard')
     @login_required_with_mfa
     def dashboard():
+        if not session.get("mfa_authenticated") and os.getenv("TESTING") != "1":
+            return redirect(url_for("misc_routes.mfa_verify"))
+    
         if session.get('role') == 'admin':
             return redirect(url_for('admin_routes.admin_dashboard'))
         
