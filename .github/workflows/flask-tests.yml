@@ -74,5 +74,9 @@ jobs:
             curl -s http://localhost:5000/health && break || sleep 3
           done
 
-      - name: Run Unit Tests
-        run: pytest -v --capture=tee-sys tests/Flask_Tests.py
+      - name: Run Login Validation Test
+        run: pytest -v --capture=tee-sys tests/LoginValidation_Test.py
+      - name: Run User Voting Test
+        run: pytest -v --capture=tee-sys tests/AddingUserToCCA_Test.py
+      - name: Run Adding User To CCA Test
+        run: pytest -v --capture=tee-sys tests/UserVoting_Test.py
