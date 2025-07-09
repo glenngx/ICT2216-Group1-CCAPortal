@@ -57,7 +57,7 @@ services:
       - sonarqube_extensions:/opt/sonarqube/extensions
       - sonarqube_logs:/opt/sonarqube/logs
     expose:
-      - "9000"
+      - "9000:9000"
 
   sonarqube-db:
     image: postgres:latest
