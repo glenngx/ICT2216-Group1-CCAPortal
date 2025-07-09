@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, session, flash, Blueprint
 from email_service import email_service
 import bcrypt
+from datetime import datetime, timezone
 from application.auth_utils import admin_required
 from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVote, LoginLog, AdminLog
 from application.auth_utils import log_admin_action
@@ -850,17 +851,31 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 Poll.StartDate,
                 Poll.EndDate,
                 Poll.IsAnonymous,
-                Poll.IsActive.label('LiveIsActive'),
+                Poll.IsActive,
                 CCA.Name.label('CCAName'),
                 db.func.count(PollVote.VoteId).label('VoteCount')
             ).join(CCA).outerjoin(PollVote).group_by(
                 Poll.PollId, Poll.Question, Poll.QuestionType, Poll.StartDate, Poll.EndDate,
-                Poll.IsAnonymous, Poll.IsActive, CCA.Name
-            ).order_by(Poll.EndDate.desc(), Poll.StartDate.desc()).all()
+                Poll.IsAnonymous, Poll.IsActive, CCA.Name            ).order_by(Poll.EndDate.desc(), Poll.StartDate.desc()).all()
             # Retrieves all polls with CCA info and vote counts.
-
+            
             processed_polls = []
             for poll in polls_data:
+                # Calculate live status based on current time and poll end date
+                live_is_active = False
+                if poll.IsActive and poll.EndDate:
+                    # Make sure both datetimes are timezone-aware for comparison
+                    end_date = poll.EndDate
+                    if end_date.tzinfo is None:
+                        # If database datetime is naive, assume it's UTC
+                        end_date = end_date.replace(tzinfo=timezone.utc)
+                    
+                    # Poll is live if it's marked as active AND hasn't ended yet
+                    live_is_active = datetime.now(timezone.utc) <= end_date
+                elif poll.IsActive and not poll.EndDate:
+                    # If no end date is set, use the IsActive flag
+                    live_is_active = poll.IsActive
+                
                 processed_polls.append({
                     'PollId': poll.PollId,
                     'Question': poll.Question,
@@ -868,9 +883,10 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                     'StartDate': poll.StartDate.strftime('%Y-%m-%d %H:%M') if poll.StartDate else 'N/A',
                     'EndDate': poll.EndDate.strftime('%Y-%m-%d %H:%M') if poll.EndDate else 'N/A',
                     'IsAnonymous': poll.IsAnonymous,
-                    'LiveIsActive': poll.LiveIsActive,
+                    'LiveIsActive': live_is_active,  # Use calculated live status
                     'CCAName': poll.CCAName,
-                    'VoteCount': poll.VoteCount                })
+                    'VoteCount': poll.VoteCount
+                })
             
             return render_template('admin_view_all_polls.html', 
                                 polls=processed_polls,
