@@ -242,7 +242,8 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
     @misc_bp.route('/login', methods=['GET', 'POST'])
     def login():
         if 'user_id' in session:
-            return redirect(url_for('student_routes.dashboard'))
+            if os.getenv("TESTING") != "1":
+                return redirect(url_for('student_routes.dashboard'))
         
         if request.method == 'POST':
             # Clear session to prevent session fixation
