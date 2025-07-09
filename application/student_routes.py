@@ -409,7 +409,15 @@ def register_student_routes(app, get_db_connection, login_required):
             end_date_obj = poll_data_row[4]
             start_date_str = start_date_obj.strftime('%Y-%m-%d %H:%M') if isinstance(start_date_obj, datetime) else str(start_date_obj) if start_date_obj else 'N/A'
             end_date_str = end_date_obj.strftime('%Y-%m-%d %H:%M') if isinstance(end_date_obj, datetime) else str(end_date_obj) if end_date_obj else 'N/A'
-            is_ended_status = datetime.now() > end_date_obj if isinstance(end_date_obj, datetime) else False
+            
+            # Calculate if poll has ended, handling timezone-aware vs timezone-naive comparison
+            is_ended_status = False
+            if isinstance(end_date_obj, datetime):
+                # Make sure both datetimes are timezone-aware for comparison
+                if end_date_obj.tzinfo is None:
+                    # If database datetime is naive, assume it's UTC
+                    end_date_obj = end_date_obj.replace(tzinfo=timezone.utc)
+                is_ended_status = datetime.now(timezone.utc) > end_date_obj
             
             poll = {
                 'PollId': poll_data_row[0], 
@@ -634,8 +642,7 @@ def register_student_routes(app, get_db_connection, login_required):
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
                 hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
-                #SQL refactoring
-                # cursor.execute("""
+                #SQL refactoring                # cursor.execute("""
                 #     SELECT IsUsed, ExpiryTime FROM VoteTokens 
                 #     WHERE Token = ? AND PollId = ? AND UserId = ?
                 # """, (hashed_token, poll_id, session['user_id']))
@@ -651,9 +658,15 @@ def register_student_routes(app, get_db_connection, login_required):
                 if is_used:
                     flash('This vote token has already been used.', 'error')
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-                if expiry_time and datetime.now(timezone.utc) > expiry_time:
-                    flash('Your vote token has expired. Please refresh and try again.', 'error')
-                    return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
+                if expiry_time:
+                    # Make sure both datetimes are timezone-aware for comparison
+                    if expiry_time.tzinfo is None:
+                        # If database datetime is naive, assume it's UTC
+                        expiry_time = expiry_time.replace(tzinfo=timezone.utc)
+                    
+                    if datetime.now(timezone.utc) > expiry_time:
+                        flash('Your vote token has expired. Please refresh and try again.', 'error')
+                        return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
                 
                 token_row.IsUsed = True
                 #The new line marks the token as used.
