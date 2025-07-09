@@ -71,7 +71,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
     def mfa_verify():
         if os.getenv("TESTING") == "1":
             session['mfa_authenticated'] = True
-            return "MFA bypassed"
+            return redirect(url_for("student_routes.dashboard"))
     
         if 'user_id' not in session:
             return redirect(url_for('misc_routes.login'))
@@ -328,7 +328,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
 
                 if os.getenv("TESTING") == "1":
                     session['mfa_authenticated'] = True
-                    return "Logged in (test mode)"
+                    return redirect(url_for('student_routes.dashboard'))
 
                 # Check MFA requirement
                 mfa_user = User.query.filter_by(UserId=user['user_id']).first()
