@@ -25,6 +25,11 @@ from application.misc_routes import register_misc_routes
 from application.models import db
 
 app = Flask(__name__)
+
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "fallback-secret")
+app.config.from_object('config.Config')
+app.secret_key = app.config['SECRET_KEY']
+
 # \*\ Added for Captcha
 # 2️⃣  NEW  — make the key available in every template on every render
 @app.context_processor
