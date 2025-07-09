@@ -51,19 +51,20 @@ jobs:
           echo "Waiting 30 seconds for stability..."
           sleep 30
 
-      - name: Check and trigger database migration if needed
-        run: |
-          echo "Checking SonarQube database migration status..."
-          # You can use the /setup endpoint to check the database migration status
-          curl -sSf "${{ secrets.SONAR_HOST_URL }}/api/system/status" | grep -q "DB_MIGRATION_NEEDED"
-          if [ $? -eq 0 ]; then
-            echo "Database migration needed. Triggering migration..."
-            curl -X POST "${{ secrets.SONAR_HOST_URL }}/api/system/migrate_db"
-            echo "Migration triggered. Waiting for 30 seconds for the process to complete..."
-            sleep 30
-          else
-            echo "No migration needed."
-          fi
+      ## Uncomment if DB migration needed
+      # - name: Check and trigger database migration if needed
+      #   run: |
+      #     echo "Checking SonarQube database migration status..."
+      #     # You can use the /setup endpoint to check the database migration status
+      #     curl -sSf "${{ secrets.SONAR_HOST_URL }}/api/system/status" | grep -q "DB_MIGRATION_NEEDED"
+      #     if [ $? -eq 0 ]; then
+      #       echo "Database migration needed. Triggering migration..."
+      #       curl -X POST "${{ secrets.SONAR_HOST_URL }}/api/system/migrate_db"
+      #       echo "Migration triggered. Waiting for 30 seconds for the process to complete..."
+      #       sleep 30
+      #     else
+      #       echo "No migration needed."
+      #     fi
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
