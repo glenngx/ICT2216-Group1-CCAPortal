@@ -26,18 +26,12 @@ from application.models import db
 
 app = Flask(__name__)
 
-fallback_secret = os.environ.get("SECRET_KEY", "fallback-secret")
-app.secret_key = fallback_secret
-app.config['SECRET_KEY'] = fallback_secret
-
 # ✅ Load full config before initializing Session
 from config import Config
 app.config.from_object(Config)
 
-# If Config had a better SECRET_KEY, override
-if getattr(Config, "SECRET_KEY", None):
-    app.secret_key = Config.SECRET_KEY
-    app.config["SECRET_KEY"] = Config.SECRET_KEY
+# ✅ Ensure SECRET_KEY is set early for flask_session to function
+app.secret_key = app.config.get("SECRET_KEY", "fallback-secret")
 
 # ✅ Session config must be present here
 print("✅ Configuration loaded from config.Config object")
