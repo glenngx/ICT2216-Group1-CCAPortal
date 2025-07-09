@@ -80,15 +80,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             session['mfa_authenticated'] = True
             return "MFA bypassed (test mode)"
 
-        # SQL refactoring
-        # conn = get_db_connection()
-        # try:
-        #     cursor = conn.cursor()
-        #     cursor.execute(
-        #         "SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?",
-        #         (session['user_id'],)
-        #     )
-        #     row = cursor.fetchone()
         user = User.query.filter_by(UserId=session['user_id']).first()
         # Fetches the user by id to get the MFA secret.
 
@@ -314,12 +305,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
 
                 # \*\ Added for MFA
                 # Check if user has MFA enabled
-                # SQL refactoring
-                # conn = get_db_connection()
-                # cursor = conn.cursor()
-                # cursor.execute("SELECT MFATOTPSecret FROM UserDetails WHERE UserId = ?", (user['user_id'],))
-                # row = cursor.fetchone()
-                # conn.close()
                 mfa_user = User.query.filter_by(UserId=user['user_id']).first()
                 # Fetches user by id to check for an MFA secret.
 
@@ -363,24 +348,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         student_id = token_data.get('student_id')
 
         # Check if user has already used the link to reset their password
-        # SQL refactoring
-        # conn = get_db_connection()
-        # if conn:
-        #     try:
-        #         cursor = conn.cursor()
-        #         cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
-        #         row = cursor.fetchone()
-        #
-        #         if row and row[0] is not None:
-        #             flash("This reset link has already been used. Redirecting to login page...", "error")
-        #             return redirect(url_for('misc_routes.login'))
-        #
-        #     except Exception as e:
-        #         print(f"Password Reset Link Error: {e}")
-        #         flash("There was an error validating your password reset link.", "error")
-        #         return redirect(url_for('misc_routes.login'))
-        #     finally:
-        #         conn.close()
         user_for_reset = User.query.filter_by(StudentId=student_id).first()
         # Fetches user by student_id to check if password exists.
         if user_for_reset and user_for_reset.Password is not None:
@@ -405,16 +372,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 for error in errors:
                     flash(error, 'error')
                 return render_template('reset_password.html', token=token)
-            
-            # SQL refactoring
-            # conn = get_db_connection()
-            # if not conn:
-            #     flash('Database connection error.', 'error')
-            #     return render_template('reset_password.html', token=token)
-            
             try:
-                # cursor = conn.cursor()
-                
                 # Get current password to check if it exists
                 # cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
                 # current_password_row = cursor.fetchone()
@@ -461,20 +419,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
         
         # GET request - show the reset form
         # Get student details for display
-        # SQL refactoring
-        # conn = get_db_connection()
         student_name = "Student"  # Default fallback
-        # if conn:
-        #     try:
-        #         cursor = conn.cursor()
-        #         cursor.execute("SELECT Name FROM Student WHERE StudentId = ?", (student_id,))
-        #         name_row = cursor.fetchone()
-        #         if name_row:
-        #             student_name = name_row[0]
-        #     except:
-        #         pass  # Use default name
-        #     finally:
-        #         conn.close()
         student = Student.query.filter_by(StudentId=student_id).first()
         # Fetches student by id to display their name.
         if student:
