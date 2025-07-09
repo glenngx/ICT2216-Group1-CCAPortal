@@ -27,7 +27,24 @@ from application.models import db
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "fallback-secret")
+app.config['SECRET_KEY'] = app.secret_key
 
+# ✅ Try loading config and overwriting with config.Config if available
+try:
+    from config import Config
+    app.config.from_object(Config)
+
+    # If config overrides SECRET_KEY, update it
+    if getattr(Config, "SECRET_KEY", None):
+        app.secret_key = Config.SECRET_KEY
+        app.config['SECRET_KEY'] = Config.SECRET_KEY
+
+    print("✅ Configuration loaded from config.Config object")
+    email_service.init_app(app)  # Initialize email service
+except Exception as e:
+    print(f"⚠️ Config loading failed: {e}")
+    # app.secret_key already has a fallback
+    
 # \*\ Added for Captcha
 # 2️⃣  NEW  — make the key available in every template on every render
 @app.context_processor
