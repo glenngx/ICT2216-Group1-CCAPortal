@@ -43,9 +43,6 @@ if getattr(Config, "SECRET_KEY", None):
 print("✅ Configuration loaded from config.Config object")
 email_service.init_app(app)
 
-# ✅ Only now is it safe to call Session(app)
-Session(app)
-
 # \*\ Added for Captcha
 # 2️⃣  NEW  — make the key available in every template on every render
 @app.context_processor
