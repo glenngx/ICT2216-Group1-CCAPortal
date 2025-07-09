@@ -29,8 +29,8 @@ def test_login_with_invalid_credentials():
 def test_login_with_valid_credentials():
     with app.test_client() as client:
         response = client.post("/login", data={
-            "username": "2305105",
-            "password": "pppppp",
+            "username": "2305106",
+            "password": "ffffff",
         }, follow_redirects=True)
 
         # Inject session variable to break redirect loop
