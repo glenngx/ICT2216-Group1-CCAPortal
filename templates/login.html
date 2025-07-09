@@ -59,7 +59,9 @@
                     </div>
                 </div>
              <!-- CAPTCHA \*\ --> 
+            {% if not testing %}
             <div class="g-recaptcha mb-3" data-sitekey="{{ RECAPTCHA_SITE_KEY }}"></div>
+            {% endif}
             <!-- END CAPTCHA \*\ --> 
                 <button type="submit" class="btn btn-primary login-btn" id="loginBtn">
                     <span class="spinner-border spinner-border-sm d-none" role="status" id="loginSpinner"></span>
@@ -151,8 +153,10 @@
         });
             </script>
         <!-- CAPTCHA \*\ -->
+    {% if not testing %}     
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
         <!-- END CAPTCHA \*\ -->
- 
+    {% endif}
+    
 </body>
 </html>
