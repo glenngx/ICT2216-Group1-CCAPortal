@@ -216,6 +216,7 @@ def set_security_headers(response):
     response.headers['Permissions-Policy'] = "geolocation=(), microphone=(), camera=()"
     response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+    response.headers['Referrer-Policy'] = 'no-referrer-when-downgrade'
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; script-src 'self' https://www.google.com; "
         "style-src 'self' https://cdn.jsdelivr.net; frame-src https://www.google.com"
