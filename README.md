@@ -17,11 +17,11 @@ The Co-Curricular Activities Portal (CCAP) is a secure web application designed 
 | Low Shao Qi  | 2303294  |
 
 ## Features
-- **Multi-Role Authentication**: Secure role-based access control for Administrators, Moderators, and Students  
+- **Multi-Role Authentication**: Secure role-based access control for Administrators, Moderators, and Students 
 - **Anonymous Voting System**: Secure, tamper-proof polling with optional anonymity  
-- **Real-time Results**: Live poll statistics and visual result representations  
-- **CCA Management**: Complete lifecycle management of CCAs and member assignments  
-- **Email Notifications**: Automated notifications for account creation, poll creation, and important updates  
+- **Real-time Results**: Live poll statistics and result representations 
+- **CCA Management**: Complete lifecycle management of CCAs and member assignments 
+- **Email Notifications**: Automated email notifications for new users to set their own passwords and activate access
 - **Session Security**: Advanced session management with timeout and hijacking protection
 
 ## Architecture
