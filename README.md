@@ -5,7 +5,7 @@ The Co-Curricular Activities Portal (CCAP) is a secure web application designed 
 - **Moderators** (student leaders) to create polls, manage members, and collect feedback from their CCA community
 - **Administrators** to oversee all CCAs, assign moderator roles, and maintain the integrity of the platform
 
-# Team Members
+## Team Members
 | Name  | Student ID |
 | ------------- | ------------- |
 | Glenn Tham Guoxiang | 2301803  |
