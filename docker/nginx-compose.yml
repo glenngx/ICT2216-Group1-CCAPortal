@@ -71,11 +71,27 @@ services:
     networks:
       - ccap-network
 
+  splunk:
+    image: splunk/splunk:latest
+    container_name: splunk
+    restart: unless-stopped
+    ports:
+      - "8088:8088"  # Expose HEC port for Flask logs
+      - "8000:8000"  # Web UI port for Splunk
+    environment:
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=${{ secrets.SPLUNK_PASSWORD }}
+    volumes:
+      - splunk_data:/opt/splunk/var  # Persist Splunk data
+    networks:
+      - ccap-network
+
 volumes:
   sonarqube_data:
   sonarqube_extensions:
   sonarqube_logs:
   postgresql:
+  splunk_data:  # Volume for Splunk data
 
 networks:
   ccap-network:
