@@ -10,6 +10,28 @@ import os
 from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file
 
+import logging
+import requests
+from logging.handlers import HTTPHandler
+
+class SplunkHandler(HTTPHandler):
+    def __init__(self, host, token):
+        self.host = host
+        self.token = token
+        self.headers = {'Authorization': f'Splunk {self.token}'}
+        super().__init__(host, '/services/collector/event')
+
+    def emit(self, record):
+        log_message = self.format(record)
+        data = {'event': log_message, 'sourcetype': 'flask_logs'}
+        try:
+            requests.post(self.host, headers=self.headers, json=data)
+        except requests.exceptions.RequestException as e:
+            print(f"Error sending log to Splunk: {e}")
+
+
+
+
 # Import registration functions
 from application.admin_routes import register_admin_routes
 from application.moderator_routes import register_moderator_routes
@@ -18,6 +40,21 @@ from application.misc_routes import register_misc_routes
 from application.models import db
 
 app = Flask(__name__)
+
+SPLUNK_HEC_URL = 'https://splunk.ccap-app.domloh.com:8088'  # Replace with your Splunk HEC server URL
+SPLUNK_HEC_TOKEN = 'f432f73d-5b66-4cc8-928e-0a151684366e'  # Replace with your Splunk HEC token
+
+# Step 3: Set up Splunk HTTP handler for Flask
+splunk_handler = SplunkHandler(SPLUNK_HEC_URL, SPLUNK_HEC_TOKEN)
+splunk_handler.setLevel(logging.INFO)
+app.logger.addHandler(splunk_handler)
+
+# Step 4: Set logging format for Flask
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+splunk_handler.setFormatter(formatter)
+
+app.logger.info("This is a test log for Splunk")
+
 
 # Load full config before initializing Session
 from config import Config
