@@ -242,6 +242,15 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
 
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '')
+
+            # This block to prevent buffer overflow
+            if len(username) > 100 or len(password) > 100:
+                flash("Input too long. Please shorten your username or password.", "error")
+                return render_template(
+                    "login.html",
+                    RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY")
+                )
+            
             # \*\ Added for Captcha
             captcha_token = request.form.get('g-recaptcha-response', '')
 
