@@ -322,3 +322,16 @@ if __name__ == '__main__':
     #with app.app_context():
      #   db.create_all()  # 👈 This will create LoginLog if it doesn’t exist
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Permissions-Policy'] = "geolocation=(), microphone=(), camera=()"
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; script-src 'self' https://www.google.com; "
+        "style-src 'self' https://cdn.jsdelivr.net; frame-src https://www.google.com"
+    )
+    return response
