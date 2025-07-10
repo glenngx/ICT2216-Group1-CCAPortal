@@ -7,7 +7,7 @@ import hashlib
 import re
 import pyotp
 from functools import wraps
-from application.captcha_utils import captcha_is_valid   # top of file
+from application.captcha_utils import captcha_is_valid
 import os 
 from application.models import User, Student, CCAMembers, db
 import bcrypt
@@ -66,7 +66,6 @@ def is_compromised_password(password):
 misc_bp = Blueprint('misc_routes', __name__)
 
 def register_misc_routes(app, get_db_connection, login_required, validate_email, validate_student_id):
-    # \*\ Added for MFA
     @misc_bp.route('/mfa-verify', methods=['GET', 'POST'])
     def mfa_verify():
         if os.getenv("TESTING") == "1":
@@ -80,11 +79,10 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             session['mfa_authenticated'] = True
             return "MFA bypassed (test mode)"
 
-        user = User.query.filter_by(UserId=session['user_id']).first()
         # Fetches the user by id to get the MFA secret.
+        user = User.query.filter_by(UserId=session['user_id']).first()
 
         if not user or not user.MFATOTPSecret:
-            # no secret yet → first-time flow
             return redirect(url_for('student_routes.mfa_setup'))
 
         totp = pyotp.TOTP(user.MFATOTPSecret)
@@ -99,12 +97,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 flash("Invalid code.", "error")
 
         return render_template('mfa_verify.html')
-
-    # \*\ END for MFA
     
     def authenticate_user(username, password):
         # ── ADMIN SPECIAL-CASE ─────────────────────────────────────────────
-        # Replaces: SELECT ud.UserId, ud.Username, ud.Password, ud.SystemRole FROM [dbo].[UserDetails] AS ud WHERE ud.[SystemRole] = 'admin' AND ud.[Username] = ?
         admin_user = User.query.filter_by(SystemRole='admin', Username=username).first()
         if admin_user and bcrypt.checkpw(password.encode('utf-8'), admin_user.Password.encode('utf-8')):
             return {
@@ -117,28 +112,23 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
 
         user_details = None
         # Try email login
-        # Replaces: SELECT ... FROM UserDetails ud INNER JOIN Student s ON ud.StudentId = s.StudentId WHERE s.Email = ?
         if validate_email(username):
             student = Student.query.filter_by(Email=username).first()
             if student:
                 user_details = student.user_details
         # Try Student ID
-        # Replaces: SELECT ... FROM UserDetails ud INNER JOIN Student s ON ud.StudentId = s.StudentId WHERE s.StudentId = ?
         elif validate_student_id(username):
             student = Student.query.filter_by(StudentId=int(username)).first()
             if student:
                 user_details = student.user_details
         # Try username login
-        # Replaces: SELECT ... FROM UserDetails ud INNER JOIN Student s ON ud.StudentId = s.StudentId WHERE ud.Username = ?
         else:
             user_details = User.query.filter_by(Username=username).first()
 
         # Check if user was found
         if not user_details:
             print(f"No user found with identifier: {username}")
-            # \*\ Added for Logging
             log_login_attempt(username, None, success=False, reason="User not found")
-           # \*\ Ended for Logging
             return None
 
         # SECURITY CHECK: Reject login if password is NULL (account not yet set up)
@@ -147,10 +137,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             print(f"User {username} has no password set - login rejected, must use email link")
             return None
 
-        # \*\ Edit for MFA
-        # 🔒 Check if account is locked
+        # Check if account is locked
         if hasattr(user_details, 'IsLocked') and user_details.IsLocked:
-            # Auto-unlock logic
+            # Auto-unlock
             last_failed = user_details.LastFailedLogin
             if last_failed and (datetime.utcnow() - last_failed > timedelta(minutes=30)):
                 print(f"Auto-unlocking user {username} (30 minutes passed)")
@@ -159,11 +148,8 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 db.session.commit()
             else:
                 print(f"User {username} is locked out due to too many failed login attempts.")
-                # \*\ Added for logging
                 log_login_attempt(username, user_details.UserId, success=False, reason="Account locked")
-                # \*\ Added for logging
                 return None
-        # \*\ End for MFA
 
         # Remove TEMP_ prefix if present before bcrypt check
         password_to_check = stored_password
@@ -174,25 +160,20 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             # Verify password using bcrypt
             if bcrypt.checkpw(password.encode('utf-8'), password_to_check.encode('utf-8')):
                 
-                # \*\ Added for logging
                 log_login_attempt(username, user_details.UserId, success=True, reason="Login success")
-               # \*\ Ended for logging
 
-                # \*\ Edited for Password Expiration
+                # Password Expiration
                 if user_details.PasswordLastSet and (datetime.utcnow() - user_details.PasswordLastSet).days > 365:
                     flash("Your password has expired. Please reset it to continue.", "warning")
                     session['force_password_change'] = True
                     return None
-                # \*\ End for Password Expiration
                 
-                # \*\ Edited for Failed login attempt
+                # Failed login attempt
                 user_details.FailedLoginAttempts = 0
                 user_details.IsLocked = False
                 db.session.commit()
-               # \*\ End for Failed login attempt
                 
                 # ── PROMOTE TO MODERATOR IF NEEDED ─────────────────────────
-                # Replaces: SELECT COUNT(*) FROM CCAMembers WHERE UserId = ? AND CCARole = 'moderator'
                 is_moderator = CCAMembers.query.filter_by(UserId=user_details.UserId, CCARole='moderator').first()
                 promoted_role = 'moderator' if is_moderator else user_details.SystemRole
 
@@ -204,19 +185,18 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                     'email': user_details.student.Email,
                 }
             else:
-                # ❌ Wrong password: increment failure counter
+                # Wrong password: increment failure counter
                 user_details.FailedLoginAttempts = (user_details.FailedLoginAttempts or 0) + 1
                 user_details.LastFailedLogin = datetime.utcnow()
 
-                # \*\ Edit for Failed login attempt
+                # Failed login attempt
                 if user_details.FailedLoginAttempts >= 5:
                     user_details.IsLocked = True
                     print(f"User {username} account locked after 5 failed attempts.")
-               # \*\ End for Failed login attempt
+
                 db.session.commit()
-                # \*\ Added for logging
+
                 log_login_attempt(username, user_details.UserId, success=False, reason="Wrong password")
-                # \*\ Ended for logging
                 print("Password verification failed")
                 return None
         except Exception as bcrypt_error:
@@ -243,7 +223,7 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '')
 
-            # This block to prevent buffer overflow
+            # Prevent buffer overflow
             if len(username) > 100 or len(password) > 100:
                 flash("Input too long. Please shorten your username or password.", "error")
                 return render_template(
@@ -251,29 +231,24 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                     RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY")
                 )
             
-            # \*\ Added for Captcha
+            # Captcha
             captcha_token = request.form.get('g-recaptcha-response', '')
 
             if not captcha_is_valid(captcha_token, request.remote_addr):
                 flash("CAPTCHA verification failed. Please try again.", "error")
-            # IMPORTANT: pass the site key when re-rendering
+            # Pass the site key when re-rendering
                 return render_template(
                 "login.html",
                 RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY")
                 )
-            # \*\ Ended for Captcha
 
             if not username or not password:
                 flash('Please enter both username and password.', 'error')
-                #return render_template('login.html')
-                # \*\ Started for Captcha
                 return render_template('login.html',
                        RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"))
-                # \*\ Ended for Captcha
                 
             user = authenticate_user(username, password)
-            # \*\ Edit for MFA
-            # 🔒 If user is locked, show message
+            # If user is locked, show message
             locked_user = User.query.filter_by(Username=username).first()
             if locked_user and locked_user.IsLocked:
                 remaining_minutes = None
@@ -289,7 +264,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                     RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"),
                     lockout_remaining=remaining_minutes
                 )
-            # \*\ End for MFA
             
             if user:
                 # Cookie expires when user close the browser 
@@ -306,18 +280,14 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                     session['mfa_authenticated'] = True
                     return redirect(url_for('student_routes.dashboard'))
 
-                # \*\ Added for Password Expiration
-                # 🔒 Enforce password reset if expired
+                # Enforce password reset if expired
                 if session.pop('force_password_change', False):
                     return redirect(url_for('student_routes.change_password'))
-                # \*\ Ended for Password Expiration
 
-                # \*\ Added for MFA
                 # Check if user has MFA enabled
                 mfa_user = User.query.filter_by(UserId=user['user_id']).first()
-                # Fetches user by id to check for an MFA secret.
 
-                # clear any stale MFA flag
+                # Clear any stale MFA flag
                 session.pop('mfa_authenticated', None)
 
                 if os.getenv("TESTING") == "1":
@@ -358,7 +328,6 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
 
         # Check if user has already used the link to reset their password
         user_for_reset = User.query.filter_by(StudentId=student_id).first()
-        # Fetches user by student_id to check if password exists.
         if user_for_reset and user_for_reset.Password is not None:
             flash("This reset link has already been used. Redirecting to login page...", "error")
             return redirect(url_for('misc_routes.login'))
@@ -382,11 +351,8 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                     flash(error, 'error')
                 return render_template('reset_password.html', token=token)
             try:
-                # Get current password to check if it exists
-                # cursor.execute("SELECT Password FROM UserDetails WHERE StudentId = ?", (student_id,))
-                # current_password_row = cursor.fetchone()
-                user_to_update = User.query.filter_by(StudentId=student_id).first()
                 # Fetches user by student_id to update password.
+                user_to_update = User.query.filter_by(StudentId=student_id).first()
 
                 if not user_to_update:
                     flash('User account not found. Please contact support.', 'error')
@@ -402,20 +368,14 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                         flash('You cannot use the temporary password. Please choose a different password.', 'error')
                         return render_template('reset_password.html', token=token)
                 
-                # Update password *\* added hashing
+                # Update password added hashing
                 hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                # cursor.execute("""
-                #     UPDATE UserDetails 
-                #     SET Password = ? 
-                #     WHERE StudentId = ?
-                # """, (hashed_password, student_id))
                 user_to_update.Password = hashed_password
-                #Update for \*\ password expiration
+
+                # Update for password expiration
                 user_to_update.PasswordLastSet = datetime.utcnow()
-                #End for \*\ password expiration
                 
                 db.session.commit()
-                # \*\ End Updates user password and commits the change.
                 
                 flash('Password set successfully! You can now log in to CCA Portal with your Student ID and new password.', 'success')
                 return redirect(url_for('misc_routes.login'))
@@ -426,11 +386,9 @@ def register_misc_routes(app, get_db_connection, login_required, validate_email,
                 flash('Error setting password. Please try again.', 'error')
                 return render_template('reset_password.html', token=token)
         
-        # GET request - show the reset form
         # Get student details for display
-        student_name = "Student"  # Default fallback
+        student_name = "Student"
         student = Student.query.filter_by(StudentId=student_id).first()
-        # Fetches student by id to display their name.
         if student:
             student_name = student.Name
         

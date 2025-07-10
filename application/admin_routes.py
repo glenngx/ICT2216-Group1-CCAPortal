@@ -7,14 +7,11 @@ from .models import db, CCA, Student, CCAMembers, User, Poll, PollOption, PollVo
 from application.auth_utils import log_admin_action
 from application.moderator_routes import sanitize_input
 
-
-
 # Create a Blueprint
 admin_bp = Blueprint('admin_routes', __name__, url_prefix='/admin')
 
 # registration function for admin routes
 def register_admin_routes(app, get_db_connection, validate_student_id):
-
     @admin_bp.route('/')
     @admin_required
     def admin_dashboard():
@@ -25,7 +22,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             log_admin_action(session["user_id"], "Admin login successful")
             # Get all students
             all_students = Student.query.order_by(Student.Name).all()
-            # Retrieves all students, ordered by name.
             
             # Get CCA memberships with details
             memberships = db.session.query(
@@ -36,13 +32,11 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 CCA.CCAId,
                 CCAMembers.MemberId
             ).join(User, CCAMembers.UserId == User.UserId).join(Student).join(CCA).order_by(CCA.Name, Student.Name).all()
-            # Joins CCA, CCAMembers, User, and Student to retrieve membership details.
 
             # Get students who need password setup (Password is NULL)
             students_needing_password_setup = db.session.query(
                 Student.StudentId, Student.Name, Student.Email
             ).join(User).filter(User.Password == None).order_by(Student.Name).all()
-            # Finds students with NULL passwords, indicating they need to set it up.
             
             return render_template('admin_dashboard.html',
                                 ccas=all_ccas,
@@ -88,8 +82,8 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
                 # Check if student exists
                 student_record = Student.query.filter_by(StudentId=int(student_id)).first()
-                # Finds a student by their student ID.
                 
+                # Finds a student by their student ID.
                 if not student_record:
                     flash(f'Student ID {student_id} not found in student records. Please contact administration to add student to system first.', 'error')
                     log_admin_action(session["user_id"],f'Student ID  not found in student records. Please contact administration to add student to system first.')
@@ -97,8 +91,8 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 
                 # Check if student already has a registered account
                 existing_account = User.query.filter_by(StudentId=int(student_id)).first()
-                # Checks if a user account already exists for the given student ID.
                 
+                # Checks if a user account already exists for the given student ID.
                 if existing_account:
                     flash(f'Student {student_record.Name} (ID: {student_id}) already has a login account.', 'error')
                     log_admin_action(f'Student already has a login account.')
@@ -108,10 +102,8 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 new_user = User(Username=student_id, StudentId=int(student_id), Password=None, SystemRole='student')
                 db.session.add(new_user)
                 db.session.commit()
-                # \*\ Added for logging
+
                 log_admin_action(session["user_id"], f"Created login for student ID {student_id}")
-                # \*\ Ended for logging
-                # Creates a new user with a NULL password.
                 
                 # Send password setup email immediately after successful account creation
                 student_name = student_record.Name
@@ -159,12 +151,9 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     def create_cca():
         if request.method == 'POST':
 
-            #name = request.form.get('name', '').strip()
-            #description = request.form.get('description', '').strip()
-            # \*\ Sanitization
             name = sanitize_input(request.form.get('name', ''), max_length=100)
             description = sanitize_input(request.form.get('description', ''), max_length=1000)
-            # \*\ End Sanitization
+
             if not name:
                 flash('CCA name is required.', 'error')
                 log_admin_action(session["user_id"],'CCA name is required.')
@@ -185,17 +174,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                     flash('CCA name already exists.', 'error')
                     log_admin_action(session["user_id"],'CCA name already exists.')
                     return render_template('create_cca.html')
-                # Checks if a CCA with the given name already exists.
                 
                 # Insert new CCA
                 new_cca = CCA(Name=name, Description=description or '')
                 db.session.add(new_cca)
                 db.session.commit()
-                # \*\ Added for logging
+
                 log_admin_action(session["user_id"], f"Created CCA: {name}")
-                # \*\ Ended for logging
-                # Creates a new CCA.
-                
+
                 flash(f'CCA "{name}" created successfully!', 'success')
                 log_admin_action(session["user_id"],f'CCA created successfully!')
                 return redirect(url_for('admin_routes.admin_dashboard'))
@@ -224,7 +210,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             # Get CCA details
             cca = CCA.query.get(cca_id)
-            # Retrieves a CCA by its primary key.
             
             if not cca:
                 flash('CCA not found.', 'error')
@@ -235,12 +220,10 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             members = db.session.query(
                 Student.StudentId, Student.Name, Student.Email, CCAMembers.CCARole, CCAMembers.MemberId, User.UserId
             ).join(User, CCAMembers.UserId == User.UserId).join(Student).filter(CCAMembers.CCAId == cca_id).order_by(Student.Name).all()
-            # Retrieves all members of a specific CCA.
             
             # Get all students not in this CCA (for assignment)
             subquery = db.session.query(CCAMembers.UserId).filter(CCAMembers.CCAId == cca_id)
             available_students = db.session.query(Student.StudentId, Student.Name).join(User).filter(User.UserId.notin_(subquery)).order_by(Student.Name).all()
-            # Finds students who are not members of the current CCA.
             
             return render_template('view_cca.html', 
                                  cca=cca, 
@@ -256,12 +239,8 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_bp.route('/cca/<int:cca_id>/edit', methods=['POST'])
     @admin_required
     def edit_cca(cca_id):
-        #name = request.form.get('name', '').strip()
-        #description = request.form.get('description', '').strip()
-        # \*\ Sanitization
         name = sanitize_input(request.form.get('name', ''), max_length=100)
         description = sanitize_input(request.form.get('description', ''), max_length=1000)
-        # \*\ End Sanitization
 
         if not name:
             flash('CCA name is required.', 'error')
@@ -283,17 +262,14 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 flash('CCA name already exists.', 'error')
                 log_admin_action(session["user_id"],'CCA name already exists.')
                 return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
-            # Checks for CCA name conflicts, excluding the current CCA.
             
             # Update CCA
             cca_to_update = CCA.query.get(cca_id)
             cca_to_update.Name = name
             cca_to_update.Description = description
             db.session.commit()
-            # Updates the name and description of a CCA.
-            # \*\ Added for logging    
+
             log_admin_action(session["user_id"], f"Edited CCA ID {cca_id}: renamed to '{name}'")
-            # \*\ Ended for logging    
 
             flash('CCA updated successfully!', 'success')
             log_admin_action(session["user_id"],'CCA updated successfully!')
@@ -327,8 +303,8 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            user_result = User.query.filter_by(StudentId=int(student_id)).first()
             # Finds a user by their student ID.
+            user_result = User.query.filter_by(StudentId=int(student_id)).first()
 
             if not user_result:
                 flash('Student not found.', 'error')
@@ -337,13 +313,13 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             user_id = user_result.UserId
             
+            # Adds a new member to a CCA.
             new_member = CCAMembers(UserId=user_id, CCAId=cca_id, CCARole=role)
             db.session.add(new_member)
             db.session.commit()
-            # Adds a new member to a CCA.
-            # \*\ Added for logging
+
             log_admin_action(session["user_id"], f"Added student {student_id} to CCA {cca_id} as {role}")
-            # \*\ Ended for logging
+
             flash('Student added to CCA successfully!', 'success')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
             
@@ -367,13 +343,12 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
+            # Deletes a CCA membership entry by member and CCA ID.
             CCAMembers.query.filter_by(MemberId=member_id, CCAId=cca_id).delete()
             db.session.commit()
-            # \*\ Added for logging
-            log_admin_action(session["user_id"], f"Removed member {member_id} from CCA {cca_id}")
-            # \*\ Ended for logging
 
-            # Deletes a CCA membership entry by member and CCA ID.
+            log_admin_action(session["user_id"], f"Removed member {member_id} from CCA {cca_id}")
+
             flash('Student removed from CCA successfully!', 'success')
             log_admin_action(session["user_id"],'Student removed from CCA successfully!.')
             return redirect(url_for('admin_routes.view_cca', cca_id=cca_id))
@@ -398,8 +373,8 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 print(f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            cca_result = CCA.query.get(cca_id)
             # Retrieves a CCA by its primary key.
+            cca_result = CCA.query.get(cca_id)
 
             if not cca_result:
                 flash('CCA not found.', 'error')
@@ -408,26 +383,25 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             
             cca_name = cca_result.Name
             
-            CCAMembers.query.filter_by(CCAId=cca_id).delete()
             # Deletes all memberships for a given CCA.
+            CCAMembers.query.filter_by(CCAId=cca_id).delete()
 
+            # Deletes all votes for polls associated with the CCA.
             poll_ids = [p.PollId for p in Poll.query.filter_by(CCAId=cca_id).all()]
             PollVote.query.filter(PollVote.PollId.in_(poll_ids)).delete(synchronize_session=False)
-            # Deletes all votes for polls associated with the CCA.
 
-            PollOption.query.filter(PollOption.PollId.in_(poll_ids)).delete(synchronize_session=False)
             # Deletes all options for polls associated with the CCA.
+            PollOption.query.filter(PollOption.PollId.in_(poll_ids)).delete(synchronize_session=False)
 
-            Poll.query.filter_by(CCAId=cca_id).delete()
             # Deletes all polls for a given CCA.
+            Poll.query.filter_by(CCAId=cca_id).delete()
 
-            CCA.query.filter_by(CCAId=cca_id).delete()
             # Deletes the CCA itself.
+            CCA.query.filter_by(CCAId=cca_id).delete()
             
             db.session.commit()
-            # \*\ Added for logging
+
             log_admin_action(session["user_id"], f"Deleted CCA '{cca_name}' (ID: {cca_id})")
-            # \*\ Ended for logging
             flash(f'CCA "{cca_name}" and all related data deleted successfully!', 'success')
             return redirect(url_for('admin_routes.admin_dashboard'))
             
@@ -442,10 +416,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
     @admin_required
     def search_students():
         """API endpoint to search for students by name or student ID"""
-        #search_query = request.args.get('q', '').strip()
-        # \*\ Sanitization
         search_query = sanitize_input(request.args.get('q', ''), max_length=100)
-        # \*\ End Sanitization
 
         cca_id = request.args.get('cca_id', '')
         
@@ -462,13 +433,13 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 log_admin_action(session["user_id"],f'DEBUG: Not admin, unauthorised to view.')
                 return redirect(url_for('student_routes.dashboard'))
             
+            # Searches for students not in a CCA by name or ID.
             search_pattern = f'%{search_query}%'
             subquery = db.session.query(CCAMembers.UserId).filter(CCAMembers.CCAId == cca_id)
             students = db.session.query(Student.StudentId, Student.Name, Student.Email).join(User).filter(
                 db.or_(Student.Name.like(search_pattern), db.cast(Student.StudentId, db.String).like(search_pattern)),
                 User.UserId.notin_(subquery)
             ).order_by(Student.Name).all()
-            # Searches for students not in a CCA by name or ID.
             
             result = []
             for student in students:
@@ -507,8 +478,8 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 log_admin_action(session["user_id"],'Access denied.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            user_data = db.session.query(User.UserId, Student.StudentId, Student.Name).join(Student).filter(Student.StudentId.in_(student_ids)).all()
             # Retrieves user and student data for a list of student IDs.
+            user_data = db.session.query(User.UserId, Student.StudentId, Student.Name).join(Student).filter(Student.StudentId.in_(student_ids)).all()
             
             # Check for students already in the CCA
             existing_members = db.session.query(CCAMembers.UserId).filter(
@@ -529,9 +500,9 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             if new_members:
                 db.session.bulk_insert_mappings(CCAMembers, new_members)
                 db.session.commit()
-                # Added for logging                   
+
                 log_admin_action(session["user_id"], f"Bulk added {len(new_members)} students to CCA {cca_id} as {role}")
-                # Ended for logging
+
                 flash(f'{len(new_members)} students added successfully!', 'success')
             else:
                 flash('All selected students are already in this CCA.', 'info')
@@ -560,10 +531,10 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 log_admin_action(session["user_id"],"Access denied.")
                 return redirect(url_for('student_routes.dashboard'))
             
+            # Retrieves student and user details for a specific student ID.
             student_record = db.session.query(
                 Student.StudentId, Student.Name, Student.Email, User.Password
             ).join(User).filter(Student.StudentId == student_id).first()
-            # Retrieves student and user details for a specific student ID.
             
             if not student_record:
                 flash('Student not found.', 'error')
@@ -632,7 +603,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 db.func.count(CCAMembers.MemberId).label('MemberCount'),
                 db.func.count(db.case((CCAMembers.CCARole == 'moderator', 1))).label('ModeratorCount')
             ).outerjoin(CCAMembers).group_by(CCA.CCAId, CCA.Name, CCA.Description).order_by(CCA.Name).all()
-            # Retrieves all CCAs with their member and moderator counts.
             
             return render_template('admin_view_all_ccas.html', 
                                 ccas=ccas,
@@ -658,7 +628,7 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                 log_admin_action(session["user_id"],'Access denied.')
                 return redirect(url_for('student_routes.dashboard'))
             
-            
+            # Retrieves all polls with CCA info and vote counts.
             polls_data = db.session.query(
                 Poll.PollId,
                 Poll.Question,
@@ -672,7 +642,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
             ).join(CCA).outerjoin(PollVote).group_by(
                 Poll.PollId, Poll.Question, Poll.QuestionType, Poll.StartDate, Poll.EndDate,
                 Poll.IsAnonymous, Poll.IsActive, CCA.Name            ).order_by(Poll.EndDate.desc(), Poll.StartDate.desc()).all()
-            # Retrieves all polls with CCA info and vote counts.
             
             processed_polls = []
             for poll in polls_data:
@@ -715,7 +684,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
 
     @admin_bp.route('/logs')
     @admin_required
-        # \*\ Added Logging
     def view_logs():
         # Get the total number of logs, categorized by type
         total_logs = db.session.query(AdminLog).count() + db.session.query(LoginLog).count()
@@ -759,7 +727,6 @@ def register_admin_routes(app, get_db_connection, validate_student_id):
                             data_changes_logs=data_changes_logs,
                             security_issues_logs=security_issues_logs,
                             system_events_logs=system_events_logs)
-            # \*\ Ended added Logging
 
     # Register the blueprint with the app
     app.register_blueprint(admin_bp)

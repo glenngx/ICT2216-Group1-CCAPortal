@@ -9,13 +9,6 @@ from email_service import email_service
 import os  
 from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file
-# Removed direct import of DB_CONNECTION_STRING, SECRET_KEY from config
-# try:
-#     from config import DB_CONNECTION_STRING, SECRET_KEY
-#     print("Configuration loaded from config.py")
-# except ImportError:
-#     print("ERROR: config.py file not found!")
-#     exit(1)
 
 # Import registration functions
 from application.admin_routes import register_admin_routes
@@ -26,31 +19,25 @@ from application.models import db
 
 app = Flask(__name__)
 
-# ✅ Load full config before initializing Session
+# Load full config before initializing Session
 from config import Config
 app.config.from_object(Config)
 
-# ✅ Ensure SECRET_KEY is set early for flask_session to function
+# Ensure SECRET_KEY is set early for flask_session to function
 app.secret_key = app.config.get("SECRET_KEY", "fallback-secret")
 
-# ✅ Session config must be present here
-print("✅ Configuration loaded from config.Config object")
+# Session config must be present
+print("Configuration loaded from config.Config object")
 email_service.init_app(app)
 
-# \*\ Added for Captcha
-# 2️⃣  NEW  — make the key available in every template on every render
+# Captcha
 @app.context_processor
 def inject_recaptcha_key():
     return dict(RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"))
-# \*\ Ended for Captcha
 
 # Load configuration from config.py using from_object
 try:
     app.config.from_object('config.Config')
-    # \*\ For unit testing. Uncomment above ^ and add:
-    
-    #from config import Config
-    #app.config.from_object(Config)
     
     # Access SECRET_KEY from app.config after loading
     app.secret_key = app.config['SECRET_KEY'] 
@@ -223,10 +210,6 @@ def handle_500(error):
 
 
 if __name__ == '__main__':
-    # set debug to false for deployment
-
-    #with app.app_context():
-     #   db.create_all()  # 👈 This will create LoginLog if it doesn’t exist
     app.run(host='0.0.0.0', port=5000, debug=True)
 
 @app.after_request

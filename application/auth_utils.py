@@ -35,7 +35,8 @@ def admin_required(f):
             flash("Access denied.", "error")
             return redirect(url_for("student_routes.dashboard"))
 
-        mfa_redirect = _mfa_guard()  # MFA check
+        # MFA Check
+        mfa_redirect = _mfa_guard()
         if mfa_redirect:
             return mfa_redirect
 
@@ -70,7 +71,8 @@ def moderator_required(f):
             flash("Access denied.", "error")
             return redirect(url_for("student_routes.dashboard"))
         
-        mfa_redirect = _mfa_guard()          # ← MFA check added
+        # MFA Check
+        mfa_redirect = _mfa_guard()
         if mfa_redirect:
             return mfa_redirect
         
