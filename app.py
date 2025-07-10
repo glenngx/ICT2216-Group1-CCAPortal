@@ -23,6 +23,8 @@ from application.moderator_routes import register_moderator_routes
 from application.student_routes import register_student_routes
 from application.misc_routes import register_misc_routes
 from application.models import db
+from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import generate_csrf
 
 app = Flask(__name__)
 
@@ -32,6 +34,15 @@ app.config.from_object(Config)
 
 # ✅ Ensure SECRET_KEY is set early for flask_session to function
 app.secret_key = app.config.get("SECRET_KEY", "fallback-secret")
+
+csrf = CSRFProtect(app)
+
+@app.context_processor
+def inject_csrf_and_recaptcha():
+    return dict(
+        RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"),
+        csrf_token=generate_csrf()
+    )
 
 # ✅ Session config must be present here
 print("✅ Configuration loaded from config.Config object")

@@ -37,6 +37,8 @@
             <!-- \*\ End for login attempts Messages -->
 
             <form method="POST" class="login-form" id="loginForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <div class="mb-3">
                     <label for="username" class="form-label">Student ID or Email</label>
                     <input type="text" class="form-control" id="username" name="username" required
