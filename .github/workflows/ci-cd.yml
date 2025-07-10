@@ -131,11 +131,11 @@ jobs:
             '/polls', # student_routes.view_polls
         ]
         
-        print('📋 Available routes:')
+        print('Available routes:')
         for route in sorted(list(set(routes))): # Use set to avoid duplicates if any
             print(f'  - {route}')
         
-        print('🔍 Checking required routes...')
+        print('Checking required routes...')
         all_found = True
         for required in required_routes:
             # Check if the route exists, potentially with a prefix from a blueprint
@@ -143,9 +143,9 @@ jobs:
             # or if blueprints have dynamic prefixes.
             found = any(required in route for route in routes)
             if found:
-                print(f'  ✅ {required}')
+                print(f' {required}')
             else:
-                print(f'  ❌ {required} - MISSING')
+                print(f' {required} - MISSING')
                 all_found = False
         
         assert all_found, 'One or more required routes are missing!'
