@@ -210,7 +210,7 @@ def handle_500(error):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
 
 @app.after_request
 def set_security_headers(response):
