@@ -29,7 +29,7 @@ services:
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../nginx/sites-available:/etc/nginx/sites-available:ro
-      - ../nginx/conf.d:/etc/nginx/conf.d:ro
+      - ../nginx/conf.d:/etc/nginx/conf.d:rw
       - ../nginx/proxy_params:/etc/nginx/proxy_params:ro
       - /var/www/certbot:/var/www/certbot  # for webroot challenges
       - /etc/letsencrypt:/etc/letsencrypt:ro  # for SSL certs
