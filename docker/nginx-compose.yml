@@ -80,7 +80,7 @@ services:
       - "8000:8000"  # Web UI port for Splunk
     environment:
       - SPLUNK_START_ARGS=--accept-license
-      - SPLUNK_PASSWORD=${{ secrets.SPLUNK_PASSWORD }}
+      - SPLUNK_PASSWORD=${{secrets.SPLUNK_PASSWORD}}
     volumes:
       - splunk_data:/opt/splunk/var  # Persist Splunk data
     networks:
