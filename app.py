@@ -145,6 +145,7 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             flash('Please log in to access this page.', 'warning')
+            app.logger.info('This is a test log entry')
             return redirect(url_for('misc_routes.login')) # Updated url_for
         
         # Check if session is expired
@@ -184,8 +185,10 @@ def health_check():
         conn = get_db_connection()
         if conn:
             conn.close()
+            app.logger.info('Health check passed: Application is healthy.')
             return {'status': 'healthy', 'timestamp': datetime.now().isoformat()}, 200
         else:
+            app.logger.error('Health check failed: Database is disconnected.')
             return {'status': 'unhealthy', 'database': 'disconnected'}, 503
     except Exception as e:
         return {'status': 'unhealthy', 'error': str(e)}, 503
