@@ -7,7 +7,6 @@ import hashlib
 import os
 
 #--------------------- TESTING USER VOTING ----------------------------#
-
 def test_authenticated_user_vote():
     poll_id = 9
     student_id = 2305106
@@ -83,4 +82,3 @@ def test_authenticated_user_vote():
         # Vote submission
         vote_response = client.post(f"/poll/{poll_id}/vote", data={"option": str(option_id)}, follow_redirects=True)
         print("▶ VOTE RESPONSE:", vote_response.data.decode()[:1000])  # debug
-

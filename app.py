@@ -152,7 +152,6 @@ def health_check():
             return {'status': 'unhealthy', 'database': 'disconnected'}, 503
     except Exception as e:
         return {'status': 'unhealthy', 'error': str(e)}, 503
-    
 
 # Global Error Handlers 
 # 401 error handler 
@@ -166,7 +165,6 @@ def unauthorized(error):
 def forbidden(error):
     flash("You do not have permission to access this page.", "error")
     return redirect(url_for('student_routes.dashboard')), 302
-
 
 # Global 404 error handler (non-existing path)
 @app.errorhandler(404)
@@ -207,7 +205,6 @@ def method_not_allowed(error):
 def handle_500(error):
     flash("An unexpected error occurred.", "error")
     return redirect(url_for('student_routes.dashboard')), 302
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

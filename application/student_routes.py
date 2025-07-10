@@ -13,7 +13,6 @@ from application.auth_utils import login_required_with_mfa
 from application.models import db, User, CCAMembers, Poll, PollOption, PollVote, VoteToken, Student, CCA
 from sqlalchemy import func, and_, or_, case, literal_column
 
-
 def convert_utc_to_gmt8_display(utc_datetime):
     """Convert UTC datetime to GMT+8 for display purposes"""
     if utc_datetime and isinstance(utc_datetime, datetime):
@@ -321,7 +320,6 @@ def register_student_routes(app, get_db_connection, login_required):
                 # For non-anonymous polls, check the Votes table directly
                 if db.session.query(PollVote).filter(and_(PollVote.PollId == poll_id, PollVote.UserId == session['user_id'])).count() > 0:
                     has_voted = True
-                
             
             user_votes = []
             if has_voted and poll['QuestionType'] == 'multiple':
@@ -379,11 +377,9 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/poll/<int:poll_id>/vote', methods=['POST'])
     @login_required_with_mfa
     def submit_vote(poll_id):
-
         if session.get('role') == 'admin':
             flash('Admins are not allowed to vote.', 'error')
             return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-
 
         try:
             # Get poll information to validate the vote
@@ -461,7 +457,6 @@ def register_student_routes(app, get_db_connection, login_required):
                         return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
                 
                 token_row.IsUsed = True
-                #The new line marks the token as used.
 
             # Insert vote only if not already voted
             if not has_voted:
@@ -479,7 +474,6 @@ def register_student_routes(app, get_db_connection, login_required):
             flash('An error occurred while submitting your vote. Please try again.', 'error')
 
         return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
-
 
     @student_bp.route('/poll/<int:poll_id>/results')
     @login_required_with_mfa
@@ -622,7 +616,6 @@ def register_student_routes(app, get_db_connection, login_required):
             flash('Error fetching cca details.', 'error')
             return redirect(url_for('student_routes.my_ccas'))
 
-
     @student_bp.route('/change-password', methods=['GET', 'POST'])
     @login_required_with_mfa
     def change_password():
@@ -658,7 +651,6 @@ def register_student_routes(app, get_db_connection, login_required):
                 return render_template('change_password.html',
                                     user_name=session['name'],
                                     user_is_moderator=user_is_moderator)
-            
             
             try:
                 # Get user object for password verification
@@ -702,6 +694,5 @@ def register_student_routes(app, get_db_connection, login_required):
         return render_template('change_password.html', 
                             user_name=session['name'],
                             user_is_moderator=user_is_moderator)
-    
 
     app.register_blueprint(student_bp)

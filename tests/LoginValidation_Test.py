@@ -7,7 +7,6 @@ import hashlib
 import os
 
 #--------------------- TESTING USER LOGIN WITH VALID AND INVALID CREDENTIALS ----------------------------#
-
 def test_login_page_loads():
     with app.test_client() as client:
         response = client.get("/login", follow_redirects=False)
