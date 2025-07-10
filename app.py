@@ -185,10 +185,8 @@ def health_check():
         conn = get_db_connection()
         if conn:
             conn.close()
-            app.logger.info('Health check passed: Application is healthy.')
             return {'status': 'healthy', 'timestamp': datetime.now().isoformat()}, 200
         else:
-            app.logger.error('Health check failed: Database is disconnected.')
             return {'status': 'unhealthy', 'database': 'disconnected'}, 503
     except Exception as e:
         return {'status': 'unhealthy', 'error': str(e)}, 503
