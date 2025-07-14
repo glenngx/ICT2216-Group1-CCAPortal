@@ -10,6 +10,8 @@ import unicodedata
 # Create a Blueprint
 moderator_bp = Blueprint('moderator_routes', __name__)
 
+# Import necessary functions and decorators from the main app or a shared utility module
+
 def sanitize_input(text, max_length=None):
     """
     Sanitize input text to prevent encoding issues and remove potentially harmful characters.
@@ -104,8 +106,9 @@ def register_moderator_routes(app, get_db_connection):
             return redirect(url_for('student_routes.dashboard'))
         
         try:
-            # Filtering for the moderator's CCAs.
+            
             moderator_ccas = db.session.query(CCA).join(CCAMembers).filter(CCAMembers.UserId == session['user_id'], CCAMembers.CCARole == 'moderator').order_by(CCA.Name).all()
+            #This query joins CCA and CCAMembers, filtering for the moderator's CCAs.
 
             user_ccas = []
             for cca in moderator_ccas:
@@ -247,7 +250,6 @@ def register_moderator_routes(app, get_db_connection):
                                         user_is_moderator=True)
                 
                 try:
-                    # Add new Poll object to session
                     new_poll = Poll(
                         CCAId=cca_id,
                         Question=question,
@@ -259,16 +261,18 @@ def register_moderator_routes(app, get_db_connection):
                     )
                     db.session.add(new_poll)
                     db.session.flush()
+                    #This creates and adds a new Poll object to the session.
 
-                    # Get new PollId from flushed session object
                     poll_id = new_poll.PollId
+                    #This gets the new PollId from the flushed session object.
 
-                    # Create and add new PollOption objects for new poll
                     for option_text in valid_options:
                         new_option = PollOption(PollId=poll_id, OptionText=option_text)
                         db.session.add(new_option)
+                        #This creates and adds new PollOption objects for the new poll.
                     
                     db.session.commit()
+                    #This commits the transaction to the database.
                     
                     cca_name = next(cca['name'] for cca in user_ccas if cca['id'] == int(cca_id))
                     flash(f'Poll "{question}" created successfully for {cca_name}!', 'success')
@@ -305,16 +309,16 @@ def register_moderator_routes(app, get_db_connection):
         try:
             cursor = conn.cursor()
             
-            # Checks if a CCAMembers record exists for the user and CCA
             is_moderator = db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCAId=cca_id, CCARole='moderator').first() is not None
+            #This query checks if a CCAMembers record exists for the user and CCA.
             
             if not is_moderator:
                 flash('Access denied.', 'error')
                 print(f'DEBUG: Not moderator, unauthorised to view.')
                 return redirect(url_for('student_routes.my_ccas'))
             
-            # Get CCA details
             cca = db.session.query(CCA).filter_by(CCAId=cca_id).first()
+            #This query fetches the CCA details by its primary key.
             
             if not cca:
                 flash('Access denied.', 'error')
@@ -323,8 +327,6 @@ def register_moderator_routes(app, get_db_connection):
             
             v_ActiveUserDetails = aliased(User, name='v_ActiveUserDetails')
             v_ActiveStudents = aliased(Student, name='v_ActiveStudents')
-
-            # Get member details for CCA
             members = db.session.query(
                 v_ActiveStudents.StudentId,
                 v_ActiveStudents.Name,
@@ -336,8 +338,8 @@ def register_moderator_routes(app, get_db_connection):
              .join(v_ActiveStudents, v_ActiveUserDetails.StudentId == v_ActiveStudents.StudentId) \
              .filter(CCAMembers.CCAId == cca_id) \
              .order_by(v_ActiveStudents.Name).all()
+            #This query joins three tables to get member details for a CCA.
 
-            # Find students not in CCA
             subquery = db.session.query(CCAMembers.UserId).filter(CCAMembers.CCAId == cca_id)
             v_ActiveUserDetails = aliased(User, name='v_ActiveUserDetails')
             v_ActiveStudents = aliased(Student, name='v_ActiveStudents')
@@ -345,6 +347,7 @@ def register_moderator_routes(app, get_db_connection):
                 .join(v_ActiveUserDetails, v_ActiveStudents.StudentId == v_ActiveUserDetails.StudentId) \
                 .filter(v_ActiveUserDetails.UserId.notin_(subquery)) \
                 .order_by(v_ActiveStudents.Name).all()
+            #This query finds students not in the CCA using a subquery.
             
             return render_template('moderator_view_cca.html', 
                                  cca=cca, 
@@ -371,8 +374,8 @@ def register_moderator_routes(app, get_db_connection):
         
         try:
             cursor = conn.cursor()
-            # Checks if a CCAMembers record exists for the user and CCA
             is_moderator = db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCAId=cca_id, CCARole='moderator').first() is not None
+            #This query checks if a CCAMembers record exists for the user and CCA.
             
             if not is_moderator:
                 flash('Access denied. You are not a moderator of this CCA.', 'error')
@@ -387,17 +390,16 @@ def register_moderator_routes(app, get_db_connection):
                 flash(error_message, 'error')
                 return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             if db.session.query(CCA).filter(CCA.Name == sanitized_name, CCA.CCAId != cca_id).first():
-
-            # Checks if the new CCA name already exists.
+            #This query checks if the new CCA name already exists.
                 flash('CCA name already exists.', 'error')
                 return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             
-            # Update name and description for specified CCA
             cca_to_update = db.session.query(CCA).filter_by(CCAId=cca_id).one()
             cca_to_update.Name = sanitized_name
             cca_to_update.Description = sanitized_description
+            #This code updates the name and description for the specified CCA.
             db.session.commit()
-
+            #This commits the transaction to the database.
             flash('CCA updated successfully!', 'success')
             return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             
@@ -421,8 +423,8 @@ def register_moderator_routes(app, get_db_connection):
         
         try:
             cursor = conn.cursor()
-            # Checks if a CCAMembers record exists for the user and CCA
             is_moderator = db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCAId=cca_id, CCARole='moderator').first() is not None
+            #This query checks if a CCAMembers record exists for the user and CCA.
             
             if not is_moderator:
                 flash('Access denied. You are unauthorised to access this CCA.', 'error')
@@ -439,28 +441,28 @@ def register_moderator_routes(app, get_db_connection):
                 flash('Access denied. Moderators can only assign the "member" role to students. Contact an administrator to assign moderator roles.', 'error')
                 return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             
-            # Get UserId for a given StudentId
             user_result = db.session.query(User.UserId).filter_by(StudentId=int(student_id)).first()
-
+            #This query fetches the UserId for a given StudentId.
             if not user_result:
                 flash('Student not found.', 'error')
                 return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             
             user_id = user_result[0]
             
-            # Check if student is already a member of the CCA
             if db.session.query(CCAMembers).filter_by(UserId=user_id, CCAId=cca_id).first():
+                #This query checks if the student is already a member of the CCA.
                 flash('Student is already a member of this CCA.', 'error')
                 return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             
-            # Create and add new CCAmembers object to session
             new_member = CCAMembers(UserId=user_id, CCAId=cca_id, CCARole='member')
             db.session.add(new_member)
-        
-            db.session.commit()
+            #This creates and adds a new CCAMembers object to the session.
             
-            # Get student's name from the StudentId
+            db.session.commit()
+            #This commits the transaction to the database.
+            
             student_name_result = db.session.query(Student.Name).filter_by(StudentId=int(student_id)).first()
+            #This query fetches the student's name using their StudentId.
             student_name = student_name_result[0] if student_name_result else f"Student {student_id}"
             
             flash(f'{student_name} has been added to the CCA as a member successfully!', 'success')
@@ -486,18 +488,17 @@ def register_moderator_routes(app, get_db_connection):
         
         try:
             cursor = conn.cursor()
-            # Checks if a CCAMembers record exists for the user and CCA
             is_moderator = db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCAId=cca_id, CCARole='moderator').first() is not None
+            #This query checks if a CCAMembers record exists for the user and CCA.
             
             if not is_moderator:
                 flash('Access denied. You are unauthorised to view this CCA.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
-            # Delete member from CCA
             member_to_remove = db.session.query(CCAMembers).filter_by(MemberId=member_id, CCAId=cca_id).one()
             db.session.delete(member_to_remove)
             db.session.commit()
-
+            #This code deletes a member from a CCA and commits the change.
             flash('Student removed from CCA successfully!', 'success')
             return redirect(url_for('moderator_routes.moderator_view_cca', cca_id=cca_id))
             
@@ -526,8 +527,8 @@ def register_moderator_routes(app, get_db_connection):
             return {'error': 'Database connection error'}, 500
         
         try:
-            # Check if a CCAMembers record exists for the user and CCA
             if not db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCAId=cca_id, CCARole='moderator').first():
+                #This query checks if a CCAMembers record exists for the user and CCA.
                 return {'error': 'Access denied'}, 403
             
             search_pattern = f'%{search_query}%'
@@ -535,13 +536,13 @@ def register_moderator_routes(app, get_db_connection):
             v_ActiveUserDetails = aliased(User, name='v_ActiveUserDetails')
             v_ActiveStudents = aliased(Student, name='v_ActiveStudents')
 
-            # Search for students not in CCA by name or ID
             students = db.session.query(v_ActiveStudents.StudentId, v_ActiveStudents.Name, v_ActiveStudents.Email) \
                 .join(v_ActiveUserDetails, v_ActiveStudents.StudentId == v_ActiveUserDetails.StudentId) \
                 .filter(
                     (v_ActiveStudents.Name.like(search_pattern) | cast(v_ActiveStudents.StudentId, db.String).like(search_pattern)),
                     v_ActiveUserDetails.UserId.notin_(subquery)
                 ).order_by(v_ActiveStudents.Name).all()
+            #This query searches for students not in a CCA by name or ID.
             
             result = []
             for student in students:
@@ -576,25 +577,24 @@ def register_moderator_routes(app, get_db_connection):
             return redirect(url_for('student_routes.my_ccas'))
         
         try:
-            # Check if a CCAMembers record exists for the user and CCA
             if not db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCAId=cca_id, CCARole='moderator').first():
+                #This query checks if a CCAMembers record exists for the user and CCA.
                 flash('Access denied. You are unauthorised to view this CCA.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
 
             v_ActiveUserDetails = aliased(User, name='v_ActiveUserDetails')
             v_ActiveStudents = aliased(Student, name='v_ActiveStudents')
-
-            # Get user and student data for a list of student IDs
             user_data = db.session.query(v_ActiveUserDetails.UserId, v_ActiveStudents.StudentId, v_ActiveStudents.Name) \
                 .join(v_ActiveStudents, v_ActiveUserDetails.StudentId == v_ActiveStudents.StudentId) \
                 .filter(v_ActiveStudents.StudentId.in_(student_ids)).all()
-
-            # Add multiple new members to CCA
+            #This query retrieves user and student data for a list of student IDs.
             for user in user_data:
                 new_member = CCAMembers(UserId=user[0], CCAId=cca_id, CCARole='member')
                 db.session.add(new_member)
+            #This code adds multiple new members to the CCA.
             
             db.session.commit()
+            #This commits the transaction to the database.
             
             added_count = len(user_data)
             flash(f'{added_count} students have been added to the CCA as members!', 'success')

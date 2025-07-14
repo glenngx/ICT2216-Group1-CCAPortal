@@ -37,9 +37,11 @@
             <!-- \*\ End for login attempts Messages -->
 
             <form method="POST" class="login-form" id="loginForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <div class="mb-3">
                     <label for="username" class="form-label">Student ID or Email</label>
-                    <input type="text" class="form-control" id="username" name="username" maxlength="10" required
+                    <input type="text" class="form-control" id="username" name="username" required
                            placeholder="Enter your Student ID or Email"
                            autocomplete="username">
                 </div>
@@ -47,7 +49,7 @@
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
                     <div class="password-container">
-                        <input type="password" class="form-control" id="password" name="password" required maxlength="255"
+                        <input type="password" class="form-control" id="password" name="password" required
                             placeholder="Enter your password"
                             autocomplete="current-password">
                         <div class="show-password-checkbox">

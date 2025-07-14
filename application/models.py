@@ -9,11 +9,23 @@ class User(db.Model):
     Password = db.Column(db.String(255), nullable=False)
     SystemRole = db.Column(db.String(50), nullable=False)
     StudentId = db.Column(db.Integer, db.ForeignKey('Student.StudentId'))
+
+    # \*\ Added for MFA and Block login attempts
     MFATOTPSecret = db.Column(db.String(255))
+
+
+    # Add these:
     FailedLoginAttempts = db.Column(db.Integer, default=0)
     IsLocked = db.Column(db.Boolean, default=False)
     LastFailedLogin = db.Column(db.DateTime)
+
+   # \*\ End for MFA and Block login attempts
+
+    # \*\ Added for password expiration
     PasswordLastSet = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # \*\ End for MFA and Block login attempts
+
 
     student = db.relationship('Student', backref='user', uselist=False)
 
@@ -84,6 +96,8 @@ class VoteToken(db.Model):
     user = db.relationship('User', backref='vote_tokens')
     poll = db.relationship('Poll', backref='vote_tokens')
 
+# \*\ Added for logging
+
 class LoginLog(db.Model):
     __tablename__ = 'LoginLog'
     LogId = db.Column(db.Integer, primary_key=True)
@@ -101,3 +115,6 @@ class AdminLog(db.Model):
     Action = db.Column(db.String(255), nullable=False)
     Timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     IPAddress = db.Column(db.String(45))
+
+
+# \*\ Ended for logging
