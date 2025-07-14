@@ -7,6 +7,7 @@ import hashlib
 import os
 
 #--------------------- TESTING ADDING USER TO CCA ----------------------------#
+
 def test_login_with_valid_credentials():
     with app.test_client() as client:
         response = client.post("/login", data={

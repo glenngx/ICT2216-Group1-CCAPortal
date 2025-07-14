@@ -9,6 +9,13 @@ from email_service import email_service
 import os  
 from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file
+# Removed direct import of DB_CONNECTION_STRING, SECRET_KEY from config
+# try:
+#     from config import DB_CONNECTION_STRING, SECRET_KEY
+#     print("Configuration loaded from config.py")
+# except ImportError:
+#     print("ERROR: config.py file not found!")
+#     exit(1)
 
 # Import registration functions
 from application.admin_routes import register_admin_routes
@@ -16,28 +23,45 @@ from application.moderator_routes import register_moderator_routes
 from application.student_routes import register_student_routes
 from application.misc_routes import register_misc_routes
 from application.models import db
+from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import generate_csrf
 
 app = Flask(__name__)
 
-# Load full config before initializing Session
+# ✅ Load full config before initializing Session
 from config import Config
 app.config.from_object(Config)
 
-# Ensure SECRET_KEY is set early for flask_session to function
+# ✅ Ensure SECRET_KEY is set early for flask_session to function
 app.secret_key = app.config.get("SECRET_KEY", "fallback-secret")
 
-# Session config must be present
-print("Configuration loaded from config.Config object")
+csrf = CSRFProtect(app)
+
+@app.context_processor
+def inject_csrf_and_recaptcha():
+    return dict(
+        RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"),
+        csrf_token=generate_csrf()
+    )
+
+# ✅ Session config must be present here
+print("✅ Configuration loaded from config.Config object")
 email_service.init_app(app)
 
-# Captcha
+# \*\ Added for Captcha
+# 2️⃣  NEW  — make the key available in every template on every render
 @app.context_processor
 def inject_recaptcha_key():
     return dict(RECAPTCHA_SITE_KEY=os.getenv("RECAPTCHA_SITE_KEY"))
+# \*\ Ended for Captcha
 
 # Load configuration from config.py using from_object
 try:
     app.config.from_object('config.Config')
+    # \*\ For unit testing. Uncomment above ^ and add:
+    
+    #from config import Config
+    #app.config.from_object(Config)
     
     # Access SECRET_KEY from app.config after loading
     app.secret_key = app.config['SECRET_KEY'] 
@@ -121,6 +145,100 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Admin required decorator
+# def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('misc_routes.login')) # Updated url_for
+        
+        # Check if session is expired
+        if 'login_time' in session:
+            login_time = datetime.fromisoformat(session['login_time'])
+            if datetime.now() - login_time > timedelta(minutes=30):
+                session.clear()
+                flash('Your session has expired. Please log in again.', 'warning')
+                return redirect(url_for('misc_routes.login')) # Updated url_for
+        
+        # Check session for admin role
+        if session.get('role') != 'admin':
+            flash('Access denied.', 'error')
+            return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        
+        # Check db for user role
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        
+        try:
+            print(session['user_id'])
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM UserDetails 
+                WHERE UserId = ? AND SystemRole = 'admin'
+            """, (session['user_id'],))
+            is_admin = cursor.fetchone()[0] > 0
+            
+            if not is_admin:
+                flash('Access denied.', 'error')
+                return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        
+        except Exception as e:
+            print(f"Admin check error: {e}")
+            flash('Error checking permissions.', 'error')
+            return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        finally:
+            conn.close()
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Moderator required decorator
+# def moderator_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('misc_routes.login')) # Updated url_for
+        
+        # Check if session is expired
+        if 'login_time' in session:
+            login_time = datetime.fromisoformat(session['login_time'])
+            if datetime.now() - login_time > timedelta(minutes=30):
+                session.clear()
+                flash('Your session has expired. Please log in again.', 'warning')
+                return redirect(url_for('misc_routes.login')) # Updated url_for
+        
+        # Check if user is a moderator in any CCA
+        conn = get_db_connection()
+        if not conn:
+            flash('Database connection error.', 'error')
+            return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM CCAMembers 
+                WHERE UserId = ? AND CCARole = 'moderator'
+            """, (session['user_id'],))
+            is_moderator = cursor.fetchone()[0] > 0
+            
+            if not is_moderator:
+                flash('Access denied.', 'error')
+                return redirect(url_for('student_routes.dashboard')) # Updated url_for
+            
+        except Exception as e:
+            print(f"Moderator check error: {e}")
+            flash('Error checking permissions.', 'error')
+            return redirect(url_for('student_routes.dashboard')) # Updated url_for
+        finally:
+            conn.close()
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Input validation functions
 def validate_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
@@ -152,6 +270,7 @@ def health_check():
             return {'status': 'unhealthy', 'database': 'disconnected'}, 503
     except Exception as e:
         return {'status': 'unhealthy', 'error': str(e)}, 503
+    
 
 # Global Error Handlers 
 # 401 error handler 
@@ -165,6 +284,7 @@ def unauthorized(error):
 def forbidden(error):
     flash("You do not have permission to access this page.", "error")
     return redirect(url_for('student_routes.dashboard')), 302
+
 
 # Global 404 error handler (non-existing path)
 @app.errorhandler(404)
@@ -206,8 +326,13 @@ def handle_500(error):
     flash("An unexpected error occurred.", "error")
     return redirect(url_for('student_routes.dashboard')), 302
 
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    # set debug to false for deployment
+
+    #with app.app_context():
+     #   db.create_all()  # 👈 This will create LoginLog if it doesn’t exist
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 @app.after_request
 def set_security_headers(response):
@@ -216,7 +341,6 @@ def set_security_headers(response):
     response.headers['Permissions-Policy'] = "geolocation=(), microphone=(), camera=()"
     response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
-    response.headers['Referrer-Policy'] = 'no-referrer-when-downgrade'
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; script-src 'self' https://www.google.com; "
         "style-src 'self' https://cdn.jsdelivr.net; frame-src https://www.google.com"

@@ -37,9 +37,9 @@ jobs:
     - name: Run Semgrep and generate SARIF
       run: |
         mkdir -p reports
-        echo "Running Semgrep with Python security rules..."
+        echo "🔍 Running Semgrep with Python security rules..."
         semgrep --config p/python --sarif --output reports/semgrep.sarif
-        echo "Reports folder contents:"
+        echo "📁 Reports folder contents:"
         ls -lah reports
 
     - name: Upload Flake8 SARIF
