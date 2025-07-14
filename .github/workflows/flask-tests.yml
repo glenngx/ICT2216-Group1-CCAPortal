@@ -45,7 +45,7 @@ jobs:
           echo 'class Config:' >> config.py
           echo '    raw_odbc = os.getenv("DB_CONN_STRING")' >> config.py
           echo '    if not raw_odbc:' >> config.py
-          echo '        raise ValueError("Missing DB_CONN_STRING")' >> config.py
+          echo '        raise ValueError("❌ Missing DB_CONN_STRING")' >> config.py
           echo '    SQLALCHEMY_DATABASE_URI = "mssql+pyodbc:///?odbc_connect=" + urllib.parse.quote_plus(raw_odbc)' >> config.py
           echo '    SQLALCHEMY_TRACK_MODIFICATIONS = False' >> config.py
           echo '    SESSION_TYPE = os.getenv("SESSION_TYPE", "sqlalchemy")' >> config.py

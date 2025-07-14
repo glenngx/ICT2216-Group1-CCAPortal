@@ -13,6 +13,7 @@ from application.auth_utils import login_required_with_mfa
 from application.models import db, User, CCAMembers, Poll, PollOption, PollVote, VoteToken, Student, CCA
 from sqlalchemy import func, and_, or_, case, literal_column
 
+
 def convert_utc_to_gmt8_display(utc_datetime):
     """Convert UTC datetime to GMT+8 for display purposes"""
     if utc_datetime and isinstance(utc_datetime, datetime):
@@ -27,6 +28,7 @@ student_bp = Blueprint('student_routes', __name__)
 # registration function for student routes
 def register_student_routes(app, get_db_connection, login_required):
     
+    # \*/ Added for MFA
     @student_bp.route("/mfa-setup", methods=["GET", "POST"])
     @login_required
     def mfa_setup():
@@ -36,13 +38,16 @@ def register_student_routes(app, get_db_connection, login_required):
             return redirect(url_for("student_routes.dashboard"))
 
         try:
-            # Get user with current session's user ID
             user = User.query.filter_by(UserId=session["user_id"]).first()
+            #The new line queries the User model for a user with the current session's user ID.
 
             if user and user.MFATOTPSecret:
+                # Secret already saved — just verify
                 return redirect(url_for("misc_routes.mfa_verify"))
 
+            # --------------------------------------------
             # Always ensure we have a temp secret in session
+            # --------------------------------------------
             if "mfa_temp_secret" not in session:
                 session["mfa_temp_secret"] = pyotp.random_base32()
 
@@ -64,7 +69,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 if totp.verify(code):
                     user.MFATOTPSecret = secret
                     db.session.commit()
-                    # Updates the user's MFA secret and commits the change to the database.
+                    #The new code updates the user's MFA secret and commits the change to the database.
                     session.pop("mfa_temp_secret", None)
                     session["mfa_authenticated"] = True
                     flash("MFA setup complete.", "success")
@@ -78,6 +83,8 @@ def register_student_routes(app, get_db_connection, login_required):
         finally:
             conn.close()
 
+    # \*/ ENDED for MFA 
+
     @student_bp.route('/dashboard')
     @login_required_with_mfa
     def dashboard():
@@ -90,6 +97,7 @@ def register_student_routes(app, get_db_connection, login_required):
             return redirect(url_for('admin_routes.admin_dashboard'))
         
         try:
+            # \*\ Added for password expiration
             # Get user and calculate password expiry warning
             user = User.query.filter_by(UserId=session['user_id']).first()
             days_left = None
@@ -103,8 +111,10 @@ def register_student_routes(app, get_db_connection, login_required):
                 days_since = (datetime.now(timezone.utc) - password_last_set).days
                 days_left = 365 - days_since
 
-            # Get CCAs the user is a member of
+            # \*\ Ended for password expiration
+
             user_ccas = db.session.query(CCA.CCAId, CCA.Name, CCA.Description, CCAMembers.CCARole).join(CCAMembers, CCA.CCAId == CCAMembers.CCAId).filter(CCAMembers.UserId == session['user_id']).all()
+            #The new line queries the database for CCAs the user is a member of.
             
             ccas = []
             user_is_moderator = False
@@ -121,7 +131,6 @@ def register_student_routes(app, get_db_connection, login_required):
             if ccas:
                 cca_ids = [c['id'] for c in ccas]
 
-                # Get active polls in user's CCAs
                 poll_results = db.session.query(
                     Poll.PollId,
                     Poll.Question,
@@ -129,6 +138,7 @@ def register_student_routes(app, get_db_connection, login_required):
                     CCA.Name.label('CCAName'),
                     func.datediff(literal_column('day'), func.now(), Poll.EndDate).label('DaysRemaining')
                 ).join(CCA, Poll.CCAId == CCA.CCAId).filter(Poll.CCAId.in_(cca_ids), Poll.IsActive == True).order_by(Poll.EndDate.asc()).all()
+                #The new line queries the database for active polls in the user's CCAs.
                 
                 available_polls = []
                 for poll_row in poll_results:
@@ -149,7 +159,7 @@ def register_student_routes(app, get_db_connection, login_required):
                 user_name=session['name'],
                 user_role=session['role'],
                 user_is_moderator=user_is_moderator,
-                password_days_left=days_left
+                password_days_left=days_left  # ✅ pass to template
             )
             
         except Exception as e:
@@ -172,12 +182,12 @@ def register_student_routes(app, get_db_connection, login_required):
             return redirect(url_for('admin_routes.admin_dashboard'))
         
         try:
-            # Get CCAs the user is a member of
             user_ccas_rows = db.session.query(CCA.CCAId, CCA.Name, CCA.Description, CCAMembers.CCARole).join(CCAMembers, CCA.CCAId == CCAMembers.CCAId).filter(CCAMembers.UserId == session['user_id']).order_by(CCA.Name).all()
+            #The new line queries the database for CCAs the user is a member of.
             
             ccas_list = []
             moderator_ccas_list = []
-            user_is_moderator = False
+            user_is_moderator = False  # ADD THIS LINE
             
             for cca_row in user_ccas_rows:
                 cca_data = {
@@ -189,12 +199,12 @@ def register_student_routes(app, get_db_connection, login_required):
                 ccas_list.append(cca_data)
                 if cca_row[3] == 'moderator':
                     moderator_ccas_list.append(cca_data)
-                    user_is_moderator = True
+                    user_is_moderator = True  # ADD THIS LINE
             
             return render_template('my_ccas.html', 
                                 ccas=ccas_list, 
                                 moderator_ccas=moderator_ccas_list,
-                                user_is_moderator=user_is_moderator,
+                                user_is_moderator=user_is_moderator,  # ADD THIS LINE
                                 user_name=session['name'],
                                 user_role=session['role'])
             
@@ -210,19 +220,19 @@ def register_student_routes(app, get_db_connection, login_required):
             return redirect(url_for('admin_routes.admin_dashboard'))
 
         try:
-            # Check if user is a moderator in CCA
             user_is_moderator = db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCARole='moderator').count() > 0
-            # Get IDs of all CCAs the user is a member of
+            #The new line checks if the user is a moderator in any CCA.
             user_cca_ids = [cca.CCAId for cca in db.session.query(CCA.CCAId).join(CCAMembers).filter(CCAMembers.UserId == session['user_id']).distinct().all()]
+            #The new line gets the IDs of all CCAs the user is a member of.
 
             polls_data_rows = []
             if user_cca_ids:
-                # Query for polls in user's CCAs
                 polls_data_rows = db.session.query(
                     Poll.PollId, Poll.CCAId, Poll.Question, Poll.QuestionType,
                     Poll.StartDate, Poll.EndDate, Poll.IsAnonymous,
                     Poll.IsActive.label('LiveIsActive'), CCA.Name.label('CCAName')
                 ).join(CCA).filter(Poll.CCAId.in_(user_cca_ids)).order_by(Poll.EndDate.desc(), Poll.StartDate.desc()).all()
+                #The new line queries for polls in the user's CCAs.
 
             processed_polls = []
             for row in polls_data_rows:
@@ -255,21 +265,20 @@ def register_student_routes(app, get_db_connection, login_required):
     @login_required_with_mfa
     def view_poll_detail(poll_id):
         try:
-            # Check if user is moderator
             user_is_moderator = db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCARole='moderator').count() > 0
-
-            # Get poll details
+            #The new line checks if the user is a moderator.
             poll_data_row = db.session.query(
                 Poll.PollId, Poll.Question, Poll.QuestionType, Poll.StartDate, Poll.EndDate,
                 Poll.IsAnonymous, CCA.Name.label('CCAName'), Poll.IsActive.label('LiveIsActive')
             ).join(CCA, Poll.CCAId == CCA.CCAId).filter(Poll.PollId == poll_id).first()
+            #The new line queries for poll details, joining with the CCA table.
 
             if not poll_data_row:
                 flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.view_polls'))
 
-            # Check if user is a member of the CCA for this poll
             is_member_of_cca = db.session.query(CCAMembers).join(Poll, CCAMembers.CCAId == Poll.CCAId).filter(CCAMembers.UserId == session['user_id'], Poll.PollId == poll_id).count() > 0
+            #The new line checks if the user is a member of the CCA for this poll.
 
             if not is_member_of_cca and session['role'] != 'admin':
                 flash('Access denied.', 'error')
@@ -304,8 +313,7 @@ def register_student_routes(app, get_db_connection, login_required):
             options_data = db.session.query(
                 PollOption.OptionId, PollOption.OptionText, func.count(PollVote.VoteId).label('VoteCount')
             ).outerjoin(PollVote, PollOption.OptionId == PollVote.OptionId).filter(PollOption.PollId == poll_id).group_by(PollOption.OptionId, PollOption.OptionText).order_by(PollOption.OptionId).all()
-            
-            # Gets poll options and vote counts.
+            #The new line gets poll options and their vote counts.
             options = [{'OptionId': opt[0], 'OptionText': opt[1], 'VoteCount': opt[2]} for opt in options_data]
 
             # Check if user has voted
@@ -313,24 +321,26 @@ def register_student_routes(app, get_db_connection, login_required):
             if poll['IsAnonymous']:
                 # For anonymous polls, check if the user's token has been used
                 token_status = db.session.query(VoteToken.IsUsed).filter_by(PollId=poll_id, UserId=session['user_id']).first()
-                # Checks if the user's vote token has been used.
-                if token_status and token_status[0]:
+                #The new line checks if the user's vote token has been used.
+                if token_status and token_status[0]: # IsUsed is True
                     has_voted = True
             else:
                 # For non-anonymous polls, check the Votes table directly
                 if db.session.query(PollVote).filter(and_(PollVote.PollId == poll_id, PollVote.UserId == session['user_id'])).count() > 0:
                     has_voted = True
+                
             
             user_votes = []
             if has_voted and poll['QuestionType'] == 'multiple':
                 user_votes_data = db.session.query(PollVote.OptionId).filter_by(PollId=poll_id, UserId=session['user_id']).all()
-                # Get the user's votes for a multiple choice poll.
+                #The new line gets the user's votes for a multiple choice poll.
                 user_votes = [uv[0] for uv in user_votes_data]
 
             vote_token = None
             if poll['IsAnonymous'] and poll['LiveIsActive']:
                 # Check if token already exists and if it is unused
                 token_status_row = db.session.query(VoteToken.IsUsed).filter_by(PollId=poll_id, UserId=session['user_id']).first()
+                #The new line gets the user's vote token.
 
                 if token_status_row:
                     is_used = token_status_row[0]
@@ -338,6 +348,7 @@ def register_student_routes(app, get_db_connection, login_required):
                         # Token exists but unused → safely delete and reissue
                         db.session.query(VoteToken).filter_by(PollId=poll_id, UserId=session['user_id']).delete()
                         db.session.commit()
+                        #The new line deletes the existing unused vote token.
 
                         # Reissue a new token
                         raw_token = secrets.token_hex(32)
@@ -345,8 +356,7 @@ def register_student_routes(app, get_db_connection, login_required):
                         new_token = VoteToken(Token=hashed_token, PollId=poll_id, UserId=session['user_id'], IssuedTime=datetime.now(timezone.utc), ExpiryTime=datetime.now(timezone.utc) + timedelta(minutes=10))
                         db.session.add(new_token)
                         db.session.commit()
-
-                        # Inserts a new vote token for the user.
+                        #The new code inserts a new vote token for the user.
                         vote_token = raw_token
                     else:
                         vote_token = None  # Already used, no reissue
@@ -357,8 +367,8 @@ def register_student_routes(app, get_db_connection, login_required):
                     new_token = VoteToken(Token=hashed_token, PollId=poll_id, UserId=session['user_id'], IssuedTime=datetime.now(timezone.utc), ExpiryTime=datetime.now(timezone.utc) + timedelta(minutes=10))
                     db.session.add(new_token)
                     db.session.commit()
+                    #The new code inserts a new vote token for the user.
 
-                    # Inserts a new vote token for the user.
                     vote_token = raw_token
 
             return render_template('poll_detail.html', 
@@ -377,13 +387,15 @@ def register_student_routes(app, get_db_connection, login_required):
     @student_bp.route('/poll/<int:poll_id>/vote', methods=['POST'])
     @login_required_with_mfa
     def submit_vote(poll_id):
+
         if session.get('role') == 'admin':
             flash('Admins are not allowed to vote.', 'error')
             return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
+
         try:
-            # Get poll information to validate the vote
             poll_info = db.session.query(Poll.IsActive, Poll.CCAId, Poll.QuestionType).filter_by(PollId=poll_id).first()
+            #The new line gets poll information to validate the vote.
 
             if not poll_info:
                 flash('Access denied.', 'error')
@@ -395,17 +407,17 @@ def register_student_routes(app, get_db_connection, login_required):
                 flash('This poll is closed for voting.', 'error')
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            # Check if user is a member of the CCA
             is_member_of_cca = db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCAId=cca_id).count() > 0
+            #The new line checks if the user is a member of the CCA.
 
             if not is_member_of_cca:
                 flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            # Check if user has already voted
             has_voted = db.session.query(PollVote).filter_by(PollId=poll_id, UserId=session['user_id']).count() > 0
-            # Check if poll is anonymous
+            #The new line checks if the user has already voted.
             is_anonymous = db.session.query(Poll.IsAnonymous).filter_by(PollId=poll_id).scalar()
+            #The new line checks if the poll is anonymous.
 
             selected_option_ids = []
             if question_type == 'single_choice':
@@ -418,25 +430,25 @@ def register_student_routes(app, get_db_connection, login_required):
                 flash('Invalid poll type.', 'error')
                 return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            # Get valid option IDs for the poll
             valid_option_ids_tuples = db.session.query(PollOption.OptionId).filter_by(PollId=poll_id).all()
             valid_option_ids = [str(opt_id[0]) for opt_id in valid_option_ids_tuples]
+            #The new line gets valid option IDs for the poll.
 
             for opt_id in selected_option_ids:
                 if opt_id not in valid_option_ids:
                     flash(f'Invalid option selected: {opt_id}', 'error')
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-            # Token validation only if not already voted
+            # ✅ Token validation only if not already voted
             if is_anonymous and not has_voted:
                 raw_token = request.form.get('vote_token')
                 if not raw_token:
                     flash('Missing vote token for anonymous poll.', 'error')
                     return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
-                # Get vote token for validation
                 hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
                 token_row = db.session.query(VoteToken).filter_by(Token=hashed_token, PollId=poll_id, UserId=session['user_id']).first()
+                #The new line retrieves the vote token for validation.
 
                 if not token_row:
                     flash('Invalid or expired vote token.', 'error')
@@ -457,6 +469,7 @@ def register_student_routes(app, get_db_connection, login_required):
                         return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
                 
                 token_row.IsUsed = True
+                #The new line marks the token as used.
 
             # Insert vote only if not already voted
             if not has_voted:
@@ -475,29 +488,27 @@ def register_student_routes(app, get_db_connection, login_required):
 
         return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))
 
+
     @student_bp.route('/poll/<int:poll_id>/results')
     @login_required_with_mfa
     def view_poll_results(poll_id):
         try:
-            # Checks if the user is a moderator for the poll's CCA
             user_is_moderator = db.session.query(CCAMembers).join(Poll, CCAMembers.CCAId == Poll.CCAId).filter(
                 CCAMembers.UserId == session['user_id'],
                 Poll.PollId == poll_id,
                 CCAMembers.CCARole == 'moderator'
             ).count() > 0
-
-            # Check if the poll is anonymous
-            is_anonymous = db.session.query(Poll.IsAnonymous).filter_by(PollId=poll_id).scalar()
+            #The new line checks if the user is a moderator for the poll's CCA.
+            is_anonymous = db.session.query(Poll.IsAnonymous).filter_by(PollId=poll_id).scalar()            #The new line checks if the poll is anonymous.
 
             if is_anonymous and not user_is_moderator and session['role'] != 'admin':
                 flash('You cannot view the results of an anonymous poll.', 'error')
-                return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id)) 
-
-            # Get basic poll information for results page           
+                return redirect(url_for('student_routes.view_poll_detail', poll_id=poll_id))            
             poll_info = db.session.query(
                 Poll.PollId, Poll.Question, Poll.IsAnonymous, Poll.StartDate, Poll.EndDate, 
                 Poll.QuestionType, CCA.Name.label('CCAName')
             ).join(CCA, Poll.CCAId == CCA.CCAId).filter(Poll.PollId == poll_id).first()
+            #The new line gets basic poll information for the results page.
 
             if not poll_info:
                 flash('Poll not found.', 'error')
@@ -546,10 +557,10 @@ def register_student_routes(app, get_db_connection, login_required):
                 user_votes_data = db.session.query(PollVote.OptionId).filter_by(PollId=poll_id, UserId=session['user_id']).all()
                 user_votes = [uv[0] for uv in user_votes_data]
             
-            # Get results for a non-anonymous poll with student name and email
             results_data = db.session.query(
                 PollOption.OptionText, Student.Name.label('VoterName'), Student.Email.label('VoterEmail')
             ).join(PollVote, PollOption.OptionId == PollVote.OptionId).join(User, PollVote.UserId == User.UserId).join(Student, User.StudentId == Student.StudentId).filter(PollVote.PollId == poll_id).order_by(PollOption.OptionText, Student.Name).all()
+            #The new line gets the results for a non-anonymous poll, joining with Student table to get name and email.
 
             results = {}
             for row in results_data:
@@ -583,38 +594,39 @@ def register_student_routes(app, get_db_connection, login_required):
         """View-only CCA page for normal students (non-moderators)"""
         
         try:
-            # Check if user is moderator
             user_is_moderator = db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCARole='moderator').count() > 0
-
-            # Check user's role in CCA
+            #The new line checks if the user is a moderator.
+            
             membership = db.session.query(CCAMembers.CCARole).filter_by(UserId=session['user_id'], CCAId=cca_id).first()
+            #The new line checks the user's role in the CCA.
             
             if not membership:
                 flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
-            # Get CCA details by ID
             cca = db.session.query(CCA.CCAId, CCA.Name, CCA.Description).filter_by(CCAId=cca_id).first()
+            #The new line gets CCA details by its ID.
             
             if not cca:
                 flash('Access denied.', 'error')
                 return redirect(url_for('student_routes.my_ccas'))
             
-            # Get all members of the CCA ordered by role and name
             members = db.session.query(
                 Student.StudentId, Student.Name, Student.Email, CCAMembers.CCARole, CCAMembers.MemberId
             ).join(User, Student.StudentId == User.StudentId).join(CCAMembers, User.UserId == CCAMembers.UserId).filter(CCAMembers.CCAId == cca_id).order_by(CCAMembers.CCARole.desc(), Student.Name).all()
+            #The new line gets all members of the CCA, ordered by role and name.
             
             return render_template('student_view_cca.html', 
                                 cca=cca, 
                                 members=members,
                                 user_name=session['name'],
-                                user_is_moderator=user_is_moderator)
+                                user_is_moderator=user_is_moderator)  # ADD THIS LINE
             
         except Exception as e:
             print(f"Error fetching cca details for cca {cca_id}: {e}")
             flash('Error fetching cca details.', 'error')
             return redirect(url_for('student_routes.my_ccas'))
+
 
     @student_bp.route('/change-password', methods=['GET', 'POST'])
     @login_required_with_mfa
@@ -622,6 +634,7 @@ def register_student_routes(app, get_db_connection, login_required):
         # Helper function to check if user is moderator
         def get_moderator_status():
             return db.session.query(CCAMembers).filter_by(UserId=session['user_id'], CCARole='moderator').count() > 0
+            #The new line checks if the user is a moderator.
 
         if request.method == 'POST':
             current_password = request.form.get('current_password', '').strip()
@@ -652,9 +665,10 @@ def register_student_routes(app, get_db_connection, login_required):
                                     user_name=session['name'],
                                     user_is_moderator=user_is_moderator)
             
+            
             try:
-                # Get user object for password verification
                 user = db.session.query(User).filter_by(UserId=session['user_id']).first()
+                #The new line gets the user object to verify the password.
                 
                 if not user:
                     flash('User not found.', 'error')
@@ -667,10 +681,11 @@ def register_student_routes(app, get_db_connection, login_required):
                     # Hash new password
                     hashed_new_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
                     
-                    user.Password = hashed_new_password.decode('utf-8')
+                    user.Password = hashed_new_password.decode('utf-8')                    # \*\ Added for Password expiration
                     user.PasswordLastSet = datetime.now(timezone.utc)
-
+                    # \*\ Ended for Password expiration
                     db.session.commit()
+                    #The new line updates the user's password.
                     
                     flash('Password changed successfully.', 'success')
                     return redirect(url_for('student_routes.dashboard'))
@@ -681,6 +696,7 @@ def register_student_routes(app, get_db_connection, login_required):
                                         user_is_moderator=user_is_moderator)
                 
             except Exception as e:
+                # conn.rollback()
                 db.session.rollback()
                 print(f"Error changing password: {e}")
                 flash('An error occurred while changing your password.', 'error')
@@ -694,5 +710,6 @@ def register_student_routes(app, get_db_connection, login_required):
         return render_template('change_password.html', 
                             user_name=session['name'],
                             user_is_moderator=user_is_moderator)
+    
 
-    app.register_blueprint(student_bp)
+    app.register_blueprint(student_bp) # Add this line to register the blueprint

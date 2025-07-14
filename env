@@ -1,0 +1,19 @@
+# email credentials 
+
+# Gmail SMTP Settings
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USE_SSL=False
+
+# Your actual email credentials
+MAIL_USERNAME=sitccap@gmail.com
+MAIL_PASSWORD=plow klah qtwb xvqu
+
+# Default sender 
+MAIL_DEFAULT_SENDER=sitccap@gmail.com
+
+# Application settings
+ADMIN_EMAIL=admin@sit.edu.sg
+SITE_NAME=CCA Portal
+SITE_URL=http://localhost:5000 # update to actual URL site when deployed
